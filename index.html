@@ -36,6 +36,7 @@
     .list { display: grid; gap: 7px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
     .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item.color-white{background:#fff}.item.color-blue{background:#eaf2ff}.item.color-green{background:#eaf8ef}.item.color-yellow{background:#fff7dd}.item.color-orange{background:#fff0e4}.item.color-pink{background:#fdeef3}.item.color-purple{background:#f2ecff}.item.color-gray{background:#eeeeec}
     .item-main { min-width: 0; cursor: pointer; }
     .name { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
@@ -73,6 +74,11 @@
     .manual-toggle { margin-top: 8px; width: 100%; }
     #reader { width: 100%; background: white; border-radius: 14px; overflow: hidden; margin-top: 12px; }
     #reader video { width: 100% !important; }
+    .notice { margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: #f7f7f4; font-size: 12px; line-height: 1.5; color: var(--muted); }
+    .color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    .color-choice { min-height:40px; border:2px solid transparent; border-radius:10px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .color-choice.selected { border-color:var(--accent); }
+    .color-dot { width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -92,7 +98,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.4 ショートカット連携版 — データはこの端末のブラウザ内に保存されます。
+      v0.5 カラー・起動テスト版 — データはこの端末のブラウザ内に保存されます。
     </div>
   </div>
 
@@ -155,12 +161,28 @@
               <button class="btn" id="copyShortcutNameBtn" type="button">名前をコピー</button>
               <button class="btn primary" id="createShortcutBtn" type="button">作成を開始</button>
             </div>
+            <button class="btn" id="testShortcutBtn" type="button" style="width:100%;margin-top:8px;">起動テスト</button>
+            <div class="notice">初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。</div>
             <ol class="shortcut-steps">
               <li>「作成を開始」でショートカットアプリを開く</li>
               <li>「Appを開く」アクションを追加し、対象アプリを選ぶ</li>
               <li>ショートカット名を上記の名前にして保存</li>
             </ol>
           </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>ボタン色</label>
+        <div class="color-grid" id="colorGrid">
+          <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
+          <button type="button" class="color-choice" data-color="blue"><span class="color-dot" style="background:#dceaff"></span></button>
+          <button type="button" class="color-choice" data-color="green"><span class="color-dot" style="background:#dff3e5"></span></button>
+          <button type="button" class="color-choice" data-color="yellow"><span class="color-dot" style="background:#fff1bf"></span></button>
+          <button type="button" class="color-choice" data-color="orange"><span class="color-dot" style="background:#ffe2cb"></span></button>
+          <button type="button" class="color-choice" data-color="pink"><span class="color-dot" style="background:#f9dce7"></span></button>
+          <button type="button" class="color-choice" data-color="purple"><span class="color-dot" style="background:#e8ddff"></span></button>
+          <button type="button" class="color-choice" data-color="gray"><span class="color-dot" style="background:#dededb"></span></button>
         </div>
       </div>
 
@@ -222,6 +244,9 @@
     const shortcutNamePreview = document.getElementById("shortcutNamePreview");
     const copyShortcutNameBtn = document.getElementById("copyShortcutNameBtn");
     const createShortcutBtn = document.getElementById("createShortcutBtn");
+    const testShortcutBtn = document.getElementById("testShortcutBtn");
+    const colorGrid = document.getElementById("colorGrid");
+    let selectedColor = "white";
     let html5Qr = null;
     let cameraRunning = false;
 
@@ -267,7 +292,7 @@
 
       items.forEach((item, index) => {
         const row = document.createElement("div");
-        row.className = "item";
+        row.className = `item color-${item.color || "white"}`;
 
         const main = document.createElement("div");
         main.className = "item-main";
@@ -312,6 +337,12 @@
       render();
     }
 
+    function updateColorSelection() {
+      colorGrid.querySelectorAll(".color-choice").forEach(btn => {
+        btn.classList.toggle("selected", btn.dataset.color === selectedColor);
+      });
+    }
+
     function openEdit(id = null) {
       editingId = id;
       const item = items.find(x => x.id === id);
@@ -321,6 +352,8 @@
       typeInput.value = item?.type || "qr";
       barcodeFormatInput.value = item?.barcodeFormat || "CODE128";
       valueInput.value = item?.value || "";
+      selectedColor = item?.color || "white";
+      updateColorSelection();
       deleteRow.classList.toggle("hidden", !item);
       manualFields.classList.toggle("hidden", !item);
       manualToggleBtn.textContent = item ? "詳細設定を隠す" : "手入力・詳細設定";
@@ -495,7 +528,8 @@
         name: nameInput.value.trim(),
         type: typeInput.value,
         value: valueInput.value.trim(),
-        barcodeFormat: barcodeFormatInput.value
+        barcodeFormat: barcodeFormatInput.value,
+        color: selectedColor
       };
       const error = validate(item);
       if (error) return alert(error);
@@ -620,6 +654,21 @@
         valueInput.select();
         setScanStatus("コピーできなかったため、ショートカット名欄を選択しました。");
       }
+    });
+
+    colorGrid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".color-choice");
+      if (!btn) return;
+      selectedColor = btn.dataset.color || "white";
+      updateColorSelection();
+    });
+
+    testShortcutBtn.addEventListener("click", () => {
+      updateShortcutPreview();
+      const name = shortcutNamePreview.textContent.trim();
+      if (!name) return setScanStatus("ショートカット名を入力してください。", true);
+      setScanStatus(`「${name}」を起動テストします。`);
+      window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(name)}`;
     });
 
     createShortcutBtn.addEventListener("click", async () => {
