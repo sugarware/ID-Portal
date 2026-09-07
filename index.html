@@ -63,6 +63,11 @@
     .close-code { margin-top: 28px; min-width: 180px; }
     .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
     .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
+    .app-register-btn { width: 100%; margin-top: 8px; min-height: 48px; font-weight: 700; }
+    .shortcut-box { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; }
+    .shortcut-steps { margin: 8px 0 0 20px; padding: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .shortcut-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
@@ -87,7 +92,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.3.1 読み取り判定修正版 — データはこの端末のブラウザ内に保存されます。
+      v0.4 ショートカット連携版 — データはこの端末のブラウザ内に保存されます。
     </div>
   </div>
 
@@ -106,6 +111,7 @@
           <button class="btn scan-btn" id="imageScanBtn" type="button">画像から読み取る</button>
           <button class="btn scan-btn" id="cameraScanBtn" type="button">カメラで読み取る</button>
         </div>
+        <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <input id="imageFileInput" type="file" accept="image/*" class="hidden">
         <div id="reader" class="hidden"></div>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
@@ -118,7 +124,8 @@
           <select id="type">
             <option value="qr">QRコードを表示</option>
             <option value="barcode">バーコードを表示</option>
-            <option value="link">外部リンク／アプリを開く</option>
+            <option value="shortcut">公式アプリを開く（ショートカット）</option>
+            <option value="link">URLを開く</option>
           </select>
         </div>
 
@@ -137,6 +144,23 @@
         <div class="field" id="valueField">
           <label for="value" id="valueLabel">コード内容</label>
           <input id="value" placeholder="文字列または番号">
+        </div>
+
+        <div id="shortcutSetupField" class="field hidden">
+          <label>Appleショートカットの初回設定</label>
+          <div class="shortcut-box">
+            <div>作成するショートカット名</div>
+            <div class="shortcut-name-preview" id="shortcutNamePreview"></div>
+            <div class="shortcut-actions">
+              <button class="btn" id="copyShortcutNameBtn" type="button">名前をコピー</button>
+              <button class="btn primary" id="createShortcutBtn" type="button">作成を開始</button>
+            </div>
+            <ol class="shortcut-steps">
+              <li>「作成を開始」でショートカットアプリを開く</li>
+              <li>「Appを開く」アクションを追加し、対象アプリを選ぶ</li>
+              <li>ショートカット名を上記の名前にして保存</li>
+            </ol>
+          </div>
         </div>
       </div>
 
@@ -193,6 +217,11 @@
     const scanStatus = document.getElementById("scanStatus");
     const manualToggleBtn = document.getElementById("manualToggleBtn");
     const manualFields = document.getElementById("manualFields");
+    const appRegisterBtn = document.getElementById("appRegisterBtn");
+    const shortcutSetupField = document.getElementById("shortcutSetupField");
+    const shortcutNamePreview = document.getElementById("shortcutNamePreview");
+    const copyShortcutNameBtn = document.getElementById("copyShortcutNameBtn");
+    const createShortcutBtn = document.getElementById("createShortcutBtn");
     let html5Qr = null;
     let cameraRunning = false;
 
@@ -222,7 +251,8 @@
     function typeLabel(item) {
       if (item.type === "qr") return "コード表示";
       if (item.type === "barcode") return "コード表示";
-      return "公式アプリ／リンク";
+      if (item.type === "shortcut") return "公式アプリ";
+      return "リンク";
     }
 
     function render() {
@@ -298,6 +328,7 @@
 
       stopCamera();
       updateFormFields();
+      updateShortcutPreview();
       modal.classList.add("show");
       modal.setAttribute("aria-hidden", "false");
       setTimeout(() => nameInput.focus(), 50);
@@ -310,12 +341,30 @@
       editingId = null;
     }
 
+    function suggestedShortcutName() {
+      const base = nameInput.value.trim() || "アプリ";
+      return `${base}を開く`;
+    }
+
+    function updateShortcutPreview() {
+      if (typeInput.value === "shortcut") {
+        if (!valueInput.value.trim()) valueInput.value = suggestedShortcutName();
+        shortcutNamePreview.textContent = valueInput.value.trim() || suggestedShortcutName();
+      }
+    }
+
     function updateFormFields() {
       const type = typeInput.value;
       barcodeFormatField.classList.toggle("hidden", type !== "barcode");
+      shortcutSetupField.classList.toggle("hidden", type !== "shortcut");
+
       if (type === "link") {
-        valueLabel.textContent = "URL / URL Scheme";
-        valueInput.placeholder = "例：https://example.com または appname://";
+        valueLabel.textContent = "URL";
+        valueInput.placeholder = "例：https://example.com";
+      } else if (type === "shortcut") {
+        valueLabel.textContent = "ショートカット名";
+        valueInput.placeholder = "例：楽天GORAを開く";
+        updateShortcutPreview();
       } else {
         valueLabel.textContent = "コード内容";
         valueInput.placeholder = "文字列または番号";
@@ -432,7 +481,11 @@
 
     function validate(item) {
       if (!item.name.trim()) return "表示名を入力してください。";
-      if (!item.value.trim()) return item.type === "link" ? "URLを入力してください。" : "コード内容を入力してください。";
+      if (!item.value.trim()) {
+        if (item.type === "link") return "URLを入力してください。";
+        if (item.type === "shortcut") return "ショートカット名を入力してください。";
+        return "コード内容を入力してください。";
+      }
       return "";
     }
 
@@ -469,6 +522,11 @@
     }
 
     async function activate(item) {
+      if (item.type === "shortcut") {
+        const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent(item.value)}`;
+        window.location.href = shortcutUrl;
+        return;
+      }
       if (item.type === "link") {
         window.location.href = item.value;
         return;
@@ -532,6 +590,45 @@
     saveBtn.addEventListener("click", saveCurrent);
     deleteBtn.addEventListener("click", deleteCurrent);
     typeInput.addEventListener("change", updateFormFields);
+    nameInput.addEventListener("input", () => {
+      if (typeInput.value === "shortcut" && (!editingId || valueInput.value === "" || valueInput.value.endsWith("を開く"))) {
+        valueInput.value = suggestedShortcutName();
+        updateShortcutPreview();
+      }
+    });
+    valueInput.addEventListener("input", updateShortcutPreview);
+
+    appRegisterBtn.addEventListener("click", async () => {
+      await stopCamera();
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent = "詳細設定を隠す";
+      typeInput.value = "shortcut";
+      valueInput.value = suggestedShortcutName();
+      updateFormFields();
+      setScanStatus("公式アプリはAppleショートカットを経由して起動します。");
+      if (!nameInput.value.trim()) nameInput.focus();
+    });
+
+    copyShortcutNameBtn.addEventListener("click", async () => {
+      updateShortcutPreview();
+      const text = shortcutNamePreview.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        setScanStatus(`「${text}」をコピーしました。`);
+      } catch {
+        valueInput.focus();
+        valueInput.select();
+        setScanStatus("コピーできなかったため、ショートカット名欄を選択しました。");
+      }
+    });
+
+    createShortcutBtn.addEventListener("click", async () => {
+      updateShortcutPreview();
+      const text = shortcutNamePreview.textContent;
+      try { await navigator.clipboard.writeText(text); } catch {}
+      setScanStatus(`「${text}」をコピーしました。ショートカットで「Appを開く」を追加してください。`);
+      window.location.href = "shortcuts://create-shortcut";
+    });
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
     cameraScanBtn.addEventListener("click", startCamera);

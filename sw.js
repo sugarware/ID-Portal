@@ -1,4 +1,4 @@
-const CACHE = "id-portal-v031";
+const CACHE = "id-portal-v04";
 const APP = [
   "./",
   "./index.html",
