@@ -33,18 +33,18 @@
     .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 11px; padding: 8px 11px; min-height: 40px; cursor: pointer; }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
     .btn.danger { color: var(--danger); }
-    .list { display: grid; gap: 7px; }
+    .list { display: grid; gap: 6px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
-    .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#eaf2ff}.item.color-green{background:#eaf8ef}.item.color-yellow{background:#fff7dd}.item.color-orange{background:#fff0e4}.item.color-pink{background:#fdeef3}.item.color-purple{background:#f2ecff}.item.color-gray{background:#eeeeec}
-    .item-main { min-width: 0; cursor: pointer; }
-    .name { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
+    .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
+    .meta { margin-top:0; color: var(--muted); font-size:12px; white-space:nowrap; cursor:pointer; }
     .drag { display: flex; gap: 6px; }
     .reorder-only { display: none; }
     body.reorder-mode .reorder-only { display: inline-block; }
     body.reorder-mode .edit-only { display: none; }
-    .mini { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
+    .mini { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
     .modal.show { display: flex; }
     .sheet { background: var(--bg); width: min(720px, 100%); max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); }
@@ -98,7 +98,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.5 カラー・起動テスト版 — データはこの端末のブラウザ内に保存されます。
+      v0.6 1行コンパクト版 — データはこの端末のブラウザ内に保存されます。
     </div>
   </div>
 
@@ -296,9 +296,14 @@
 
         const main = document.createElement("div");
         main.className = "item-main";
-        main.innerHTML = `<div class="name"></div><div class="meta">${typeLabel(item)}</div>`;
+        main.innerHTML = `<div class="name"></div>`;
         main.querySelector(".name").textContent = item.name;
         main.addEventListener("click", () => activate(item));
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = typeLabel(item);
+        meta.addEventListener("click", () => activate(item));
 
         const buttons = document.createElement("div");
         buttons.className = "drag";
@@ -324,7 +329,7 @@
         edit.addEventListener("click", () => openEdit(item.id));
 
         buttons.append(up, down, edit);
-        row.append(main, buttons);
+        row.append(main, meta, buttons);
         list.appendChild(row);
       });
     }
