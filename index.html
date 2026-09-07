@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="IDポータル">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>IDポータル</title>
+  <style>
+    :root {
+      --bg: #f5f5f2;
+      --card: #ffffff;
+      --text: #171717;
+      --muted: #666;
+      --line: #deded8;
+      --accent: #1f5eff;
+      --danger: #b42318;
+      --shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    body { min-height: 100vh; }
+    .app { max-width: 720px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
+    .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .toolbar { display: flex; gap: 8px; }
+    .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 11px; padding: 8px 11px; min-height: 40px; cursor: pointer; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
+    .btn.danger { color: var(--danger); }
+    .list { display: grid; gap: 7px; }
+    .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
+    .item { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 11px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item-main { min-width: 0; cursor: pointer; }
+    .name { font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .drag { display: flex; gap: 6px; }
+    .reorder-only { display: none; }
+    body.reorder-mode .reorder-only { display: inline-block; }
+    body.reorder-mode .edit-only { display: none; }
+    .mini { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+    .modal.show { display: flex; }
+    .sheet { background: var(--bg); width: min(720px, 100%); max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); }
+    .sheet h2 { margin: 0 0 16px; font-size: 22px; }
+    .field { margin: 14px 0; }
+    label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
+    input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+    .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 18px; }
+    .codeview.show { display: flex; }
+    .code-title { font-size: 24px; font-weight: 800; margin-bottom: 18px; text-align: center; }
+    #codeArea { width: min(92vw, 620px); min-height: 260px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #qrcode { display: flex; align-items: center; justify-content: center; }
+    #qrcode img, #qrcode canvas { max-width: 82vw !important; max-height: 62vh !important; width: auto !important; height: auto !important; }
+    #barcode { max-width: 92vw; max-height: 56vh; }
+    .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
+    .close-code { margin-top: 28px; min-width: 180px; }
+    .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
+    .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
+    .scan-btn { min-height: 50px; font-weight: 700; }
+    .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .manual-toggle { margin-top: 8px; width: 100%; }
+    #reader { width: 100%; background: white; border-radius: 14px; overflow: hidden; margin-top: 12px; }
+    #reader video { width: 100% !important; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>IDポータル</h1>
+        <div class="sub">IDを探さなくてよくする入口</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="reorderBtn">並び替え</button>
+        <button class="btn primary" id="addBtn">＋ 追加</button>
+      </div>
+    </header>
+
+    <main id="list" class="list"></main>
+
+    <div class="footnote">
+      v0.3.1 読み取り判定修正版 — データはこの端末のブラウザ内に保存されます。
+    </div>
+  </div>
+
+  <div class="modal" id="editModal" aria-hidden="true">
+    <div class="sheet">
+      <h2 id="formTitle">IDを追加</h2>
+
+      <div class="field">
+        <label for="name">表示名</label>
+        <input id="name" placeholder="例：○○クリニック">
+      </div>
+
+      <div class="field">
+        <label>コードを読み取る</label>
+        <div class="scan-actions">
+          <button class="btn scan-btn" id="imageScanBtn" type="button">画像から読み取る</button>
+          <button class="btn scan-btn" id="cameraScanBtn" type="button">カメラで読み取る</button>
+        </div>
+        <input id="imageFileInput" type="file" accept="image/*" class="hidden">
+        <div id="reader" class="hidden"></div>
+        <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
+        <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
+      </div>
+
+      <div id="manualFields" class="hidden">
+        <div class="field">
+          <label for="type">動作</label>
+          <select id="type">
+            <option value="qr">QRコードを表示</option>
+            <option value="barcode">バーコードを表示</option>
+            <option value="link">外部リンク／アプリを開く</option>
+          </select>
+        </div>
+
+        <div class="field" id="barcodeFormatField">
+          <label for="barcodeFormat">バーコード形式</label>
+          <select id="barcodeFormat">
+            <option value="CODE128">Code 128</option>
+            <option value="CODE39">Code 39</option>
+            <option value="EAN13">EAN-13</option>
+            <option value="EAN8">EAN-8</option>
+            <option value="UPC">UPC-A</option>
+            <option value="ITF14">ITF-14</option>
+          </select>
+        </div>
+
+        <div class="field" id="valueField">
+          <label for="value" id="valueLabel">コード内容</label>
+          <input id="value" placeholder="文字列または番号">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="cancelBtn">キャンセル</button>
+        <button class="btn primary" id="saveBtn">保存</button>
+      </div>
+
+      <div class="actions hidden" id="deleteRow">
+        <button class="btn danger" id="deleteBtn" style="grid-column:1 / -1;">このIDを削除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="codeview" id="codeView">
+    <div class="code-title" id="codeTitle"></div>
+    <div id="codeArea">
+      <div id="qrcode"></div>
+      <svg id="barcode"></svg>
+    </div>
+    <div class="code-text" id="codeText"></div>
+    <button class="btn close-code" id="closeCodeBtn">戻る</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const STORAGE_KEY = "idPortalItems.v01";
+
+    let items = loadItems();
+    let editingId = null;
+    let wakeLock = null;
+
+    const list = document.getElementById("list");
+    const modal = document.getElementById("editModal");
+    const addBtn = document.getElementById("addBtn");
+    const reorderBtn = document.getElementById("reorderBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const deleteRow = document.getElementById("deleteRow");
+    const formTitle = document.getElementById("formTitle");
+    const nameInput = document.getElementById("name");
+    const typeInput = document.getElementById("type");
+    const barcodeFormatInput = document.getElementById("barcodeFormat");
+    const barcodeFormatField = document.getElementById("barcodeFormatField");
+    const valueInput = document.getElementById("value");
+    const valueLabel = document.getElementById("valueLabel");
+    const imageScanBtn = document.getElementById("imageScanBtn");
+    const cameraScanBtn = document.getElementById("cameraScanBtn");
+    const imageFileInput = document.getElementById("imageFileInput");
+    const reader = document.getElementById("reader");
+    const scanStatus = document.getElementById("scanStatus");
+    const manualToggleBtn = document.getElementById("manualToggleBtn");
+    const manualFields = document.getElementById("manualFields");
+    let html5Qr = null;
+    let cameraRunning = false;
+
+    const codeView = document.getElementById("codeView");
+    const codeTitle = document.getElementById("codeTitle");
+    const qrcode = document.getElementById("qrcode");
+    const barcode = document.getElementById("barcode");
+    const codeText = document.getElementById("codeText");
+    const closeCodeBtn = document.getElementById("closeCodeBtn");
+
+    function loadItems() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (Array.isArray(saved)) return saved;
+      } catch {}
+      return [
+        { id: crypto.randomUUID(), name: "サンプル病院", type: "qr", value: "SAMPLE-HOSPITAL-001", barcodeFormat: "CODE128" },
+        { id: crypto.randomUUID(), name: "サンプルスーパー", type: "barcode", value: "123456789012", barcodeFormat: "CODE128" },
+        { id: crypto.randomUUID(), name: "OpenAI", type: "link", value: "https://chatgpt.com/", barcodeFormat: "CODE128" }
+      ];
+    }
+
+    function saveItems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function typeLabel(item) {
+      if (item.type === "qr") return "コード表示";
+      if (item.type === "barcode") return "コード表示";
+      return "公式アプリ／リンク";
+    }
+
+    function render() {
+      list.innerHTML = "";
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = "まだIDが登録されていません。<br>右上の「＋追加」から登録してください。";
+        list.appendChild(empty);
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "item";
+
+        const main = document.createElement("div");
+        main.className = "item-main";
+        main.innerHTML = `<div class="name"></div><div class="meta">${typeLabel(item)}</div>`;
+        main.querySelector(".name").textContent = item.name;
+        main.addEventListener("click", () => activate(item));
+
+        const buttons = document.createElement("div");
+        buttons.className = "drag";
+
+        const up = document.createElement("button");
+        up.className = "mini reorder-only";
+        up.textContent = "↑";
+        up.title = "上へ";
+        up.disabled = index === 0;
+        up.addEventListener("click", () => moveItem(index, -1));
+
+        const down = document.createElement("button");
+        down.className = "mini reorder-only";
+        down.textContent = "↓";
+        down.title = "下へ";
+        down.disabled = index === items.length - 1;
+        down.addEventListener("click", () => moveItem(index, 1));
+
+        const edit = document.createElement("button");
+        edit.className = "mini edit-only";
+        edit.textContent = "⋯";
+        edit.title = "編集";
+        edit.addEventListener("click", () => openEdit(item.id));
+
+        buttons.append(up, down, edit);
+        row.append(main, buttons);
+        list.appendChild(row);
+      });
+    }
+
+    function moveItem(index, delta) {
+      const next = index + delta;
+      if (next < 0 || next >= items.length) return;
+      [items[index], items[next]] = [items[next], items[index]];
+      saveItems();
+      render();
+    }
+
+    function openEdit(id = null) {
+      editingId = id;
+      const item = items.find(x => x.id === id);
+
+      formTitle.textContent = item ? "IDを編集" : "IDを追加";
+      nameInput.value = item?.name || "";
+      typeInput.value = item?.type || "qr";
+      barcodeFormatInput.value = item?.barcodeFormat || "CODE128";
+      valueInput.value = item?.value || "";
+      deleteRow.classList.toggle("hidden", !item);
+      manualFields.classList.toggle("hidden", !item);
+      manualToggleBtn.textContent = item ? "詳細設定を隠す" : "手入力・詳細設定";
+      scanStatus.textContent = item ? "登録済みコードです。再読み取りすると置き換わります。" : "QRコード／主要バーコードを自動判定します。";
+
+      stopCamera();
+      updateFormFields();
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+      setTimeout(() => nameInput.focus(), 50);
+    }
+
+    async function closeEdit() {
+      await stopCamera();
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+      editingId = null;
+    }
+
+    function updateFormFields() {
+      const type = typeInput.value;
+      barcodeFormatField.classList.toggle("hidden", type !== "barcode");
+      if (type === "link") {
+        valueLabel.textContent = "URL / URL Scheme";
+        valueInput.placeholder = "例：https://example.com または appname://";
+      } else {
+        valueLabel.textContent = "コード内容";
+        valueInput.placeholder = "文字列または番号";
+      }
+    }
+
+
+    function setScanStatus(text, isError = false) {
+      scanStatus.textContent = text;
+      scanStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function mapScanFormat(formatName) {
+      const f = (formatName || "").toUpperCase().replace(/[- ]/g, "_");
+      if (f.includes("QR")) return { type: "qr", barcodeFormat: "CODE128", label: "QR Code" };
+      if (f.includes("CODE_128") || f.includes("CODE128")) return { type: "barcode", barcodeFormat: "CODE128", label: "Code 128" };
+      if (f.includes("CODE_39") || f.includes("CODE39")) return { type: "barcode", barcodeFormat: "CODE39", label: "Code 39" };
+      if (f.includes("EAN_13") || f.includes("EAN13")) return { type: "barcode", barcodeFormat: "EAN13", label: "EAN-13" };
+      if (f.includes("EAN_8") || f.includes("EAN8")) return { type: "barcode", barcodeFormat: "EAN8", label: "EAN-8" };
+      if (f.includes("UPC_A") || f === "UPC") return { type: "barcode", barcodeFormat: "UPC", label: "UPC-A" };
+      if (f.includes("ITF")) return { type: "barcode", barcodeFormat: "ITF14", label: "ITF" };
+      return { type: "barcode", barcodeFormat: "CODE128", label: formatName || "バーコード" };
+    }
+
+    function applyDecoded(decodedText, decodedResult) {
+      const fmtName =
+        decodedResult?.result?.format?.formatName ||
+        decodedResult?.result?.format?.format ||
+        decodedResult?.formatName ||
+        "";
+      const mapped = mapScanFormat(fmtName);
+
+      valueInput.value = decodedText || "";
+      typeInput.value = mapped.type;
+      barcodeFormatInput.value = mapped.barcodeFormat;
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent = "詳細設定を隠す";
+      updateFormFields();
+      setScanStatus(`読み取り成功：${mapped.label} ／ ${decodedText}`);
+    }
+
+    async function ensureScanner() {
+      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
+      return html5Qr;
+    }
+
+    async function scanImageFile(file) {
+      if (!file) return;
+      await stopCamera();
+      reader.classList.remove("hidden");
+      setScanStatus("画像を解析しています…");
+      try {
+        const scanner = await ensureScanner();
+
+        // scanFile() は文字列しか返さないためコード形式を判定できない。
+        // scanFileV2() が利用可能なら、形式情報を含む結果を取得する。
+        if (typeof scanner.scanFileV2 === "function") {
+          const result = await scanner.scanFileV2(file, true);
+          const decodedText = result?.decodedText || "";
+          applyDecoded(decodedText, result);
+        } else {
+          // 古いライブラリ向けフォールバック。
+          // 形式が取得できないため、QR/バーコードをユーザーが確認できるよう
+          // 詳細設定を開いた状態にする。
+          const decodedText = await scanner.scanFile(file, true);
+          valueInput.value = decodedText || "";
+          manualFields.classList.remove("hidden");
+          manualToggleBtn.textContent = "詳細設定を隠す";
+          setScanStatus("読み取り成功。コード形式を自動判定できなかったため、種類を確認してください。");
+        }
+      } catch (e) {
+        setScanStatus("コードを読み取れませんでした。別の画像を試すか、手入力してください。", true);
+      } finally {
+        reader.classList.add("hidden");
+        imageFileInput.value = "";
+      }
+    }
+
+    async function startCamera() {
+      if (cameraRunning) {
+        await stopCamera();
+        return;
+      }
+      reader.classList.remove("hidden");
+      setScanStatus("カメラを起動しています…");
+      try {
+        const scanner = await ensureScanner();
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 160 } },
+          async (decodedText, decodedResult) => {
+            applyDecoded(decodedText, decodedResult);
+            await stopCamera();
+          },
+          () => {}
+        );
+        cameraRunning = true;
+        cameraScanBtn.textContent = "カメラを停止";
+        setScanStatus("コードを枠内に映してください。");
+      } catch (e) {
+        setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
+        reader.classList.add("hidden");
+      }
+    }
+
+    async function stopCamera() {
+      if (html5Qr && cameraRunning) {
+        try { await html5Qr.stop(); } catch {}
+        cameraRunning = false;
+      }
+      cameraScanBtn.textContent = "カメラで読み取る";
+      reader.classList.add("hidden");
+    }
+
+    function validate(item) {
+      if (!item.name.trim()) return "表示名を入力してください。";
+      if (!item.value.trim()) return item.type === "link" ? "URLを入力してください。" : "コード内容を入力してください。";
+      return "";
+    }
+
+    function saveCurrent() {
+      const item = {
+        id: editingId || crypto.randomUUID(),
+        name: nameInput.value.trim(),
+        type: typeInput.value,
+        value: valueInput.value.trim(),
+        barcodeFormat: barcodeFormatInput.value
+      };
+      const error = validate(item);
+      if (error) return alert(error);
+
+      if (editingId) {
+        const index = items.findIndex(x => x.id === editingId);
+        items[index] = item;
+      } else {
+        items.push(item);
+      }
+      saveItems();
+      render();
+      closeEdit();
+    }
+
+    function deleteCurrent() {
+      if (!editingId) return;
+      const item = items.find(x => x.id === editingId);
+      if (!confirm(`「${item.name}」を削除しますか？`)) return;
+      items = items.filter(x => x.id !== editingId);
+      saveItems();
+      render();
+      closeEdit();
+    }
+
+    async function activate(item) {
+      if (item.type === "link") {
+        window.location.href = item.value;
+        return;
+      }
+      await showCode(item);
+    }
+
+    async function showCode(item) {
+      codeTitle.textContent = item.name;
+      codeText.textContent = item.value;
+      qrcode.innerHTML = "";
+      barcode.innerHTML = "";
+      qrcode.classList.toggle("hidden", item.type !== "qr");
+      barcode.classList.toggle("hidden", item.type !== "barcode");
+
+      try {
+        if (item.type === "qr") {
+          const size = Math.min(window.innerWidth * 0.78, 520);
+          new QRCode(qrcode, {
+            text: item.value,
+            width: size,
+            height: size,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        } else {
+          JsBarcode(barcode, item.value, {
+            format: item.barcodeFormat || "CODE128",
+            displayValue: false,
+            margin: 10,
+            height: 150,
+            width: 2
+          });
+        }
+      } catch (e) {
+        alert("コードを生成できませんでした。形式と内容を確認してください。");
+        return;
+      }
+
+      codeView.classList.add("show");
+      document.body.style.overflow = "hidden";
+      try {
+        if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+      } catch {}
+    }
+
+    async function closeCode() {
+      codeView.classList.remove("show");
+      document.body.style.overflow = "";
+      if (wakeLock) {
+        try { await wakeLock.release(); } catch {}
+        wakeLock = null;
+      }
+    }
+
+    addBtn.addEventListener("click", () => openEdit());
+    reorderBtn.addEventListener("click", () => {
+      const enabled = document.body.classList.toggle("reorder-mode");
+      reorderBtn.textContent = enabled ? "完了" : "並び替え";
+    });
+    cancelBtn.addEventListener("click", closeEdit);
+    saveBtn.addEventListener("click", saveCurrent);
+    deleteBtn.addEventListener("click", deleteCurrent);
+    typeInput.addEventListener("change", updateFormFields);
+    imageScanBtn.addEventListener("click", () => imageFileInput.click());
+    imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
+    cameraScanBtn.addEventListener("click", startCamera);
+    manualToggleBtn.addEventListener("click", () => {
+      const hidden = manualFields.classList.toggle("hidden");
+      manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
+    });
+    closeCodeBtn.addEventListener("click", closeCode);
+    modal.addEventListener("click", e => { if (e.target === modal) closeEdit(); });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible" && codeView.classList.contains("show") && "wakeLock" in navigator) {
+        try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+      }
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+    }
+
+    render();
+  </script>
+</body>
+</html>
