@@ -1,4 +1,3 @@
-
     const STORAGE_KEY = "idPortalItems.v01";
 
     let items = loadItems();
@@ -48,7 +47,7 @@
 
     const codeView = document.getElementById("codeView");
     const codeTitle = document.getElementById("codeTitle");
-    const qrcode = document.getElementById("qrcode");
+    const qrcodeEl = document.getElementById("qrcode");
     const barcode = document.getElementById("barcode");
     const codeText = document.getElementById("codeText");
     const codeVerify = document.getElementById("codeVerify");
@@ -217,7 +216,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 2,
+        version: 3,
         exportedAt: new Date().toISOString(),
         items
       };
@@ -345,8 +344,9 @@
 
     function normalizeModeName(mode) {
       const m = String(mode || "").toLowerCase();
-      if (m.includes("numeric")) return "numeric";
+      // "alphanumeric" contains the substring "numeric", so test it first.
       if (m.includes("alphanumeric")) return "alphanumeric";
+      if (m.includes("numeric")) return "numeric";
       if (m.includes("kanji")) return "kanji";
       if (m.includes("byte")) return "byte";
       if (m.includes("eci")) return "eci";
@@ -399,6 +399,70 @@
       return lum < 128 ? 1 : 0;
     }
 
+    function bitsToHex(bits) {
+      let out = "";
+      for (let i = 0; i < bits.length; i += 4) {
+        const nibble = bits.slice(i, i + 4).padEnd(4, "0");
+        out += parseInt(nibble, 2).toString(16).toUpperCase();
+      }
+      return out;
+    }
+
+    function hexToBits(hex, bitCount) {
+      const clean = String(hex || "").replace(/\s+/g, "");
+      let bits = "";
+      for (const ch of clean) {
+        const n = parseInt(ch, 16);
+        if (Number.isNaN(n)) return null;
+        bits += n.toString(2).padStart(4, "0");
+      }
+      return bits.slice(0, bitCount);
+    }
+
+    function extractQrMatrix(imageData, result) {
+      const version = Number(result?.version || 0);
+      if (!version) return null;
+      const n = 17 + 4 * version;
+      let bits = "";
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const b = sampleQrModule(imageData, result.location, n, r, c);
+          if (b == null) return null;
+          bits += b ? "1" : "0";
+        }
+      }
+      return {
+        width: n,
+        height: n,
+        encoding: "hex",
+        bitOrder: "row-major-msb",
+        quietZone: 4,
+        data: bitsToHex(bits)
+      };
+    }
+
+    function renderStoredMatrix(matrix, container) {
+      const w = Number(matrix?.width || 0), h = Number(matrix?.height || 0);
+      if (!w || !h || matrix?.encoding !== "hex") return null;
+      const bits = hexToBits(matrix.data, w * h);
+      if (!bits || bits.length !== w * h) return null;
+      const quiet = Number.isFinite(Number(matrix.quietZone)) ? Number(matrix.quietZone) : 4;
+      const maxSize = Math.min(window.innerWidth * 0.82, 520);
+      const scale = Math.max(2, Math.floor(maxSize / (Math.max(w, h) + quiet * 2)));
+      const cw = (w + quiet * 2) * scale, ch = (h + quiet * 2) * scale;
+      const canvas = document.createElement("canvas");
+      canvas.width = cw; canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, ch); ctx.fillStyle = "#000";
+      for (let r = 0; r < h; r++) {
+        for (let c = 0; c < w; c++) {
+          if (bits[r * w + c] === "1") ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+        }
+      }
+      container.appendChild(canvas);
+      return { canvas, ctx, width: cw, height: ch };
+    }
+
     function extractQrFormatInfo(imageData, result) {
       const version = Number(result?.version || 0);
       if (!version) return { errorCorrection:null, maskPattern:null, confidence:null };
@@ -445,6 +509,7 @@
       const segments=extractSegmentsFromJsQr(result,result.data || "");
       const modes=[...new Set(segments.map(x=>x.mode))];
       const fmt=extractQrFormatInfo(imageData,result);
+      const matrix=extractQrMatrix(imageData,result);
       return {
         text: result.data || "",
         spec: {
@@ -457,7 +522,8 @@
           characterEncoding: null,
           source:"image",
           detected:{ symbology:true, mode:true, version:!!result.version, errorCorrection:!!fmt.errorCorrection, maskPattern:Number.isInteger(fmt.maskPattern) },
-          formatInfoConfidence: fmt.confidence
+          formatInfoConfidence: fmt.confidence,
+          matrix
         }
       };
     }
@@ -527,7 +593,7 @@
           updateFormFields();
           const ec = qr.spec.errorCorrection || "不明";
           const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}`);
+          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ 元パターン保存済み" : ""}`);
         } else {
           const scanner = await ensureScanner();
           if (typeof scanner.scanFileV2 === "function") {
@@ -659,20 +725,37 @@
       codeTitle.textContent = item.name;
       codeText.textContent = item.value;
       codeVerify.textContent = "";
-      qrcode.innerHTML = "";
+      qrcodeEl.innerHTML = "";
       barcode.innerHTML = "";
-      qrcode.classList.toggle("hidden", item.type !== "qr");
+      qrcodeEl.classList.toggle("hidden", item.type !== "qr");
       barcode.classList.toggle("hidden", item.type !== "barcode");
 
       try {
         if (item.type === "qr") {
           codeVerify.textContent = "再生成コードを検証しています…";
           const spec = item.codeSpec || legacySpec(item);
+          if (spec?.matrix) {
+            const rendered = renderStoredMatrix(spec.matrix, qrcodeEl);
+            if (!rendered) throw new Error("invalid-matrix");
+            try {
+              const img = rendered.ctx.getImageData(0, 0, rendered.width, rendered.height);
+              const chk = typeof jsQR === "function" ? jsQR(img.data, rendered.width, rendered.height, {inversionAttempts:"dontInvert"}) : null;
+              codeVerify.textContent = chk?.data === item.value
+                ? `元パターン表示：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`
+                : "元パターン表示：保存パターンを表示（内容検証は確認できませんでした）";
+            } catch {
+              codeVerify.textContent = `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`;
+            }
+            codeView.classList.add("show");
+            document.body.style.overflow = "hidden";
+            try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+            return;
+          }
           const ec = spec?.errorCorrection || "M";
           let version = Number(spec?.version) || 0;
           let qr;
           const build = (v) => {
-            const obj = qrcode(v, ec);
+            const obj = window.qrcode(v, ec);
             const segs = Array.isArray(spec?.segments) && spec.segments.length ? spec.segments : [{mode:spec?.mode || inferQrMode(item.value), text:item.value}];
             for (const seg of segs) {
               const modeMap={numeric:"Numeric",alphanumeric:"Alphanumeric",byte:"Byte",kanji:"Kanji"};
@@ -690,7 +773,7 @@
           const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side;
           const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
           for(let r=0;r<modules;r++) for(let c=0;c<modules;c++) if(qr.isDark(r,c)) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
-          qrcode.appendChild(canvas);
+          qrcodeEl.appendChild(canvas);
           // 自己検証：再生成したQRを再度デコードし、保存データと完全一致することを確認。
           try {
             const img=ctx.getImageData(0,0,side,side);
@@ -822,4 +905,3 @@
     }
 
     render();
-  
