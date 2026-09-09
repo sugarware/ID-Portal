@@ -1,241 +1,4 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f5f5f2">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="IDポータル">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <title>IDポータル</title>
-  <style>
-    :root {
-      --bg: #f5f5f2;
-      --card: #ffffff;
-      --text: #171717;
-      --muted: #666;
-      --line: #deded8;
-      --accent: #1f5eff;
-      --danger: #b42318;
-      --shadow: 0 8px 24px rgba(0,0,0,.08);
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    button, input, select { font: inherit; }
-    body { min-height: 100vh; }
-    .app { max-width: 720px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-    h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
-    .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-    .toolbar { display: flex; gap: 8px; }
-    .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 11px; padding: 8px 11px; min-height: 40px; cursor: pointer; }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
-    .btn.danger { color: var(--danger); }
-    .list { display: grid; gap: 6px; }
-    .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
-    .item { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
-    .item.color-white{background:#fff}.item.color-blue{background:#eaf2ff}.item.color-green{background:#eaf8ef}.item.color-yellow{background:#fff7dd}.item.color-orange{background:#fff0e4}.item.color-pink{background:#fdeef3}.item.color-purple{background:#f2ecff}.item.color-gray{background:#eeeeec}
-    .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
-    .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
-    .meta { margin-top:0; color: var(--muted); font-size:12px; white-space:nowrap; cursor:pointer; }
-    .drag { display: flex; gap: 6px; align-items:center; }
-    .reorder-only { display: none; }
-    body.reorder-mode .reorder-only { display: inline-flex; }
-    body.reorder-mode .edit-only { display: none; }
-    body.reorder-mode .item-main, body.reorder-mode .meta { cursor: default; }
-    .drag-handle { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background:#fafafa; align-items:center; justify-content:center; font-size:22px; line-height:1; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
-    .drag-handle:active { cursor:grabbing; }
-    .item.dragging { opacity:.72; box-shadow: var(--shadow); transform:scale(1.01); }
-    .item.drag-target { outline:2px solid var(--accent); outline-offset:1px; }
-    .mini { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
-    .modal { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
-    .modal.show { display: flex; }
-    .sheet { background: var(--bg); width: min(720px, 100%); max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); }
-    .sheet h2 { margin: 0 0 16px; font-size: 22px; }
-    .field { margin: 14px 0; }
-    label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
-    input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; }
-    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
-    .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 18px; }
-    .codeview.show { display: flex; }
-    .code-title { font-size: 24px; font-weight: 800; margin-bottom: 18px; text-align: center; }
-    #codeArea { width: min(92vw, 620px); min-height: 260px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    #qrcode { display: flex; align-items: center; justify-content: center; }
-    #qrcode img, #qrcode canvas { max-width: 82vw !important; max-height: 62vh !important; width: auto !important; height: auto !important; }
-    #barcode { max-width: 92vw; max-height: 56vh; }
-    .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
-    .close-code { margin-top: 28px; min-width: 180px; }
-    .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
-    .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
-    .app-register-btn { width: 100%; margin-top: 8px; min-height: 48px; font-weight: 700; }
-    .shortcut-box { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 10px; }
-    .shortcut-steps { margin: 8px 0 0 20px; padding: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
-    .shortcut-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
-    .scan-btn { min-height: 50px; font-weight: 700; }
-    .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .manual-toggle { margin-top: 8px; width: 100%; }
-    #reader { width: 100%; background: white; border-radius: 14px; overflow: hidden; margin-top: 12px; }
-    #reader video { width: 100% !important; }
-    .notice { margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: #f7f7f4; font-size: 12px; line-height: 1.5; color: var(--muted); }
-    .color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-    .color-choice { min-height:40px; border:2px solid transparent; border-radius:10px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .color-choice.selected { border-color:var(--accent); }
-    .color-dot { width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
-    .hidden { display: none !important; }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>IDポータル</h1>
-        <div class="sub">IDを探さなくてよくする入口</div>
-      </div>
-      <div class="toolbar">
-        <button class="btn" id="dataBtn">File</button>
-        <button class="btn" id="reorderBtn">↓↑</button>
-        <button class="btn primary" id="addBtn" aria-label="追加">＋</button>
-      </div>
-    </header>
 
-    <main id="list" class="list"></main>
-
-    <div class="footnote">
-      v0.8.1 — QR生成ライブラリとの変数名衝突を修正。
-    </div>
-  </div>
-
-
-  <div class="modal" id="dataModal" aria-hidden="true">
-    <div class="sheet">
-      <h2>データ保存・読み込み</h2>
-      <div class="notice">登録データをJSONファイルとして保存できます。アプリ更新前のバックアップとして利用してください。</div>
-      <div class="actions">
-        <button class="btn primary" id="exportBtn" type="button">ファイルに保存</button>
-        <button class="btn" id="importBtn" type="button">ファイルから読み込み</button>
-      </div>
-      <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
-      <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
-      <div class="actions">
-        <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal" id="editModal" aria-hidden="true">
-    <div class="sheet">
-      <h2 id="formTitle">IDを追加</h2>
-
-      <div class="field">
-        <label for="name">表示名</label>
-        <input id="name" placeholder="例：○○クリニック">
-      </div>
-
-      <div class="field">
-        <label>コードを読み取る</label>
-        <div class="scan-actions">
-          <button class="btn scan-btn" id="imageScanBtn" type="button">画像から読み取る</button>
-          <button class="btn scan-btn" id="cameraScanBtn" type="button">カメラで読み取る</button>
-        </div>
-        <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
-        <input id="imageFileInput" type="file" accept="image/*" class="hidden">
-        <div id="reader" class="hidden"></div>
-        <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
-        <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
-      </div>
-
-      <div id="manualFields" class="hidden">
-        <div class="field">
-          <label for="type">動作</label>
-          <select id="type">
-            <option value="qr">QRコードを表示</option>
-            <option value="barcode">バーコードを表示</option>
-            <option value="shortcut">公式アプリを開く（ショートカット）</option>
-            <option value="link">URLを開く</option>
-          </select>
-        </div>
-
-        <div class="field" id="barcodeFormatField">
-          <label for="barcodeFormat">バーコード形式</label>
-          <select id="barcodeFormat">
-            <option value="CODE128">Code 128</option>
-            <option value="CODE39">Code 39</option>
-            <option value="EAN13">EAN-13</option>
-            <option value="EAN8">EAN-8</option>
-            <option value="UPC">UPC-A</option>
-            <option value="ITF14">ITF-14</option>
-          </select>
-        </div>
-
-        <div class="field" id="valueField">
-          <label for="value" id="valueLabel">コード内容</label>
-          <input id="value" placeholder="文字列または番号">
-        </div>
-
-        <div id="shortcutSetupField" class="field hidden">
-          <label>Appleショートカットの初回設定</label>
-          <div class="shortcut-box">
-            <div>作成するショートカット名</div>
-            <div class="shortcut-name-preview" id="shortcutNamePreview"></div>
-            <div class="shortcut-actions">
-              <button class="btn" id="copyShortcutNameBtn" type="button">名前をコピー</button>
-              <button class="btn primary" id="createShortcutBtn" type="button">作成を開始</button>
-            </div>
-            <button class="btn" id="testShortcutBtn" type="button" style="width:100%;margin-top:8px;">起動テスト</button>
-            <div class="notice">初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。</div>
-            <ol class="shortcut-steps">
-              <li>「作成を開始」でショートカットアプリを開く</li>
-              <li>「Appを開く」アクションを追加し、対象アプリを選ぶ</li>
-              <li>ショートカット名を上記の名前にして保存</li>
-            </ol>
-          </div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>ボタン色</label>
-        <div class="color-grid" id="colorGrid">
-          <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
-          <button type="button" class="color-choice" data-color="blue"><span class="color-dot" style="background:#dceaff"></span></button>
-          <button type="button" class="color-choice" data-color="green"><span class="color-dot" style="background:#dff3e5"></span></button>
-          <button type="button" class="color-choice" data-color="yellow"><span class="color-dot" style="background:#fff1bf"></span></button>
-          <button type="button" class="color-choice" data-color="orange"><span class="color-dot" style="background:#ffe2cb"></span></button>
-          <button type="button" class="color-choice" data-color="pink"><span class="color-dot" style="background:#f9dce7"></span></button>
-          <button type="button" class="color-choice" data-color="purple"><span class="color-dot" style="background:#e8ddff"></span></button>
-          <button type="button" class="color-choice" data-color="gray"><span class="color-dot" style="background:#dededb"></span></button>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn" id="cancelBtn">キャンセル</button>
-        <button class="btn primary" id="saveBtn">保存</button>
-      </div>
-
-      <div class="actions hidden" id="deleteRow">
-        <button class="btn danger" id="deleteBtn" style="grid-column:1 / -1;">このIDを削除</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="codeview" id="codeView">
-    <div class="code-title" id="codeTitle"></div>
-    <div id="codeArea">
-      <div id="qrcode"></div>
-      <svg id="barcode"></svg>
-    </div>
-    <div class="code-text" id="codeText"></div>
-    <div class="scan-status" id="codeVerify" style="text-align:center;max-width:92vw"></div>
-    <button class="btn close-code" id="closeCodeBtn">戻る</button>
-  </div>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script>
     const STORAGE_KEY = "idPortalItems.v01";
 
     let items = loadItems();
@@ -285,7 +48,7 @@
 
     const codeView = document.getElementById("codeView");
     const codeTitle = document.getElementById("codeTitle");
-    const qrcodeEl = document.getElementById("qrcode");
+    const qrcode = document.getElementById("qrcode");
     const barcode = document.getElementById("barcode");
     const codeText = document.getElementById("codeText");
     const codeVerify = document.getElementById("codeVerify");
@@ -896,9 +659,9 @@
       codeTitle.textContent = item.name;
       codeText.textContent = item.value;
       codeVerify.textContent = "";
-      qrcodeEl.innerHTML = "";
+      qrcode.innerHTML = "";
       barcode.innerHTML = "";
-      qrcodeEl.classList.toggle("hidden", item.type !== "qr");
+      qrcode.classList.toggle("hidden", item.type !== "qr");
       barcode.classList.toggle("hidden", item.type !== "barcode");
 
       try {
@@ -909,7 +672,7 @@
           let version = Number(spec?.version) || 0;
           let qr;
           const build = (v) => {
-            const obj = window.qrcode(v, ec);
+            const obj = qrcode(v, ec);
             const segs = Array.isArray(spec?.segments) && spec.segments.length ? spec.segments : [{mode:spec?.mode || inferQrMode(item.value), text:item.value}];
             for (const seg of segs) {
               const modeMap={numeric:"Numeric",alphanumeric:"Alphanumeric",byte:"Byte",kanji:"Kanji"};
@@ -927,7 +690,7 @@
           const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side;
           const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
           for(let r=0;r<modules;r++) for(let c=0;c<modules;c++) if(qr.isDark(r,c)) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
-          qrcodeEl.appendChild(canvas);
+          qrcode.appendChild(canvas);
           // 自己検証：再生成したQRを再度デコードし、保存データと完全一致することを確認。
           try {
             const img=ctx.getImageData(0,0,side,side);
@@ -1059,6 +822,4 @@
     }
 
     render();
-  </script>
-</body>
-</html>
+  
