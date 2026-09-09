@@ -24,17 +24,19 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     button, input, select { font: inherit; }
-    body { min-height: 100vh; }
-    .app { max-width: 720px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .tabbar { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 10px; }
+    body { height: 100dvh; min-height: 100vh; overflow: hidden; }
+    .app { max-width: 720px; height:100dvh; min-height:100vh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; }
+    header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 8px; }
+    .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
-    .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
+    .tab.star-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:none; }
     .tab.star-tab { font-size:21px; line-height:1; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
-    .group-setting-row { display:grid; grid-template-columns:52px 1fr; gap:8px; align-items:center; }
+    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 92px; gap:8px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
-    .group-setting-row input { min-height:40px; padding:9px 10px; }
+    .group-setting-row input, .group-setting-row select { min-height:40px; padding:9px 10px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .toolbar { display: flex; gap: 8px; }
@@ -44,7 +46,7 @@
     .list { display: grid; gap: 6px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
     .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
-    .item.color-white{background:#fff}.item.color-blue{background:#eaf2ff}.item.color-green{background:#eaf8ef}.item.color-yellow{background:#fff7dd}.item.color-orange{background:#fff0e4}.item.color-pink{background:#fdeef3}.item.color-purple{background:#f2ecff}.item.color-gray{background:#eeeeec}
+    .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-green{background:#ccebd5}.item.color-yellow{background:#ffe69a}.item.color-orange{background:#ffd0ad}.item.color-pink{background:#f6c7d8}.item.color-purple{background:#dccaff}.item.color-gray{background:#d7d7d2}
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
     .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
@@ -131,10 +133,12 @@
       <button class="tab" type="button" data-tab="4">Grp4</button>
     </nav>
 
-    <main id="list" class="list"></main>
+    <div class="content-scroll" id="contentScroll">
+      <main id="list" class="list"></main>
 
-    <div class="footnote">
-      v1.0 — ⭐️＋4グループのタブ方式。お気に入りを通常利用画面とし、各IDに⭐️/Grp属性を追加。
+      <div class="footnote">
+        v1.01 — メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
+      </div>
     </div>
   </div>
 
@@ -150,14 +154,14 @@
       <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
       <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       <div class="field">
-        <label>グループ名</label>
+        <label>グループ設定</label>
         <div class="group-settings">
-          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"></label>
-          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"></label>
-          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"></label>
-          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"></label>
+          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><select id="groupColor1" aria-label="Grp1の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
+          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><select id="groupColor2" aria-label="Grp2の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
+          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><select id="groupColor3" aria-label="Grp3の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
+          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><select id="groupColor4" aria-label="Grp4の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
         </div>
-        <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ名を保存</button>
+        <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ設定を保存</button>
       </div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
@@ -255,13 +259,13 @@
         <label>ボタン色</label>
         <div class="color-grid" id="colorGrid">
           <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
-          <button type="button" class="color-choice" data-color="blue"><span class="color-dot" style="background:#dceaff"></span></button>
-          <button type="button" class="color-choice" data-color="green"><span class="color-dot" style="background:#dff3e5"></span></button>
-          <button type="button" class="color-choice" data-color="yellow"><span class="color-dot" style="background:#fff1bf"></span></button>
-          <button type="button" class="color-choice" data-color="orange"><span class="color-dot" style="background:#ffe2cb"></span></button>
-          <button type="button" class="color-choice" data-color="pink"><span class="color-dot" style="background:#f9dce7"></span></button>
-          <button type="button" class="color-choice" data-color="purple"><span class="color-dot" style="background:#e8ddff"></span></button>
-          <button type="button" class="color-choice" data-color="gray"><span class="color-dot" style="background:#dededb"></span></button>
+          <button type="button" class="color-choice" data-color="blue"><span class="color-dot" style="background:#cfe0ff"></span></button>
+          <button type="button" class="color-choice" data-color="green"><span class="color-dot" style="background:#ccebd5"></span></button>
+          <button type="button" class="color-choice" data-color="yellow"><span class="color-dot" style="background:#ffe69a"></span></button>
+          <button type="button" class="color-choice" data-color="orange"><span class="color-dot" style="background:#ffd0ad"></span></button>
+          <button type="button" class="color-choice" data-color="pink"><span class="color-dot" style="background:#f6c7d8"></span></button>
+          <button type="button" class="color-choice" data-color="purple"><span class="color-dot" style="background:#dccaff"></span></button>
+          <button type="button" class="color-choice" data-color="gray"><span class="color-dot" style="background:#d7d7d2"></span></button>
         </div>
       </div>
 
@@ -314,6 +318,7 @@
     const importFileInput = document.getElementById("importFileInput");
     const closeDataBtn = document.getElementById("closeDataBtn");
     const groupNameInputs = [1,2,3,4].map(i => document.getElementById(`groupName${i}`));
+    const groupColorInputs = [1,2,3,4].map(i => document.getElementById(`groupColor${i}`));
     const saveGroupNamesBtn = document.getElementById("saveGroupNamesBtn");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
@@ -401,14 +406,29 @@
       return item;
     }
 
+    const GROUP_COLOR_HEX = {
+      white:"#ffffff", blue:"#cfe0ff", green:"#ccebd5", yellow:"#ffe69a", orange:"#ffd0ad", pink:"#f6c7d8", purple:"#dccaff", gray:"#d7d7d2"
+    };
+    const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple"];
+
+    function validColorName(value, fallback="white") {
+      return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
+    }
+
     function loadSettings() {
       try {
         const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
         if (saved && Array.isArray(saved.groupNames) && saved.groupNames.length === 4) {
-          return { groupNames: saved.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)) };
+          const colors = Array.isArray(saved.groupColors) && saved.groupColors.length === 4
+            ? saved.groupColors.map((x,i) => validColorName(x, DEFAULT_GROUP_COLORS[i]))
+            : DEFAULT_GROUP_COLORS.slice();
+          return {
+            groupNames: saved.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)),
+            groupColors: colors
+          };
         }
       } catch {}
-      return { groupNames: ["Grp1","Grp2","Grp3","Grp4"] };
+      return { groupNames: ["Grp1","Grp2","Grp3","Grp4"], groupColors: DEFAULT_GROUP_COLORS.slice() };
     }
 
     function saveSettings() {
@@ -418,10 +438,20 @@
     function refreshTabs() {
       tabBar.querySelectorAll(".tab").forEach(btn => {
         const key = btn.dataset.tab;
-        if (key !== "star") btn.textContent = settings.groupNames[Number(key)-1] || `Grp${key}`;
+        if (key !== "star") {
+          const idx = Number(key)-1;
+          btn.textContent = settings.groupNames[idx] || `Grp${key}`;
+          const colorName = validColorName(settings.groupColors?.[idx], DEFAULT_GROUP_COLORS[idx]);
+          btn.style.background = GROUP_COLOR_HEX[colorName];
+          btn.style.color = "var(--text)";
+        } else {
+          btn.style.background = key === activeTab ? "var(--accent)" : "#fff";
+          btn.style.color = key === activeTab ? "#fff" : "var(--text)";
+        }
         btn.classList.toggle("active", key === activeTab);
       });
       groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
+      groupColorInputs.forEach((input,i) => input.value = validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]));
       [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
     }
 
@@ -587,7 +617,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 8,
+        version: 9,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -623,7 +653,12 @@
         if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
         items = normalized;
         if (data.settings && Array.isArray(data.settings.groupNames) && data.settings.groupNames.length === 4) {
-          settings = { groupNames: data.settings.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)) };
+          settings = {
+            groupNames: data.settings.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)),
+            groupColors: Array.isArray(data.settings.groupColors) && data.settings.groupColors.length === 4
+              ? data.settings.groupColors.map((x,i) => validColorName(x, DEFAULT_GROUP_COLORS[i]))
+              : DEFAULT_GROUP_COLORS.slice()
+          };
           saveSettings();
         }
         saveItems();
@@ -655,8 +690,9 @@
       valueInput.value = item?.value || "";
       originalEditValue = item?.value || "";
       currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
-      selectedColor = item?.color || "white";
-      groupSelect.value = String(item?.group || (activeTab === "star" ? 1 : Number(activeTab)));
+      const initialGroup = item?.group || (activeTab === "star" ? 1 : Number(activeTab));
+      groupSelect.value = String(initialGroup);
+      selectedColor = item?.color || validColorName(settings.groupColors?.[initialGroup-1], DEFAULT_GROUP_COLORS[initialGroup-1]);
       updateColorSelection();
       deleteRow.classList.toggle("hidden", !item);
       manualFields.classList.toggle("hidden", !item);
@@ -1569,6 +1605,7 @@
 
     saveGroupNamesBtn.addEventListener("click", () => {
       settings.groupNames = groupNameInputs.map((input,i) => input.value.trim().slice(0,12) || `Grp${i+1}`);
+      settings.groupColors = groupColorInputs.map((input,i) => validColorName(input.value, DEFAULT_GROUP_COLORS[i]));
       saveSettings();
       refreshTabs();
       render();
@@ -1619,6 +1656,14 @@
         valueInput.select();
         setScanStatus("コピーできなかったため、ショートカット名欄を選択しました。");
       }
+    });
+
+
+    groupSelect.addEventListener("change", () => {
+      if (editingId) return;
+      const g = Number(groupSelect.value) || 1;
+      selectedColor = validColorName(settings.groupColors?.[g-1], DEFAULT_GROUP_COLORS[g-1]);
+      updateColorSelection();
     });
 
     colorGrid.addEventListener("click", (e) => {
