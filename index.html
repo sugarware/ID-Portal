@@ -40,10 +40,15 @@
     .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
     .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
     .meta { margin-top:0; color: var(--muted); font-size:12px; white-space:nowrap; cursor:pointer; }
-    .drag { display: flex; gap: 6px; }
+    .drag { display: flex; gap: 6px; align-items:center; }
     .reorder-only { display: none; }
-    body.reorder-mode .reorder-only { display: inline-block; }
+    body.reorder-mode .reorder-only { display: inline-flex; }
     body.reorder-mode .edit-only { display: none; }
+    body.reorder-mode .item-main, body.reorder-mode .meta { cursor: default; }
+    .drag-handle { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background:#fafafa; align-items:center; justify-content:center; font-size:22px; line-height:1; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+    .drag-handle:active { cursor:grabbing; }
+    .item.dragging { opacity:.72; box-shadow: var(--shadow); transform:scale(1.01); }
+    .item.drag-target { outline:2px solid var(--accent); outline-offset:1px; }
     .mini { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
     .modal.show { display: flex; }
@@ -90,15 +95,33 @@
         <div class="sub">IDを探さなくてよくする入口</div>
       </div>
       <div class="toolbar">
+        <button class="btn" id="dataBtn">データ</button>
         <button class="btn" id="reorderBtn">並び替え</button>
-        <button class="btn primary" id="addBtn">＋ 追加</button>
+        <button class="btn primary" id="addBtn" aria-label="追加">＋</button>
       </div>
     </header>
 
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.6 1行コンパクト版 — データはこの端末のブラウザ内に保存されます。
+      v0.7 — 通常は端末内へ自動保存。JSONファイルへの保存／復元にも対応。
+    </div>
+  </div>
+
+
+  <div class="modal" id="dataModal" aria-hidden="true">
+    <div class="sheet">
+      <h2>データ保存・読み込み</h2>
+      <div class="notice">登録データをJSONファイルとして保存できます。アプリ更新前のバックアップとして利用してください。</div>
+      <div class="actions">
+        <button class="btn primary" id="exportBtn" type="button">ファイルに保存</button>
+        <button class="btn" id="importBtn" type="button">ファイルから読み込み</button>
+      </div>
+      <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
+      <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
+      <div class="actions">
+        <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
+      </div>
     </div>
   </div>
 
@@ -220,7 +243,13 @@
     const list = document.getElementById("list");
     const modal = document.getElementById("editModal");
     const addBtn = document.getElementById("addBtn");
+    const dataBtn = document.getElementById("dataBtn");
     const reorderBtn = document.getElementById("reorderBtn");
+    const dataModal = document.getElementById("dataModal");
+    const exportBtn = document.getElementById("exportBtn");
+    const importBtn = document.getElementById("importBtn");
+    const importFileInput = document.getElementById("importFileInput");
+    const closeDataBtn = document.getElementById("closeDataBtn");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
     const deleteBtn = document.getElementById("deleteBtn");
@@ -285,7 +314,7 @@
       if (!items.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.innerHTML = "まだIDが登録されていません。<br>右上の「＋追加」から登録してください。";
+        empty.innerHTML = "まだIDが登録されていません。<br>右上の「＋」から登録してください。";
         list.appendChild(empty);
         return;
       }
@@ -308,19 +337,12 @@
         const buttons = document.createElement("div");
         buttons.className = "drag";
 
-        const up = document.createElement("button");
-        up.className = "mini reorder-only";
-        up.textContent = "↑";
-        up.title = "上へ";
-        up.disabled = index === 0;
-        up.addEventListener("click", () => moveItem(index, -1));
-
-        const down = document.createElement("button");
-        down.className = "mini reorder-only";
-        down.textContent = "↓";
-        down.title = "下へ";
-        down.disabled = index === items.length - 1;
-        down.addEventListener("click", () => moveItem(index, 1));
+        const handle = document.createElement("button");
+        handle.className = "drag-handle reorder-only";
+        handle.textContent = "≡";
+        handle.title = "ドラッグして並び替え";
+        handle.setAttribute("aria-label", `${item.name}を並び替え`);
+        handle.addEventListener("pointerdown", e => beginDrag(e, item.id));
 
         const edit = document.createElement("button");
         edit.className = "mini edit-only";
@@ -328,18 +350,113 @@
         edit.title = "編集";
         edit.addEventListener("click", () => openEdit(item.id));
 
-        buttons.append(up, down, edit);
+        buttons.append(handle, edit);
         row.append(main, meta, buttons);
         list.appendChild(row);
       });
     }
 
-    function moveItem(index, delta) {
-      const next = index + delta;
-      if (next < 0 || next >= items.length) return;
-      [items[index], items[next]] = [items[next], items[index]];
-      saveItems();
+    let dragState = null;
+
+    function beginDrag(e, id) {
+      if (!document.body.classList.contains("reorder-mode")) return;
+      e.preventDefault();
+      const row = e.currentTarget.closest(".item");
+      if (!row) return;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      dragState = { id, pointerId: e.pointerId, row, targetIndex: items.findIndex(x => x.id === id) };
+      row.classList.add("dragging");
+      document.addEventListener("pointermove", dragMove, { passive:false });
+      document.addEventListener("pointerup", endDrag, { once:true });
+      document.addEventListener("pointercancel", endDrag, { once:true });
+    }
+
+    function dragMove(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      e.preventDefault();
+      const rows = [...list.querySelectorAll(".item")];
+      let target = rows.length - 1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (e.clientY < r.top + r.height / 2) { target = i; break; }
+      }
+      dragState.targetIndex = Math.max(0, Math.min(target, items.length - 1));
+      rows.forEach((r,i) => r.classList.toggle("drag-target", i === dragState.targetIndex && r !== dragState.row));
+    }
+
+    function endDrag(e) {
+      if (!dragState) return;
+      const from = items.findIndex(x => x.id === dragState.id);
+      const to = dragState.targetIndex;
+      dragState.row.classList.remove("dragging");
+      list.querySelectorAll(".drag-target").forEach(r => r.classList.remove("drag-target"));
+      document.removeEventListener("pointermove", dragMove);
+      if (from >= 0 && to >= 0 && from !== to) {
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        saveItems();
+      }
+      dragState = null;
       render();
+    }
+
+    function openDataModal() {
+      dataModal.classList.add("show");
+      dataModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeDataModal() {
+      dataModal.classList.remove("show");
+      dataModal.setAttribute("aria-hidden", "true");
+    }
+
+    function exportData() {
+      const backup = {
+        format: "IDPortal",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        items
+      };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      a.href = url;
+      a.download = `IDPortal_backup_${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function importData(file) {
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!data || data.format !== "IDPortal" || !Array.isArray(data.items)) {
+          throw new Error("invalid-format");
+        }
+        const normalized = data.items.map(x => ({
+          id: x.id || crypto.randomUUID(),
+          name: String(x.name || ""),
+          type: ["qr","barcode","shortcut","link"].includes(x.type) ? x.type : "qr",
+          value: String(x.value || ""),
+          barcodeFormat: x.barcodeFormat || "CODE128",
+          color: x.color || "white"
+        }));
+        if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
+        items = normalized;
+        saveItems();
+        render();
+        closeDataModal();
+        alert(`${items.length}件を読み込みました。`);
+      } catch {
+        alert("IDポータルのバックアップファイルとして読み込めませんでした。");
+      } finally {
+        importFileInput.value = "";
+      }
     }
 
     function updateColorSelection() {
@@ -621,6 +738,12 @@
     }
 
     addBtn.addEventListener("click", () => openEdit());
+    dataBtn.addEventListener("click", openDataModal);
+    exportBtn.addEventListener("click", exportData);
+    importBtn.addEventListener("click", () => importFileInput.click());
+    importFileInput.addEventListener("change", () => importData(importFileInput.files?.[0]));
+    closeDataBtn.addEventListener("click", closeDataModal);
+    dataModal.addEventListener("click", e => { if (e.target === dataModal) closeDataModal(); });
     reorderBtn.addEventListener("click", () => {
       const enabled = document.body.classList.toggle("reorder-mode");
       reorderBtn.textContent = enabled ? "完了" : "並び替え";
