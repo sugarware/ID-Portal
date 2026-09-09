@@ -116,7 +116,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.8 — デコーダ抽出Matrixの回転・ミラー方向を自動補正して撮影時の向きで保存。QRは元パターン表示／再構成を切替可能。
+      v0.9.9 — デコーダ抽出Matrixの回転・ミラー方向を自動補正して撮影時の向きで保存。QRは元パターン表示／再構成を切替可能。
     </div>
   </div>
 
@@ -865,6 +865,16 @@
       return ((q % 4) + 4) % 4;
     }
 
+    function transposeSquareBits(bits, side) {
+      const dst = new Array(side * side);
+      for (let r = 0; r < side; r++) {
+        for (let c = 0; c < side; c++) {
+          dst[r * side + c] = bits[c * side + r];
+        }
+      }
+      return dst;
+    }
+
     function extractQrMatrix(imageData, result, fmt, source="image") {
       const m = result?.extractedMatrix;
       const version = Number(result?.version || 0);
@@ -873,24 +883,18 @@
       const data = Array.isArray(m?.data) ? m.data : null;
       if (!w || !h || w !== h || !data || data.length !== w * h) return null;
       if (expected && w !== expected) return null;
-      let rawBits = new Array(data.length);
+
+      // jsQR の BitMatrix は decode 用には正しいが、IDポータルの描画座標として
+      // そのまま row/column 解釈すると「90°回転＋鏡像」に見えるケースがある。
+      // これは正方行列の転置に相当するため、セル値を変更せず x/y 軸だけ入れ替える。
+      const rawBits = new Array(data.length);
       for (let i = 0; i < data.length; i++) rawBits[i] = data[i] ? "1" : "0";
+      const bits = transposeSquareBits(rawBits, w);
 
-      // まず抽出Matrix自身を8方向（回転4×鏡像2）から標準QR方向へ正規化する。
-      // Finder Patternだけを基準にするため、データ領域には一切手を加えない。
-      const canonical = canonicalizeExtractedQr(rawBits, w);
-      if (!canonical) return null;
-
-      // その後、カメラ画像上で見えていた90°単位の向きへ戻す。
-      const q = sourceQuarterTurn(result);
-      const bits = rotateSquareBits(canonical.bits, w, q);
       return {
         width:w,height:h,encoding:"hex",bitOrder:"row-major-msb",quietZone:4,
         capture:"jsqr-extracted-matrix",capturedRaw:true,decoderVerified:true,
-        orientation:"source",sourceQuarterTurnsCW:q,
-        decoderMatrixMirrored:canonical.mirrored,
-        decoderMatrixQuarterTurnsCW:canonical.quarterTurnsCW,
-        orientationFinderMismatch:canonical.score,
+        orientation:"source-display",matrixTransform:"transpose-xy",
         designNormalized:false,functionPatternsNormalized:false,
         data:bitsToHex(bits.join(""))
       };
