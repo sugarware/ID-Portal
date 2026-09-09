@@ -12,3 +12,10 @@ IDポータル PWA v0.9.3
 注意
 - v0.9.2以前に保存済みのデザインQR matrixは、既に部分正規化されているため元のCaptured Matrixには戻せません。元パターンをそのまま保持したい項目は、v0.9.3で再登録してください。
 - 旧データは互換表示します。
+
+
+v0.9.4 changes:
+- Camera guide changed to a large square suitable for QR codes.
+- Camera decoding now scans the full video frame; the square is only a positioning guide.
+- On recognition, the detected code is highlighted with a green frame and decoded-text label before the camera closes.
+- This makes it clear which code was selected when multiple codes are visible.

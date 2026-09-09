@@ -79,8 +79,18 @@
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
-    #reader { width: 100%; background: white; border-radius: 14px; overflow: hidden; margin-top: 12px; }
-    #reader video { width: 100% !important; }
+    .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
+    #reader { width: 100%; background: #111; }
+    #reader video { width: 100% !important; display:block; }
+    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; }
+    .camera-guide::before, .camera-guide::after { content:""; position:absolute; inset:0; border:0 solid transparent; }
+    .camera-guide .corner { position:absolute; width:54px; height:54px; border-color:#fff; border-style:solid; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+    .camera-guide .tl { left:0; top:0; border-width:7px 0 0 7px; }
+    .camera-guide .tr { right:0; top:0; border-width:7px 7px 0 0; }
+    .camera-guide .bl { left:0; bottom:0; border-width:0 0 7px 7px; }
+    .camera-guide .br { right:0; bottom:0; border-width:0 7px 7px 0; }
+    .detect-box { position:absolute; border:5px solid #24d05a; border-radius:10px; box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 18px rgba(36,208,90,.55); z-index:8; pointer-events:none; transition:all .08s linear; }
+    .detect-label { position:absolute; left:0; top:-36px; background:#24d05a; color:#07140a; font-size:14px; font-weight:800; padding:6px 10px; border-radius:8px; white-space:nowrap; max-width:70vw; overflow:hidden; text-overflow:ellipsis; }
     .notice { margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: #f7f7f4; font-size: 12px; line-height: 1.5; color: var(--muted); }
     .color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
     .color-choice { min-height:40px; border:2px solid transparent; border-radius:10px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -144,7 +154,13 @@
         </div>
         <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <input id="imageFileInput" type="file" accept="image/*" class="hidden">
-        <div id="reader" class="hidden"></div>
+        <div id="readerWrap" class="reader-wrap hidden">
+          <div id="reader"></div>
+          <div id="cameraGuide" class="camera-guide hidden" aria-hidden="true">
+            <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          </div>
+          <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
+        </div>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
         <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
       </div>
@@ -269,6 +285,10 @@
     const cameraScanBtn = document.getElementById("cameraScanBtn");
     const imageFileInput = document.getElementById("imageFileInput");
     const reader = document.getElementById("reader");
+    const readerWrap = document.getElementById("readerWrap");
+    const cameraGuide = document.getElementById("cameraGuide");
+    const detectBox = document.getElementById("detectBox");
+    const detectLabel = document.getElementById("detectLabel");
     const scanStatus = document.getElementById("scanStatus");
     const manualToggleBtn = document.getElementById("manualToggleBtn");
     const manualFields = document.getElementById("manualFields");
@@ -918,7 +938,7 @@
     async function scanImageFile(file) {
       if (!file) return;
       await stopCamera();
-      reader.classList.remove("hidden");
+      readerWrap.classList.remove("hidden");
       setScanStatus("画像を解析しています…");
       try {
         // QRはjsQRで先に解析し、Version / Segment mode / Format information を保存する。
@@ -952,9 +972,41 @@
       } catch (e) {
         setScanStatus("コードを読み取れませんでした。別の画像を試すか、手入力してください。", true);
       } finally {
-        reader.classList.add("hidden");
+        readerWrap.classList.add("hidden");
         imageFileInput.value = "";
       }
+    }
+
+    function hideDetectionBox() {
+      detectBox.classList.add("hidden");
+    }
+
+    function showDetectedCode(decodedText, decodedResult) {
+      const video = reader.querySelector("video");
+      if (!video) return;
+      const vw = video.videoWidth || video.clientWidth || 1;
+      const vh = video.videoHeight || video.clientHeight || 1;
+      const rw = video.clientWidth || reader.clientWidth || 1;
+      const rh = video.clientHeight || reader.clientHeight || 1;
+      let pts = decodedResult?.result?.cornerPoints || decodedResult?.result?.resultPoints || decodedResult?.resultPoints || [];
+      pts = Array.from(pts || []).map(p => ({x:Number(p?.x ?? p?.getX?.()), y:Number(p?.y ?? p?.getY?.())})).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+      let left, top, width, height;
+      if (pts.length >= 2) {
+        const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+        left=Math.min(...xs)/vw*rw; top=Math.min(...ys)/vh*rh;
+        width=(Math.max(...xs)-Math.min(...xs))/vw*rw; height=(Math.max(...ys)-Math.min(...ys))/vh*rh;
+        // 認識点がscan canvas座標の場合でも見やすい最小サイズを確保
+        width=Math.max(width,56); height=Math.max(height,56);
+      } else {
+        // 座標を取得できない環境では、認識枠全体を緑にして成功を明示する。
+        const r=cameraGuide.getBoundingClientRect(), vr=video.getBoundingClientRect();
+        left=r.left-vr.left; top=r.top-vr.top; width=r.width; height=r.height;
+      }
+      detectBox.style.left=`${Math.max(0,left)}px`; detectBox.style.top=`${Math.max(0,top)}px`;
+      detectBox.style.width=`${Math.min(rw-Math.max(0,left),width)}px`; detectBox.style.height=`${Math.min(rh-Math.max(0,top),height)}px`;
+      const short=(decodedText||"").replace(/\s+/g," ").slice(0,32);
+      detectLabel.textContent=short ? `認識：${short}${(decodedText||"").length>32?"…":""}` : "認識しました";
+      detectBox.classList.remove("hidden");
     }
 
     async function startCamera() {
@@ -962,14 +1014,19 @@
         await stopCamera();
         return;
       }
-      reader.classList.remove("hidden");
+      readerWrap.classList.remove("hidden");
+      cameraGuide.classList.remove("hidden");
+      hideDetectionBox();
       setScanStatus("カメラを起動しています…");
       try {
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 250, height: 160 } },
+          { fps: 10 },
           async (decodedText, decodedResult) => {
+            showDetectedCode(decodedText, decodedResult);
+            try { html5Qr.pause(true); } catch {}
+            await new Promise(resolve => setTimeout(resolve, 650));
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
             const mapped = mapScanFormat(fmtName);
             let usedFrameSpec = false;
@@ -998,10 +1055,10 @@
         );
         cameraRunning = true;
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("コードを枠内に映してください。");
+        setScanStatus("大きな枠を目安にコードを映してください。解析は画面全体で行います。複数ある場合は認識したコードを緑枠で示します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
-        reader.classList.add("hidden");
+        readerWrap.classList.add("hidden");
       }
     }
 
@@ -1011,7 +1068,9 @@
         cameraRunning = false;
       }
       cameraScanBtn.textContent = "カメラで読み取る";
-      reader.classList.add("hidden");
+      cameraGuide.classList.add("hidden");
+      hideDetectionBox();
+      readerWrap.classList.add("hidden");
     }
 
     function validate(item) {
