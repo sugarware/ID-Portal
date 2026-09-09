@@ -104,7 +104,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9 — 元コードのモジュール行列を16進ビット列で保存し、表示時に最優先で再現。
+      v0.9.1 — カメラ読取でも元モジュール行列を保存。デザインQRは装飾を除いた論理セルとして正規化。
     </div>
   </div>
 
@@ -454,7 +454,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 3,
+        version: 4,
         exportedAt: new Date().toISOString(),
         items
       };
@@ -625,16 +625,24 @@
     }
 
     function sampleQrModule(imageData, loc, n, row, col) {
+      // デザインQRの丸ドットやアンチエイリアスを除去するため、
+      // 各論理セル中央付近を3x3点でサンプリングし多数決する。
       if (!loc?.topLeftCorner || !loc?.topRightCorner || !loc?.bottomLeftCorner || !loc?.bottomRightCorner) return null;
-      const u=(col+0.5)/n, v=(row+0.5)/n;
       const tl=loc.topLeftCorner, tr=loc.topRightCorner, bl=loc.bottomLeftCorner, br=loc.bottomRightCorner;
-      const x=(1-u)*(1-v)*tl.x + u*(1-v)*tr.x + (1-u)*v*bl.x + u*v*br.x;
-      const y=(1-u)*(1-v)*tl.y + u*(1-v)*tr.y + (1-u)*v*bl.y + u*v*br.y;
-      const ix=Math.max(0,Math.min(imageData.width-1,Math.round(x)));
-      const iy=Math.max(0,Math.min(imageData.height-1,Math.round(y)));
-      const k=(iy*imageData.width+ix)*4;
-      const lum=0.299*imageData.data[k]+0.587*imageData.data[k+1]+0.114*imageData.data[k+2];
-      return lum < 128 ? 1 : 0;
+      const offsets=[-0.18,0,0.18];
+      let dark=0,total=0;
+      for (const oy of offsets) for (const ox of offsets) {
+        const u=(col+0.5+ox)/n, v=(row+0.5+oy)/n;
+        const x=(1-u)*(1-v)*tl.x + u*(1-v)*tr.x + (1-u)*v*bl.x + u*v*br.x;
+        const y=(1-u)*(1-v)*tl.y + u*(1-v)*tr.y + (1-u)*v*bl.y + u*v*br.y;
+        const ix=Math.max(0,Math.min(imageData.width-1,Math.round(x)));
+        const iy=Math.max(0,Math.min(imageData.height-1,Math.round(y)));
+        const k=(iy*imageData.width+ix)*4;
+        const lum=0.299*imageData.data[k]+0.587*imageData.data[k+1]+0.114*imageData.data[k+2];
+        if (lum < 128) dark++;
+        total++;
+      }
+      return dark * 2 >= total ? 1 : 0;
     }
 
     function bitsToHex(bits) {
@@ -675,6 +683,8 @@
         encoding: "hex",
         bitOrder: "row-major-msb",
         quietZone: 4,
+        capture: "logical-module-majority",
+        designNormalized: true,
         data: bitsToHex(bits)
       };
     }
@@ -733,15 +743,8 @@
       return { errorCorrection:ecMap[ecBits] || null, maskPattern:best.data&7, confidence:best.dist===0?"exact":"corrected" };
     }
 
-    async function decodeQrFromImageFile(file) {
-      if (typeof jsQR !== "function") return null;
-      const bmp = await createImageBitmap(file);
-      const canvas=document.createElement("canvas");
-      canvas.width=bmp.width; canvas.height=bmp.height;
-      const ctx=canvas.getContext("2d",{willReadFrequently:true});
-      ctx.drawImage(bmp,0,0);
-      bmp.close?.();
-      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    function decodeQrFromImageData(imageData, source="image") {
+      if (typeof jsQR !== "function" || !imageData) return null;
       const result=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:"attemptBoth"});
       if(!result) return null;
       const segments=extractSegmentsFromJsQr(result,result.data || "");
@@ -758,12 +761,33 @@
           mode: modes.length===1 ? modes[0] : "mixed",
           segments,
           characterEncoding: null,
-          source:"image",
+          source,
           detected:{ symbology:true, mode:true, version:!!result.version, errorCorrection:!!fmt.errorCorrection, maskPattern:Number.isInteger(fmt.maskPattern) },
           formatInfoConfidence: fmt.confidence,
           matrix
         }
       };
+    }
+
+    async function decodeQrFromImageFile(file) {
+      if (typeof jsQR !== "function") return null;
+      const bmp = await createImageBitmap(file);
+      const canvas=document.createElement("canvas");
+      canvas.width=bmp.width; canvas.height=bmp.height;
+      const ctx=canvas.getContext("2d",{willReadFrequently:true});
+      ctx.drawImage(bmp,0,0);
+      bmp.close?.();
+      return decodeQrFromImageData(ctx.getImageData(0,0,canvas.width,canvas.height), "image");
+    }
+
+    function captureQrFromCameraFrame() {
+      const video=reader.querySelector("video");
+      if (!video || !video.videoWidth || !video.videoHeight) return null;
+      const canvas=document.createElement("canvas");
+      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      const ctx=canvas.getContext("2d",{willReadFrequently:true});
+      ctx.drawImage(video,0,0,canvas.width,canvas.height);
+      return decodeQrFromImageData(ctx.getImageData(0,0,canvas.width,canvas.height), "camera");
     }
 
     function makeQrSpecFromDecoded(text, decodedResult, source="camera") {
@@ -869,7 +893,28 @@
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 160 } },
           async (decodedText, decodedResult) => {
-            applyDecoded(decodedText, decodedResult);
+            const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
+            const mapped = mapScanFormat(fmtName);
+            let usedFrameSpec = false;
+            if (mapped.type === "qr") {
+              // html5-qrcodeが認識した瞬間のカメラフレームをjsQRでも解析し、
+              // 画像読み取りと同じVersion/ECC/Mask/Segment/matrixを保存する。
+              const qr = captureQrFromCameraFrame();
+              if (qr && qr.text === (decodedText || "")) {
+                valueInput.value = qr.text;
+                typeInput.value = "qr";
+                barcodeFormatInput.value = "CODE128";
+                currentCodeSpec = qr.spec;
+                manualFields.classList.remove("hidden");
+                manualToggleBtn.textContent = "詳細設定を隠す";
+                updateFormFields();
+                const ec = qr.spec.errorCorrection || "不明";
+                const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
+                setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ 元パターン保存済み" : ""}`);
+                usedFrameSpec = true;
+              }
+            }
+            if (!usedFrameSpec) applyDecoded(decodedText, decodedResult);
             await stopCamera();
           },
           () => {}
@@ -906,7 +951,12 @@
       const valueNow = valueInput.value.trim();
       let spec = currentCodeSpec;
       if (typeInput.value === "qr") {
-        if (!spec || spec.symbology !== "QR_CODE" || valueNow !== originalEditValue) {
+        const specText = Array.isArray(spec?.segments) && spec.segments.length
+          ? spec.segments.map(seg => String(seg.text ?? "")).join("")
+          : null;
+        // 画像/カメラで取得したcodeSpecは、表示欄の内容が読取値と同じ限り保持する。
+        // v0.9では新規登録時 originalEditValue=="" のため、カメラ読取specをmanualへ上書きしていた。
+        if (!spec || spec.symbology !== "QR_CODE" || (specText !== null && specText !== valueNow) || (specText === null && valueNow !== originalEditValue)) {
           const mode=inferQrMode(valueNow);
           spec={symbology:"QR_CODE",version:null,errorCorrection:null,maskPattern:null,mode,segments:[{mode,text:valueNow}],characterEncoding:null,source:"manual",detected:{symbology:true,mode:false,version:false,errorCorrection:false,maskPattern:false}};
         }
