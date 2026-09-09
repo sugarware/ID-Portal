@@ -1,21 +1,15 @@
-IDポータル PWA v0.9.5
+IDポータル PWA v0.9.6
 
 主な変更点
-- QRの通常表示を「Captured Matrix（読み取った論理モジュールを無加工で保存・表示）」へ変更。
-- Finder / Timing / Format / Alignment / ロゴ領域などの部分修正を廃止。
-- 「ロゴ無し／ロゴ有り」ボタンを廃止し、「再構成」ボタンを追加。
-- 再構成は元QRのVersion / ECC / Mask / デザインと比較せず、デコード済みデータだけを正として標準QRを新規生成。
-- 再構成QRはECC=Lを優先してモジュールを大きくし、生成後にjsQRで自己デコードして元データと完全一致した場合だけ表示。失敗時はM/Q/Hも順に試行。
-- 再構成表示中はボタンが「元画像」に変わり、Captured Matrixへ戻せる。
-- JSONバックアップ形式 version 6。
+- カメラ/画像からQRを登録する際の「元パターン」取得方式を修正。
+- IDポータル独自の4隅補間＋固定しきい値サンプリングを廃止。
+- jsQR 1.4.0 の extractor が decode() に実際に渡した補正済み BitMatrix を取得し、その1bit Matrixをそのまま保存。
+- Matrixの取得はjsQRソースをブラウザ内で読み込み、戻り値に extractedMatrix を追加した互換パッチ版を使用。通常のjsQRは自己検証用として維持。
+- ECC/Maskも、可能な場合は同じ extractedMatrix のFormat Informationから取得。
+- 通常表示はデコーダ抽出Matrix、［再構成］はデコード済みデータだけから標準QRを新規生成。
+- JSONバックアップ形式 version 7。
+- カメラ認識位置の緑枠表示、大きな正方形ガイドはv0.9.5から継続。
 
 注意
-- v0.9.2以前に保存済みのデザインQR matrixは、既に部分正規化されているため元のCaptured Matrixには戻せません。元パターンをそのまま保持したい項目は、v0.9.3で再登録してください。
-- 旧データは互換表示します。
-
-
-v0.9.5 changes:
-- Camera guide changed to a large square suitable for QR codes.
-- Camera decoding now scans the full video frame; the square is only a positioning guide.
-- On recognition, the detected code is highlighted with a green frame and decoded-text label before the camera closes.
-- This makes it clear which code was selected when multiple codes are visible.
+- v0.9.5以前に登録したQRのmatrixは旧方式のままです。正しいデコーダ抽出Matrixを保存するには、v0.9.6で再登録してください。
+- ネットワーク等で互換パッチ版jsQRを準備できなかった場合、QRのデコード自体は従来jsQRで継続しますが、decoder extracted matrixは保存されません。

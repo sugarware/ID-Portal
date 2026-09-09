@@ -116,7 +116,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.5 — カメラ認識位置を緑枠表示。QRは元パターン表示／再構成を切替可能。
+      v0.9.6 — jsQRが実際に復号に使った抽出Matrixを保存。QRは元パターン表示／再構成を切替可能。
     </div>
   </div>
 
@@ -479,7 +479,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 6,
+        version: 7,
         exportedAt: new Date().toISOString(),
         items
       };
@@ -649,6 +649,37 @@
       return n;
     }
 
+    let jsQRWithMatrix = null;
+    let jsQRWithMatrixPromise = null;
+
+    async function ensureJsQrMatrixDecoder() {
+      if (typeof jsQRWithMatrix === "function") return jsQRWithMatrix;
+      if (jsQRWithMatrixPromise) return jsQRWithMatrixPromise;
+      jsQRWithMatrixPromise = (async () => {
+        try {
+          const url = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+          const res = await fetch(url, { cache: "force-cache" });
+          if (!res.ok) throw new Error(`jsQR source ${res.status}`);
+          let src = await res.text();
+          const needle = 'version: decoded.version,\n                location: {';
+          const replacement = 'version: decoded.version,\n                extractedMatrix: { width: extracted.matrix.width, height: extracted.matrix.height, data: Array.prototype.slice.call(extracted.matrix.data) },\n                location: {';
+          if (!src.includes(needle)) throw new Error("jsQR patch point not found");
+          src = src.replace(needle, replacement);
+          const original = window.jsQR;
+          (0, eval)(src + "\n//# sourceURL=jsQR-matrix-patched.js");
+          const patched = window.jsQR;
+          window.jsQR = original;
+          if (typeof patched !== "function") throw new Error("patched jsQR unavailable");
+          jsQRWithMatrix = patched;
+          return jsQRWithMatrix;
+        } catch (e) {
+          console.warn("jsQR matrix decoder could not be prepared", e);
+          return null;
+        }
+      })();
+      return jsQRWithMatrixPromise;
+    }
+
     function sampleQrModule(imageData, loc, n, row, col) {
       // デザインQRの丸ドットやアンチエイリアスを除去するため、
       // 各論理セル中央付近を3x3点でサンプリングし多数決する。
@@ -767,22 +798,22 @@
     }
 
     function extractQrMatrix(imageData, result, fmt) {
+      const m = result?.extractedMatrix;
       const version = Number(result?.version || 0);
-      if (!version) return null;
-      const n = 17 + 4 * version;
-      let raw = "";
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
-        const b = sampleQrModule(imageData, result.location, n, r, c);
-        if (b == null) return null;
-        raw += b ? "1" : "0";
-      }
-      // v0.9.3: 読み取れた論理モジュールを一切書き換えず保存する。
-      // Finder/Timing/Format/ロゴ領域を部分修正すると、元画像が持っていた
-      // 「そのままなら読める」誤り訂正の整合性を崩す可能性があるため。
+      const expected = version ? 17 + 4 * version : 0;
+      const w = Number(m?.width || 0), h = Number(m?.height || 0);
+      const data = Array.isArray(m?.data) ? m.data : null;
+      if (!w || !h || w !== h || !data || data.length !== w * h) return null;
+      if (expected && w !== expected) return null;
+      let bits = "";
+      for (let i = 0; i < data.length; i++) bits += data[i] ? "1" : "0";
+      // v0.9.6: jsQR の extractor が decode() に実際に渡した BitMatrix をそのまま保存。
+      // カメラ画像からIDポータル側で再サンプリングしない。
       return {
-        width:n,height:n,encoding:"hex",bitOrder:"row-major-msb",quietZone:4,
-        capture:"logical-module-majority",capturedRaw:true,designNormalized:false,functionPatternsNormalized:false,
-        data:bitsToHex(raw)
+        width:w,height:h,encoding:"hex",bitOrder:"row-major-msb",quietZone:4,
+        capture:"jsqr-extracted-matrix",capturedRaw:true,decoderVerified:true,
+        designNormalized:false,functionPatternsNormalized:false,
+        data:bitsToHex(bits)
       };
     }
 
@@ -840,13 +871,43 @@
       return { errorCorrection:ecMap[ecBits] || null, maskPattern:best.data&7, confidence:best.dist===0?"exact":"corrected" };
     }
 
+    function extractQrFormatInfoFromExtracted(result) {
+      const m=result?.extractedMatrix;
+      const n=Number(m?.width||0), data=Array.isArray(m?.data)?m.data:null;
+      if(!n || !data || data.length!==n*n) return null;
+      const get=(row,col)=> (row>=0&&col>=0&&row<n&&col<n) ? (data[row*n+col]?1:0) : null;
+      const copies=[];
+      let bitsV=0,okV=true;
+      for(let i=0;i<15;i++){
+        let row=i<6?i:(i<8?i+1:n-15+i);
+        const b=get(row,8); if(b==null){okV=false;break;} bitsV|=(b<<i);
+      }
+      if(okV) copies.push(bitsV);
+      let bitsH=0,okH=true;
+      for(let i=0;i<15;i++){
+        let col=i<8?n-i-1:(i<9?15-i:15-i-1);
+        const b=get(8,col); if(b==null){okH=false;break;} bitsH|=(b<<i);
+      }
+      if(okH) copies.push(bitsH);
+      let best=null;
+      for(const observed of copies) for(let d=0;d<32;d++){
+        const dist=hamming15(observed,bchTypeInfo(d));
+        if(!best||dist<best.dist) best={data:d,dist};
+      }
+      if(!best||best.dist>3) return null;
+      const ecMap={0:"M",1:"L",2:"H",3:"Q"};
+      return {errorCorrection:ecMap[best.data>>3]||null,maskPattern:best.data&7,confidence:best.dist===0?"exact":"corrected"};
+    }
+
     function decodeQrFromImageData(imageData, source="image") {
-      if (typeof jsQR !== "function" || !imageData) return null;
-      const result=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:"attemptBoth"});
+      if (!imageData) return null;
+      const decoder = typeof jsQRWithMatrix === "function" ? jsQRWithMatrix : (typeof jsQR === "function" ? jsQR : null);
+      if (!decoder) return null;
+      const result=decoder(imageData.data,imageData.width,imageData.height,{inversionAttempts:"attemptBoth"});
       if(!result) return null;
       const segments=extractSegmentsFromJsQr(result,result.data || "");
       const modes=[...new Set(segments.map(x=>x.mode))];
-      const fmt=extractQrFormatInfo(imageData,result);
+      const fmt=extractQrFormatInfoFromExtracted(result) || extractQrFormatInfo(imageData,result);
       const matrix=extractQrMatrix(imageData,result,fmt);
       return {
         text: result.data || "",
@@ -941,6 +1002,7 @@
     async function scanImageFile(file) {
       if (!file) return;
       await stopCamera();
+      await ensureJsQrMatrixDecoder();
       readerWrap.classList.remove("hidden");
       setScanStatus("画像を解析しています…");
       try {
@@ -955,7 +1017,7 @@
           updateFormFields();
           const ec = qr.spec.errorCorrection || "不明";
           const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ 元パターン保存済み" : ""}`);
+          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
         } else {
           const scanner = await ensureScanner();
           if (typeof scanner.scanFileV2 === "function") {
@@ -1041,6 +1103,7 @@
       hideDetectionBox();
       setScanStatus("カメラを起動しています…");
       try {
+        await ensureJsQrMatrixDecoder();
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
@@ -1084,7 +1147,7 @@
                 updateFormFields();
                 const ec = qr.spec.errorCorrection || "不明";
                 const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-                setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ 元パターン保存済み" : ""}`);
+                setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
                 usedFrameSpec = true;
               }
             }
@@ -1210,10 +1273,14 @@
                 codeVerify.textContent = chk?.data === item.value
                   ? `旧版保存パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
                   : `旧版保存パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（再登録推奨）`;
+              } else if (spec.matrix.capture === "jsqr-extracted-matrix") {
+                codeVerify.textContent = chk?.data === item.value
+                  ? `デコーダ抽出パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
+                  : `デコーダ抽出パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（抽出Matrix自体は復号成功済み）`;
               } else {
                 codeVerify.textContent = chk?.data === item.value
-                  ? `元パターン表示：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
-                  : `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules（自己検証未確認）`;
+                  ? `旧方式元パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
+                  : `旧方式元パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（v0.9.6で再登録推奨）`;
               }
             } catch {
               codeVerify.textContent = `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules`;
