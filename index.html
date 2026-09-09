@@ -95,8 +95,8 @@
         <div class="sub">IDを探さなくてよくする入口</div>
       </div>
       <div class="toolbar">
-        <button class="btn" id="dataBtn">データ</button>
-        <button class="btn" id="reorderBtn">並び替え</button>
+        <button class="btn" id="dataBtn">File</button>
+        <button class="btn" id="reorderBtn">↓↑</button>
         <button class="btn primary" id="addBtn" aria-label="追加">＋</button>
       </div>
     </header>
@@ -104,7 +104,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.7 — 通常は端末内へ自動保存。JSONファイルへの保存／復元にも対応。
+      v0.7.2 — 通常は端末内へ自動保存。JSONファイルへの保存／復元にも対応。
     </div>
   </div>
 
@@ -417,7 +417,9 @@
         exportedAt: new Date().toISOString(),
         items
       };
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+      // UTF-8 BOMを付け、iOS/Safariやファイル共有経由でも文字コードを誤判定されにくくする。
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob(["\uFEFF", json], { type: "application/json;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       const d = new Date();
@@ -433,7 +435,11 @@
     async function importData(file) {
       if (!file) return;
       try {
-        const text = await file.text();
+        // file.text() に任せずUTF-8として明示的に復号する。
+        const buffer = await file.arrayBuffer();
+        let text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+        // UTF-8 BOMがある場合は除去してからJSON解析する。
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
         const data = JSON.parse(text);
         if (!data || data.format !== "IDPortal" || !Array.isArray(data.items)) {
           throw new Error("invalid-format");
@@ -746,7 +752,7 @@
     dataModal.addEventListener("click", e => { if (e.target === dataModal) closeDataModal(); });
     reorderBtn.addEventListener("click", () => {
       const enabled = document.body.classList.toggle("reorder-mode");
-      reorderBtn.textContent = enabled ? "完了" : "並び替え";
+      reorderBtn.textContent = enabled ? "完了" : "↓↑";
     });
     cancelBtn.addEventListener("click", closeEdit);
     saveBtn.addEventListener("click", saveCurrent);
