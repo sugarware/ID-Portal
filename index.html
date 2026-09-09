@@ -69,7 +69,6 @@
     .code-buttons { margin-top: 28px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
     .close-code { min-width: 150px; }
     #qrcode { position:relative; }
-    .logo-overlay { position:absolute; image-rendering:pixelated; pointer-events:none; }
     .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
     .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
     .app-register-btn { width: 100%; margin-top: 8px; min-height: 48px; font-weight: 700; }
@@ -107,7 +106,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.2 — QR固定パターンを規格どおりに正規化。デザインQRは中央ロゴ表示を切替可能。
+      v0.9.3 — QR固定パターンを規格どおりに正規化。デザインQRは中央ロゴ表示を切替可能。
     </div>
   </div>
 
@@ -231,7 +230,7 @@
     </div>
     <div class="code-text" id="codeText"></div>
     <div class="scan-status" id="codeVerify" style="text-align:center;max-width:92vw"></div>
-    <div class="code-buttons"><button class="btn close-code" id="closeCodeBtn">戻る</button><button class="btn close-code hidden" id="logoToggleBtn">ロゴ無し</button></div>
+    <div class="code-buttons"><button class="btn close-code" id="closeCodeBtn">戻る</button><button class="btn close-code hidden" id="reconstructBtn">再構成</button></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -460,7 +459,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 5,
+        version: 6,
         exportedAt: new Date().toISOString(),
         items
       };
@@ -747,17 +746,6 @@
       return lum<128?1:0;
     }
 
-    function extractLogoOverlay(imageData, result, designDetected) {
-      if (!designDetected || !result?.location) return null;
-      const grid=25, coverage=.34, start=(1-coverage)/2;
-      let bits="";
-      for(let r=0;r<grid;r++) for(let c=0;c<grid;c++) {
-        const u=start+coverage*(c+.5)/grid, v=start+coverage*(r+.5)/grid;
-        bits += samplePerspectivePixel(imageData,result.location,u,v)?"1":"0";
-      }
-      return {width:grid,height:grid,encoding:"hex",bitOrder:"row-major-msb",coverage,data:bitsToHex(bits)};
-    }
-
     function extractQrMatrix(imageData, result, fmt) {
       const version = Number(result?.version || 0);
       if (!version) return null;
@@ -768,14 +756,13 @@
         if (b == null) return null;
         raw += b ? "1" : "0";
       }
-      const norm=normalizeQrFunctionPatterns(raw,version,fmt?.errorCorrection,fmt?.maskPattern);
-      const designDetected = norm.changes >= 6 || fmt?.confidence === "corrected";
+      // v0.9.3: 読み取れた論理モジュールを一切書き換えず保存する。
+      // Finder/Timing/Format/ロゴ領域を部分修正すると、元画像が持っていた
+      // 「そのままなら読める」誤り訂正の整合性を崩す可能性があるため。
       return {
         width:n,height:n,encoding:"hex",bitOrder:"row-major-msb",quietZone:4,
-        capture:"logical-module-majority",designNormalized:true,functionPatternsNormalized:true,
-        normalizedChanges:norm.changes,designDetected,
-        logoOverlay:extractLogoOverlay(imageData,result,designDetected),
-        data:bitsToHex(norm.bits)
+        capture:"logical-module-majority",capturedRaw:true,designNormalized:false,functionPatternsNormalized:false,
+        data:bitsToHex(raw)
       };
     }
 
@@ -799,21 +786,6 @@
       }
       container.appendChild(canvas);
       return { canvas, ctx, width: cw, height: ch, scale, quiet, modulesW:w, modulesH:h };
-    }
-
-    function renderLogoOverlay(overlay, rendered) {
-      if (!overlay || overlay.encoding !== "hex" || !rendered) return null;
-      const bits=hexToBits(overlay.data,overlay.width*overlay.height); if(!bits) return null;
-      const oc=document.createElement("canvas"); oc.width=overlay.width; oc.height=overlay.height; oc.className="logo-overlay";
-      const ox=oc.getContext("2d"); ox.fillStyle="#fff"; ox.fillRect(0,0,oc.width,oc.height); ox.fillStyle="#000";
-      for(let r=0;r<overlay.height;r++) for(let c=0;c<overlay.width;c++) if(bits[r*overlay.width+c]==="1") ox.fillRect(c,r,1,1);
-      const coverage=Number(overlay.coverage)||.34;
-      const modulePixels=rendered.modulesW*rendered.scale;
-      const px=Math.max(1,Math.round(modulePixels*coverage));
-      const origin=rendered.quiet*rendered.scale;
-      oc.style.width=px+"px"; oc.style.height=px+"px";
-      oc.style.left=(origin+(modulePixels-px)/2)+"px"; oc.style.top=(origin+(modulePixels-px)/2)+"px";
-      qrcodeEl.appendChild(oc); return oc;
     }
 
     function extractQrFormatInfo(imageData, result) {
@@ -1120,7 +1092,7 @@
       codeVerify.textContent = "";
       qrcodeEl.innerHTML = "";
       barcode.innerHTML = "";
-      activeLogoOverlay = null; logoVisible = false; logoToggleBtn.classList.add("hidden"); logoToggleBtn.textContent = "ロゴ無し";
+      activeQrItem = item; showingReconstructed = false; reconstructBtn.classList.add("hidden"); reconstructBtn.textContent = "再構成";
       qrcodeEl.classList.toggle("hidden", item.type !== "qr");
       barcode.classList.toggle("hidden", item.type !== "barcode");
 
@@ -1134,20 +1106,21 @@
             try {
               const img = rendered.ctx.getImageData(0, 0, rendered.width, rendered.height);
               const chk = typeof jsQR === "function" ? jsQR(img.data, rendered.width, rendered.height, {inversionAttempts:"dontInvert"}) : null;
-              codeVerify.textContent = chk?.data === item.value
-                ? `正常化パターン表示：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`
-                : "正常化パターン表示：保存パターンを表示（内容検証は確認できませんでした）";
-            } catch {
-              codeVerify.textContent = `正常化パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`;
-            }
-            if (spec.matrix.logoOverlay) {
-              activeLogoOverlay = renderLogoOverlay(spec.matrix.logoOverlay, rendered);
-              if (activeLogoOverlay) {
-                logoVisible = true;
-                logoToggleBtn.classList.remove("hidden");
-                logoToggleBtn.textContent = "ロゴ無し";
+              const legacyNormalized = spec.matrix.designNormalized === true || spec.matrix.functionPatternsNormalized === true;
+              if (legacyNormalized) {
+                codeVerify.textContent = chk?.data === item.value
+                  ? `旧版保存パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
+                  : `旧版保存パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（再登録推奨）`;
+              } else {
+                codeVerify.textContent = chk?.data === item.value
+                  ? `元パターン表示：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
+                  : `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules（自己検証未確認）`;
               }
+            } catch {
+              codeVerify.textContent = `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules`;
             }
+            reconstructBtn.classList.remove("hidden");
+            reconstructBtn.textContent = "再構成";
             codeView.classList.add("show");
             document.body.style.overflow = "hidden";
             try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
@@ -1293,11 +1266,58 @@
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
     });
-    logoToggleBtn.addEventListener("click", () => {
-      if (!activeLogoOverlay) return;
-      logoVisible = !logoVisible;
-      activeLogoOverlay.style.display = logoVisible ? "block" : "none";
-      logoToggleBtn.textContent = logoVisible ? "ロゴ無し" : "ロゴ有り";
+    function renderReconstructedQr(item) {
+      qrcodeEl.innerHTML = "";
+      // 元Version/ECC/Mask/装飾とは比較せず、デコード済みdataだけを正とする。
+      // clean表示ではECC=Lを優先し、モジュール数を抑えて1セルを大きくする。
+      const attempts = [
+        {ec:"L", mode:inferQrMode(item.value)},
+        {ec:"M", mode:inferQrMode(item.value)},
+        {ec:"Q", mode:inferQrMode(item.value)},
+        {ec:"H", mode:inferQrMode(item.value)}
+      ];
+      for (const a of attempts) {
+        try {
+          const qr = window.qrcode(0, a.ec);
+          const modeMap={numeric:"Numeric",alphanumeric:"Alphanumeric",byte:"Byte",kanji:"Kanji"};
+          qr.addData(String(item.value), modeMap[normalizeModeName(a.mode)] || "Byte");
+          qr.make();
+          const modules=qr.getModuleCount(), quiet=4;
+          const maxSize=Math.min(window.innerWidth*0.82,520);
+          const scale=Math.max(2,Math.floor(maxSize/(modules+quiet*2)));
+          const side=(modules+quiet*2)*scale;
+          const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side;
+          const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
+          for(let r=0;r<modules;r++) for(let c=0;c<modules;c++) if(qr.isDark(r,c)) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
+          const img=ctx.getImageData(0,0,side,side);
+          const chk=typeof jsQR==="function" ? jsQR(img.data,side,side,{inversionAttempts:"dontInvert"}) : null;
+          if (chk?.data !== item.value) continue;
+          qrcodeEl.appendChild(canvas);
+          codeVerify.textContent=`再構成：自己検証OK ／ ECC=${a.ec} ／ ${modules}×${modules} modules`;
+          return true;
+        } catch {}
+      }
+      return false;
+    }
+
+    reconstructBtn.addEventListener("click", async () => {
+      if (!activeQrItem) return;
+      if (showingReconstructed) {
+        await showCode(activeQrItem);
+        return;
+      }
+      const item=activeQrItem;
+      const originalHtml=qrcodeEl.innerHTML;
+      const originalVerify=codeVerify.textContent;
+      if (renderReconstructedQr(item)) {
+        activeQrItem=item;
+        showingReconstructed=true;
+        reconstructBtn.classList.remove("hidden");
+        reconstructBtn.textContent="元画像";
+      } else {
+        qrcodeEl.innerHTML=originalHtml;
+        codeVerify.textContent=originalVerify + " ／ 再構成は自己検証できませんでした";
+      }
     });
     closeCodeBtn.addEventListener("click", closeCode);
     modal.addEventListener("click", e => { if (e.target === modal) closeEdit(); });
