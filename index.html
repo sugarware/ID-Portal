@@ -80,8 +80,8 @@
     #barcode { max-width: 92vw; max-height: 56vh; }
     .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
     .code-back-wrap { width: min(92vw, 520px); margin-top: 20px; display:flex; justify-content:center; }
-    .close-code { width:100%; min-height:56px; font-size:18px; font-weight:800; border-radius:14px; }
-    .reconstruct-corner { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:12px; z-index:2; min-height:34px; padding:6px 9px; border-radius:9px; font-size:12px; background:#f7f7f4; }
+    .close-code { width:100%; min-height:56px; font-size:18px; font-weight:800; border-radius:14px; background:#eef5ff; border-color:#c8dafd; box-shadow:0 1px 0 rgba(255,255,255,.9) inset; }
+    .reconstruct-corner { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:12px; z-index:2; min-height:34px; padding:6px 10px; border-radius:9px; font-size:12px; font-weight:700; background:#eef5ff; border-color:#c8dafd; box-shadow:0 1px 0 rgba(255,255,255,.9) inset; }
     #qrcode { position:relative; }
     .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
     .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
@@ -139,7 +139,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.04 — File画面のボタン改行を改善。グループ色選択を背景色で表示。
+        v1.05 — アイコンを刷新。QR/BARコード表示画面の「戻る」「再構成」ボタンを薄色化。
       </div>
     </div>
   </div>
