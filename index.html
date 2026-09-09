@@ -26,7 +26,15 @@
     button, input, select { font: inherit; }
     body { min-height: 100vh; }
     .app { max-width: 720px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .tabbar { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 10px; }
+    .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+    .tab.star-tab { font-size:21px; line-height:1; }
+    .group-settings { display:grid; gap:8px; margin-top:10px; }
+    .group-setting-row { display:grid; grid-template-columns:52px 1fr; gap:8px; align-items:center; }
+    .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
+    .group-setting-row input { min-height:40px; padding:9px 10px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .toolbar { display: flex; gap: 8px; }
@@ -35,8 +43,9 @@
     .btn.danger { color: var(--danger); }
     .list { display: grid; gap: 6px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
-    .item { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#eaf2ff}.item.color-green{background:#eaf8ef}.item.color-yellow{background:#fff7dd}.item.color-orange{background:#fff0e4}.item.color-pink{background:#fdeef3}.item.color-purple{background:#f2ecff}.item.color-gray{background:#eeeeec}
+    .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
     .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
     .meta { margin-top:0; color: var(--muted); font-size:12px; white-space:nowrap; cursor:pointer; }
@@ -114,10 +123,18 @@
       </div>
     </header>
 
+    <nav class="tabbar" id="tabBar" aria-label="IDグループ">
+      <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
+      <button class="tab" type="button" data-tab="1">Grp1</button>
+      <button class="tab" type="button" data-tab="2">Grp2</button>
+      <button class="tab" type="button" data-tab="3">Grp3</button>
+      <button class="tab" type="button" data-tab="4">Grp4</button>
+    </nav>
+
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.10 — コード表示画面の戻る操作を優先配置。並び替え時は対象カードが指の動きに追従。
+      v1.0 — ⭐️＋4グループのタブ方式。お気に入りを通常利用画面とし、各IDに⭐️/Grp属性を追加。
     </div>
   </div>
 
@@ -132,6 +149,16 @@
       </div>
       <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
       <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
+      <div class="field">
+        <label>グループ名</label>
+        <div class="group-settings">
+          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"></label>
+          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"></label>
+          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"></label>
+          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"></label>
+        </div>
+        <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ名を保存</button>
+      </div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -215,6 +242,16 @@
       </div>
 
       <div class="field">
+        <label for="groupSelect">グループ</label>
+        <select id="groupSelect">
+          <option value="1">Grp1</option>
+          <option value="2">Grp2</option>
+          <option value="3">Grp3</option>
+          <option value="4">Grp4</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label>ボタン色</label>
         <div class="color-grid" id="colorGrid">
           <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
@@ -257,12 +294,16 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
+    const SETTINGS_KEY = "idPortalSettings.v10";
 
+    let settings = loadSettings();
+    let activeTab = "star";
     let items = loadItems();
     let editingId = null;
     let wakeLock = null;
 
     const list = document.getElementById("list");
+    const tabBar = document.getElementById("tabBar");
     const modal = document.getElementById("editModal");
     const addBtn = document.getElementById("addBtn");
     const dataBtn = document.getElementById("dataBtn");
@@ -272,6 +313,8 @@
     const importBtn = document.getElementById("importBtn");
     const importFileInput = document.getElementById("importFileInput");
     const closeDataBtn = document.getElementById("closeDataBtn");
+    const groupNameInputs = [1,2,3,4].map(i => document.getElementById(`groupName${i}`));
+    const saveGroupNamesBtn = document.getElementById("saveGroupNamesBtn");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
     const deleteBtn = document.getElementById("deleteBtn");
@@ -301,6 +344,7 @@
     const createShortcutBtn = document.getElementById("createShortcutBtn");
     const testShortcutBtn = document.getElementById("testShortcutBtn");
     const colorGrid = document.getElementById("colorGrid");
+    const groupSelect = document.getElementById("groupSelect");
     let selectedColor = "white";
     let html5Qr = null;
     let cameraRunning = false;
@@ -341,6 +385,7 @@
     }
 
     function normalizeItem(x) {
+      const rawGroup = Number(x.group);
       const item = {
         id: x.id || crypto.randomUUID(),
         name: String(x.name || ""),
@@ -348,10 +393,42 @@
         value: String(x.value || ""),
         barcodeFormat: x.barcodeFormat || "CODE128",
         color: x.color || "white",
+        favorite: x.favorite !== false,
+        group: [1,2,3,4].includes(rawGroup) ? rawGroup : 1,
         codeSpec: x.codeSpec || null
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
       return item;
+    }
+
+    function loadSettings() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
+        if (saved && Array.isArray(saved.groupNames) && saved.groupNames.length === 4) {
+          return { groupNames: saved.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)) };
+        }
+      } catch {}
+      return { groupNames: ["Grp1","Grp2","Grp3","Grp4"] };
+    }
+
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function refreshTabs() {
+      tabBar.querySelectorAll(".tab").forEach(btn => {
+        const key = btn.dataset.tab;
+        if (key !== "star") btn.textContent = settings.groupNames[Number(key)-1] || `Grp${key}`;
+        btn.classList.toggle("active", key === activeTab);
+      });
+      groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
+      [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
+    }
+
+    function visibleItems() {
+      if (activeTab === "star") return items.filter(x => x.favorite);
+      const g = Number(activeTab);
+      return items.filter(x => x.group === g);
     }
 
     function loadItems() {
@@ -379,17 +456,33 @@
 
     function render() {
       list.innerHTML = "";
-      if (!items.length) {
+      const shown = visibleItems();
+      if (!shown.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.innerHTML = "まだIDが登録されていません。<br>右上の「＋」から登録してください。";
+        empty.innerHTML = activeTab === "star"
+          ? "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。"
+          : `${settings.groupNames[Number(activeTab)-1]}にはIDがありません。`;
         list.appendChild(empty);
         return;
       }
 
-      items.forEach((item, index) => {
+      shown.forEach((item, index) => {
         const row = document.createElement("div");
         row.className = `item color-${item.color || "white"}`;
+
+        const favorite = document.createElement("button");
+        favorite.className = "favorite-toggle";
+        favorite.type = "button";
+        favorite.textContent = item.favorite ? "⭐️" : "☆";
+        favorite.title = item.favorite ? "お気に入りから外す" : "お気に入りに追加";
+        favorite.setAttribute("aria-label", `${item.name}のお気に入りを${item.favorite ? "OFF" : "ON"}にする`);
+        favorite.addEventListener("click", (e) => {
+          e.stopPropagation();
+          item.favorite = !item.favorite;
+          saveItems();
+          render();
+        });
 
         const main = document.createElement("div");
         main.className = "item-main";
@@ -419,7 +512,7 @@
         edit.addEventListener("click", () => openEdit(item.id));
 
         buttons.append(handle, edit);
-        row.append(main, meta, buttons);
+        row.append(favorite, main, meta, buttons);
         list.appendChild(row);
       });
     }
@@ -432,7 +525,8 @@
       const row = e.currentTarget.closest(".item");
       if (!row) return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
-      dragState = { id, pointerId: e.pointerId, row, targetIndex: items.findIndex(x => x.id === id), startY: e.clientY };
+      const shown = visibleItems();
+      dragState = { id, pointerId: e.pointerId, row, targetIndex: shown.findIndex(x => x.id === id), startY: e.clientY };
       row.classList.add("dragging");
       row.style.willChange = "transform";
       document.addEventListener("pointermove", dragMove, { passive:false });
@@ -451,13 +545,14 @@
         const r = rows[i].getBoundingClientRect();
         if (e.clientY < r.top + r.height / 2) { target = i; break; }
       }
-      dragState.targetIndex = Math.max(0, Math.min(target, items.length - 1));
+      dragState.targetIndex = Math.max(0, Math.min(target, visibleItems().length - 1));
       rows.forEach((r,i) => r.classList.toggle("drag-target", i === dragState.targetIndex && r !== dragState.row));
     }
 
     function endDrag(e) {
       if (!dragState) return;
-      const from = items.findIndex(x => x.id === dragState.id);
+      const shown = visibleItems();
+      const from = shown.findIndex(x => x.id === dragState.id);
       const to = dragState.targetIndex;
       dragState.row.classList.remove("dragging");
       dragState.row.style.transform = "";
@@ -465,8 +560,13 @@
       list.querySelectorAll(".drag-target").forEach(r => r.classList.remove("drag-target"));
       document.removeEventListener("pointermove", dragMove);
       if (from >= 0 && to >= 0 && from !== to) {
-        const [moved] = items.splice(from, 1);
-        items.splice(to, 0, moved);
+        const moved = shown[from];
+        const reordered = shown.slice();
+        reordered.splice(from, 1);
+        reordered.splice(to, 0, moved);
+        const shownIds = new Set(shown.map(x => x.id));
+        let p = 0;
+        items = items.map(x => shownIds.has(x.id) ? reordered[p++] : x);
         saveItems();
       }
       dragState = null;
@@ -474,6 +574,7 @@
     }
 
     function openDataModal() {
+      refreshTabs();
       dataModal.classList.add("show");
       dataModal.setAttribute("aria-hidden", "false");
     }
@@ -486,8 +587,9 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 7,
+        version: 8,
         exportedAt: new Date().toISOString(),
+        settings,
         items
       };
       // UTF-8 BOMを付け、iOS/Safariやファイル共有経由でも文字コードを誤判定されにくくする。
@@ -520,7 +622,12 @@
         const normalized = data.items.map(normalizeItem);
         if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
         items = normalized;
+        if (data.settings && Array.isArray(data.settings.groupNames) && data.settings.groupNames.length === 4) {
+          settings = { groupNames: data.settings.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)) };
+          saveSettings();
+        }
         saveItems();
+        refreshTabs();
         render();
         closeDataModal();
         alert(`${items.length}件を読み込みました。`);
@@ -549,6 +656,7 @@
       originalEditValue = item?.value || "";
       currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
       selectedColor = item?.color || "white";
+      groupSelect.value = String(item?.group || (activeTab === "star" ? 1 : Number(activeTab)));
       updateColorSelection();
       deleteRow.classList.toggle("hidden", !item);
       manualFields.classList.toggle("hidden", !item);
@@ -1292,6 +1400,7 @@
       } else if (typeInput.value === "barcode") {
         spec={symbology:barcodeFormatInput.value,source:spec?.source || "manual",detected:{symbology:true}};
       } else spec=null;
+      const existing = editingId ? items.find(x => x.id === editingId) : null;
       const item = {
         id: editingId || crypto.randomUUID(),
         name: nameInput.value.trim(),
@@ -1299,6 +1408,8 @@
         value: valueNow,
         barcodeFormat: barcodeFormatInput.value,
         color: selectedColor,
+        favorite: existing ? existing.favorite : true,
+        group: Number(groupSelect.value) || 1,
         codeSpec: spec
       };
       const error = validate(item);
@@ -1446,6 +1557,23 @@
       }
     }
 
+    tabBar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+      activeTab = btn.dataset.tab || "star";
+      document.body.classList.remove("reorder-mode");
+      reorderBtn.textContent = "↓↑";
+      refreshTabs();
+      render();
+    });
+
+    saveGroupNamesBtn.addEventListener("click", () => {
+      settings.groupNames = groupNameInputs.map((input,i) => input.value.trim().slice(0,12) || `Grp${i+1}`);
+      saveSettings();
+      refreshTabs();
+      render();
+    });
+
     addBtn.addEventListener("click", () => openEdit());
     dataBtn.addEventListener("click", openDataModal);
     exportBtn.addEventListener("click", exportData);
@@ -1588,6 +1716,7 @@
       window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
     }
 
+    refreshTabs();
     render();
   </script>
 </body>
