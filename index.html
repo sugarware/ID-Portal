@@ -850,6 +850,9 @@
       const matrix=extractQrMatrix(imageData,result,fmt);
       return {
         text: result.data || "",
+        location: result.location || null,
+        imageWidth: imageData.width,
+        imageHeight: imageData.height,
         spec: {
           symbology:"QR_CODE",
           version: Number(result.version) || null,
@@ -981,32 +984,51 @@
       detectBox.classList.add("hidden");
     }
 
-    function showDetectedCode(decodedText, decodedResult) {
+    function qrLocationPoints(qr) {
+      const loc = qr?.location;
+      if (!loc) return [];
+      return [loc.topLeftCorner, loc.topRightCorner, loc.bottomRightCorner, loc.bottomLeftCorner]
+        .filter(Boolean)
+        .map(p => ({ x:Number(p.x), y:Number(p.y) }))
+        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+    }
+
+    function showDetectedCode(decodedText, decodedResult, explicitPoints=null, sourceSize=null) {
       const video = reader.querySelector("video");
-      if (!video) return;
-      const vw = video.videoWidth || video.clientWidth || 1;
-      const vh = video.videoHeight || video.clientHeight || 1;
+      if (!video) return false;
+      const vw = Number(sourceSize?.width) || video.videoWidth || 1;
+      const vh = Number(sourceSize?.height) || video.videoHeight || 1;
       const rw = video.clientWidth || reader.clientWidth || 1;
       const rh = video.clientHeight || reader.clientHeight || 1;
-      let pts = decodedResult?.result?.cornerPoints || decodedResult?.result?.resultPoints || decodedResult?.resultPoints || [];
+      let pts = explicitPoints || decodedResult?.result?.cornerPoints || decodedResult?.result?.resultPoints || decodedResult?.resultPoints || [];
       pts = Array.from(pts || []).map(p => ({x:Number(p?.x ?? p?.getX?.()), y:Number(p?.y ?? p?.getY?.())})).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
-      let left, top, width, height;
-      if (pts.length >= 2) {
-        const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
-        left=Math.min(...xs)/vw*rw; top=Math.min(...ys)/vh*rh;
-        width=(Math.max(...xs)-Math.min(...xs))/vw*rw; height=(Math.max(...ys)-Math.min(...ys))/vh*rh;
-        // 認識点がscan canvas座標の場合でも見やすい最小サイズを確保
-        width=Math.max(width,56); height=Math.max(height,56);
-      } else {
-        // 座標を取得できない環境では、認識枠全体を緑にして成功を明示する。
-        const r=cameraGuide.getBoundingClientRect(), vr=video.getBoundingClientRect();
-        left=r.left-vr.left; top=r.top-vr.top; width=r.width; height=r.height;
+
+      // 位置情報が無い場合、ガイド枠全体を成功表示に使わない。
+      // 複数コードがある時に「どれを認識したか」を誤認させるため。
+      if (pts.length < 2) {
+        hideDetectionBox();
+        return false;
       }
-      detectBox.style.left=`${Math.max(0,left)}px`; detectBox.style.top=`${Math.max(0,top)}px`;
-      detectBox.style.width=`${Math.min(rw-Math.max(0,left),width)}px`; detectBox.style.height=`${Math.min(rh-Math.max(0,top),height)}px`;
+
+      const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+      let left=Math.min(...xs)/vw*rw;
+      let top=Math.min(...ys)/vh*rh;
+      let width=(Math.max(...xs)-Math.min(...xs))/vw*rw;
+      let height=(Math.max(...ys)-Math.min(...ys))/vh*rh;
+
+      // 実コード領域を示す。小さ過ぎる場合だけ最低表示サイズを確保。
+      const minBox=44;
+      if (width < minBox) { left -= (minBox-width)/2; width=minBox; }
+      if (height < minBox) { top -= (minBox-height)/2; height=minBox; }
+      left=Math.max(0,left); top=Math.max(0,top);
+      width=Math.min(rw-left,width); height=Math.min(rh-top,height);
+
+      detectBox.style.left=`${left}px`; detectBox.style.top=`${top}px`;
+      detectBox.style.width=`${width}px`; detectBox.style.height=`${height}px`;
       const short=(decodedText||"").replace(/\s+/g," ").slice(0,32);
       detectLabel.textContent=short ? `認識：${short}${(decodedText||"").length>32?"…":""}` : "認識しました";
       detectBox.classList.remove("hidden");
+      return true;
     }
 
     async function startCamera() {
@@ -1024,16 +1046,34 @@
           { facingMode: "environment" },
           { fps: 10 },
           async (decodedText, decodedResult) => {
-            showDetectedCode(decodedText, decodedResult);
             try { html5Qr.pause(true); } catch {}
-            await new Promise(resolve => setTimeout(resolve, 650));
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
             const mapped = mapScanFormat(fmtName);
             let usedFrameSpec = false;
+            let qr = null;
+
+            // QRは認識した瞬間のフレームをjsQRでも解析する。
+            // jsQRの4隅座標を使って「実際に認識したQRそのもの」を緑枠で示す。
             if (mapped.type === "qr") {
-              // html5-qrcodeが認識した瞬間のカメラフレームをjsQRでも解析し、
+              qr = captureQrFromCameraFrame();
+            }
+            let locationShown = false;
+            if (qr && qr.text === (decodedText || "")) {
+              locationShown = showDetectedCode(
+                decodedText,
+                decodedResult,
+                qrLocationPoints(qr),
+                { width:qr.imageWidth, height:qr.imageHeight }
+              );
+            }
+            if (!locationShown) locationShown = showDetectedCode(decodedText, decodedResult);
+            setScanStatus(locationShown
+              ? "認識したコードを緑枠で示しています。"
+              : `認識成功：${(decodedText||"").slice(0,48)}${(decodedText||"").length>48?"…":""}（位置情報を取得できませんでした）`);
+            await new Promise(resolve => setTimeout(resolve, 850));
+
+            if (mapped.type === "qr") {
               // 画像読み取りと同じVersion/ECC/Mask/Segment/matrixを保存する。
-              const qr = captureQrFromCameraFrame();
               if (qr && qr.text === (decodedText || "")) {
                 valueInput.value = qr.text;
                 typeInput.value = "qr";
@@ -1055,7 +1095,7 @@
         );
         cameraRunning = true;
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。解析は画面全体で行います。複数ある場合は認識したコードを緑枠で示します。");
+        setScanStatus("大きな枠を目安にコードを映してください。解析は画面全体で行います。複数ある場合は、実際に認識したコードそのものを緑枠で示します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
         readerWrap.classList.add("hidden");

@@ -14,7 +14,7 @@ IDポータル PWA v0.9.3
 - 旧データは互換表示します。
 
 
-v0.9.4 changes:
+v0.9.5 changes:
 - Camera guide changed to a large square suitable for QR codes.
 - Camera decoding now scans the full video frame; the square is only a positioning guide.
 - On recognition, the detected code is highlighted with a green frame and decoded-text label before the camera closes.
