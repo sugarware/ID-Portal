@@ -22,10 +22,10 @@
       --shadow: 0 8px 24px rgba(0,0,0,.08);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    html, body { margin: 0; padding: 0; width:100%; height:100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     button, input, select { font: inherit; }
-    body { height: 100dvh; min-height: 100vh; overflow: hidden; }
-    .app { max-width: 720px; height:100dvh; min-height:100vh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; }
+    body { min-height:100%; overflow:hidden; }
+    .app { max-width: 720px; height:100vh; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 8px; }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
@@ -137,7 +137,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.01 — メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
+        v1.02 — v1.01起動不具合修正。メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
       </div>
     </div>
   </div>
@@ -359,6 +359,7 @@
     const codeView = document.getElementById("codeView");
     const codeTitle = document.getElementById("codeTitle");
     const qrcodeEl = document.getElementById("qrcode");
+    const reconstructBtn = document.getElementById("reconstructBtn");
     const logoToggleBtn = document.getElementById("logoToggleBtn");
     let activeLogoOverlay = null;
     let logoVisible = false;
