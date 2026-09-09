@@ -104,7 +104,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.8.1 — QR生成ライブラリとの変数名衝突を修正。
+      v0.8.2 — QRのAlphanumericモード誤判定を修正。
     </div>
   </div>
 
@@ -582,8 +582,9 @@
 
     function normalizeModeName(mode) {
       const m = String(mode || "").toLowerCase();
-      if (m.includes("numeric")) return "numeric";
+      // "alphanumeric" contains the substring "numeric", so test it first.
       if (m.includes("alphanumeric")) return "alphanumeric";
+      if (m.includes("numeric")) return "numeric";
       if (m.includes("kanji")) return "kanji";
       if (m.includes("byte")) return "byte";
       if (m.includes("eci")) return "eci";
