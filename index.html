@@ -116,7 +116,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.6 — jsQRが実際に復号に使った抽出Matrixを保存。QRは元パターン表示／再構成を切替可能。
+      v0.9.8 — デコーダ抽出Matrixの回転・ミラー方向を自動補正して撮影時の向きで保存。QRは元パターン表示／再構成を切替可能。
     </div>
   </div>
 
@@ -797,7 +797,75 @@
       return lum<128?1:0;
     }
 
-    function extractQrMatrix(imageData, result, fmt) {
+    function rotateSquareBits(bits, side, quarterTurnsCW) {
+      let src = bits;
+      let q = ((quarterTurnsCW % 4) + 4) % 4;
+      for (let t = 0; t < q; t++) {
+        let dst = new Array(side * side);
+        for (let r = 0; r < side; r++) {
+          for (let c = 0; c < side; c++) {
+            // 90° clockwise: (r,c) -> (c, side-1-r)
+            dst[c * side + (side - 1 - r)] = src[r * side + c];
+          }
+        }
+        src = dst;
+      }
+      return src;
+    }
+
+    function mirrorSquareBitsHorizontal(bits, side) {
+      const dst = new Array(side * side);
+      for (let r = 0; r < side; r++) {
+        for (let c = 0; c < side; c++) dst[r * side + (side - 1 - c)] = bits[r * side + c];
+      }
+      return dst;
+    }
+
+    function finderPatternMismatch(bits, side, top, left) {
+      // QR finder 7x7: black outer ring, white ring, black 3x3 center.
+      let mismatch = 0;
+      for (let r = 0; r < 7; r++) {
+        for (let c = 0; c < 7; c++) {
+          const d = Math.min(r, c, 6-r, 6-c);
+          const expected = (d === 0 || d >= 2) ? "1" : "0";
+          if (bits[(top+r) * side + (left+c)] !== expected) mismatch++;
+        }
+      }
+      return mismatch;
+    }
+
+    function canonicalizeExtractedQr(bits, side) {
+      // jsQR内部Matrixの配列方向は描画座標と異なる場合があるため、
+      // 回転4通り×鏡像2通りの8候補を比較し、規格上の3 Finder Patternに
+      // 最も一致する向きを正規方向として採用する。
+      let best = null;
+      for (let mirrored = 0; mirrored <= 1; mirrored++) {
+        let base = mirrored ? mirrorSquareBitsHorizontal(bits, side) : bits;
+        for (let q = 0; q < 4; q++) {
+          const cand = rotateSquareBits(base, side, q);
+          const score = finderPatternMismatch(cand, side, 0, 0)
+                      + finderPatternMismatch(cand, side, 0, side-7)
+                      + finderPatternMismatch(cand, side, side-7, 0);
+          if (!best || score < best.score) best = { bits:cand, score, mirrored:!!mirrored, quarterTurnsCW:q };
+        }
+      }
+      return best;
+    }
+
+    function sourceQuarterTurn(result) {
+      const tl = result?.location?.topLeftCorner;
+      const tr = result?.location?.topRightCorner;
+      if (!tl || !tr) return 0;
+      const dx = tr.x - tl.x, dy = tr.y - tl.y;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy) || (Math.abs(dx) + Math.abs(dy) < 1)) return 0;
+      // Canvas coordinates: +x=right, +y=down.
+      // Canonical QR top edgeが撮影画像上で何度回っているかを最も近い90°単位に丸める。
+      let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      let q = Math.round(deg / 90);
+      return ((q % 4) + 4) % 4;
+    }
+
+    function extractQrMatrix(imageData, result, fmt, source="image") {
       const m = result?.extractedMatrix;
       const version = Number(result?.version || 0);
       const expected = version ? 17 + 4 * version : 0;
@@ -805,15 +873,26 @@
       const data = Array.isArray(m?.data) ? m.data : null;
       if (!w || !h || w !== h || !data || data.length !== w * h) return null;
       if (expected && w !== expected) return null;
-      let bits = "";
-      for (let i = 0; i < data.length; i++) bits += data[i] ? "1" : "0";
-      // v0.9.6: jsQR の extractor が decode() に実際に渡した BitMatrix をそのまま保存。
-      // カメラ画像からIDポータル側で再サンプリングしない。
+      let rawBits = new Array(data.length);
+      for (let i = 0; i < data.length; i++) rawBits[i] = data[i] ? "1" : "0";
+
+      // まず抽出Matrix自身を8方向（回転4×鏡像2）から標準QR方向へ正規化する。
+      // Finder Patternだけを基準にするため、データ領域には一切手を加えない。
+      const canonical = canonicalizeExtractedQr(rawBits, w);
+      if (!canonical) return null;
+
+      // その後、カメラ画像上で見えていた90°単位の向きへ戻す。
+      const q = sourceQuarterTurn(result);
+      const bits = rotateSquareBits(canonical.bits, w, q);
       return {
         width:w,height:h,encoding:"hex",bitOrder:"row-major-msb",quietZone:4,
         capture:"jsqr-extracted-matrix",capturedRaw:true,decoderVerified:true,
+        orientation:"source",sourceQuarterTurnsCW:q,
+        decoderMatrixMirrored:canonical.mirrored,
+        decoderMatrixQuarterTurnsCW:canonical.quarterTurnsCW,
+        orientationFinderMismatch:canonical.score,
         designNormalized:false,functionPatternsNormalized:false,
-        data:bitsToHex(bits)
+        data:bitsToHex(bits.join(""))
       };
     }
 
@@ -908,7 +987,7 @@
       const segments=extractSegmentsFromJsQr(result,result.data || "");
       const modes=[...new Set(segments.map(x=>x.mode))];
       const fmt=extractQrFormatInfoFromExtracted(result) || extractQrFormatInfo(imageData,result);
-      const matrix=extractQrMatrix(imageData,result,fmt);
+      const matrix=extractQrMatrix(imageData,result,fmt,source);
       return {
         text: result.data || "",
         location: result.location || null,
