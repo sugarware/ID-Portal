@@ -47,7 +47,7 @@
     body.reorder-mode .item-main, body.reorder-mode .meta { cursor: default; }
     .drag-handle { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background:#fafafa; align-items:center; justify-content:center; font-size:22px; line-height:1; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
     .drag-handle:active { cursor:grabbing; }
-    .item.dragging { opacity:.72; box-shadow: var(--shadow); transform:scale(1.01); }
+    .item.dragging { opacity:.88; box-shadow: var(--shadow); transform:scale(1.01); z-index:5; position:relative; transition:none; }
     .item.drag-target { outline:2px solid var(--accent); outline-offset:1px; }
     .mini { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: #fafafa; cursor: pointer; }
     .modal { position: fixed; inset: 0; background: rgba(0,0,0,.42); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
@@ -58,7 +58,7 @@
     label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
     input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
-    .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 18px; }
+    .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: calc(54px + env(safe-area-inset-top)) 18px 18px; }
     .codeview.show { display: flex; }
     .code-title { font-size: 24px; font-weight: 800; margin-bottom: 18px; text-align: center; }
     #codeArea { width: min(92vw, 620px); min-height: 260px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -66,8 +66,9 @@
     #qrcode img, #qrcode canvas { max-width: 82vw !important; max-height: 62vh !important; width: auto !important; height: auto !important; }
     #barcode { max-width: 92vw; max-height: 56vh; }
     .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
-    .code-buttons { margin-top: 28px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-    .close-code { min-width: 150px; }
+    .code-back-wrap { width: min(92vw, 520px); margin-top: 20px; display:flex; justify-content:center; }
+    .close-code { width:100%; min-height:56px; font-size:18px; font-weight:800; border-radius:14px; }
+    .reconstruct-corner { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:12px; z-index:2; min-height:34px; padding:6px 9px; border-radius:9px; font-size:12px; background:#f7f7f4; }
     #qrcode { position:relative; }
     .footnote { margin-top: 14px; color: var(--muted); font-size: 11px; text-align: center; line-height: 1.5; }
     .scan-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0 6px; }
@@ -116,7 +117,7 @@
     <main id="list" class="list"></main>
 
     <div class="footnote">
-      v0.9.9 — デコーダ抽出Matrixの回転・ミラー方向を自動補正して撮影時の向きで保存。QRは元パターン表示／再構成を切替可能。
+      v0.9.10 — コード表示画面の戻る操作を優先配置。並び替え時は対象カードが指の動きに追従。
     </div>
   </div>
 
@@ -239,14 +240,15 @@
   </div>
 
   <div class="codeview" id="codeView">
+    <button class="btn reconstruct-corner hidden" id="reconstructBtn">再構成</button>
     <div class="code-title" id="codeTitle"></div>
     <div id="codeArea">
       <div id="qrcode"></div>
       <svg id="barcode"></svg>
     </div>
+    <div class="code-back-wrap"><button class="btn close-code" id="closeCodeBtn">戻る</button></div>
     <div class="code-text" id="codeText"></div>
     <div class="scan-status" id="codeVerify" style="text-align:center;max-width:92vw"></div>
-    <div class="code-buttons"><button class="btn close-code" id="closeCodeBtn">戻る</button><button class="btn close-code hidden" id="reconstructBtn">再構成</button></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
@@ -430,8 +432,9 @@
       const row = e.currentTarget.closest(".item");
       if (!row) return;
       e.currentTarget.setPointerCapture?.(e.pointerId);
-      dragState = { id, pointerId: e.pointerId, row, targetIndex: items.findIndex(x => x.id === id) };
+      dragState = { id, pointerId: e.pointerId, row, targetIndex: items.findIndex(x => x.id === id), startY: e.clientY };
       row.classList.add("dragging");
+      row.style.willChange = "transform";
       document.addEventListener("pointermove", dragMove, { passive:false });
       document.addEventListener("pointerup", endDrag, { once:true });
       document.addEventListener("pointercancel", endDrag, { once:true });
@@ -440,6 +443,8 @@
     function dragMove(e) {
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       e.preventDefault();
+      const dy = e.clientY - dragState.startY;
+      dragState.row.style.transform = `translateY(${dy}px) scale(1.01)`;
       const rows = [...list.querySelectorAll(".item")];
       let target = rows.length - 1;
       for (let i = 0; i < rows.length; i++) {
@@ -455,6 +460,8 @@
       const from = items.findIndex(x => x.id === dragState.id);
       const to = dragState.targetIndex;
       dragState.row.classList.remove("dragging");
+      dragState.row.style.transform = "";
+      dragState.row.style.willChange = "";
       list.querySelectorAll(".drag-target").forEach(r => r.classList.remove("drag-target"));
       document.removeEventListener("pointermove", dragMove);
       if (from >= 0 && to >= 0 && from !== to) {
