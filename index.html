@@ -137,7 +137,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.02 — v1.01起動不具合修正。メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
+        v1.03 — グループ色設定の初期化順序を修正。メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
       </div>
     </div>
   </div>
@@ -300,6 +300,15 @@
     const STORAGE_KEY = "idPortalItems.v01";
     const SETTINGS_KEY = "idPortalSettings.v10";
 
+    const GROUP_COLOR_HEX = {
+      white:"#ffffff", blue:"#cfe0ff", green:"#ccebd5", yellow:"#ffe69a", orange:"#ffd0ad", pink:"#f6c7d8", purple:"#dccaff", gray:"#d7d7d2"
+    };
+    const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple"];
+
+    function validColorName(value, fallback="white") {
+      return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
+    }
+
     let settings = loadSettings();
     let activeTab = "star";
     let items = loadItems();
@@ -355,6 +364,8 @@
     let cameraRunning = false;
     let currentCodeSpec = null;
     let originalEditValue = "";
+    let activeQrItem = null;
+    let showingReconstructed = false;
 
     const codeView = document.getElementById("codeView");
     const codeTitle = document.getElementById("codeTitle");
@@ -405,15 +416,6 @@
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
       return item;
-    }
-
-    const GROUP_COLOR_HEX = {
-      white:"#ffffff", blue:"#cfe0ff", green:"#ccebd5", yellow:"#ffe69a", orange:"#ffd0ad", pink:"#f6c7d8", purple:"#dccaff", gray:"#d7d7d2"
-    };
-    const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple"];
-
-    function validColorName(value, fallback="white") {
-      return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
     }
 
     function loadSettings() {
