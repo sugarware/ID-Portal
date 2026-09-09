@@ -37,6 +37,8 @@
     .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 92px; gap:8px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
     .group-setting-row input, .group-setting-row select { min-height:40px; padding:9px 10px; }
+    .group-setting-row select { font-weight:700; transition:background-color .12s ease; }
+    .data-file-actions .btn { min-width:0; white-space:nowrap; font-size:clamp(13px,3.7vw,16px); padding-left:6px; padding-right:6px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .toolbar { display: flex; gap: 8px; }
@@ -137,7 +139,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.03 — グループ色設定の初期化順序を修正。メニュー／タブ固定、グループ色設定、項目色の視認性を改善。
+        v1.04 — File画面のボタン改行を改善。グループ色選択を背景色で表示。
       </div>
     </div>
   </div>
@@ -147,7 +149,7 @@
     <div class="sheet">
       <h2>データ保存・読み込み</h2>
       <div class="notice">登録データをJSONファイルとして保存できます。アプリ更新前のバックアップとして利用してください。</div>
-      <div class="actions">
+      <div class="actions data-file-actions">
         <button class="btn primary" id="exportBtn" type="button">ファイルに保存</button>
         <button class="btn" id="importBtn" type="button">ファイルから読み込み</button>
       </div>
@@ -454,7 +456,11 @@
         btn.classList.toggle("active", key === activeTab);
       });
       groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
-      groupColorInputs.forEach((input,i) => input.value = validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]));
+      groupColorInputs.forEach((input,i) => {
+        input.value = validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]);
+        input.style.backgroundColor = GROUP_COLOR_HEX[input.value];
+        input.style.color = "var(--text)";
+      });
       [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
     }
 
@@ -1604,6 +1610,16 @@
       reorderBtn.textContent = "↓↑";
       refreshTabs();
       render();
+    });
+
+    groupColorInputs.forEach((input,i) => {
+      const paint = () => {
+        const colorName = validColorName(input.value, DEFAULT_GROUP_COLORS[i]);
+        input.style.backgroundColor = GROUP_COLOR_HEX[colorName];
+        input.style.color = "var(--text)";
+      };
+      input.addEventListener("change", paint);
+      input.addEventListener("input", paint);
     });
 
     saveGroupNamesBtn.addEventListener("click", () => {
