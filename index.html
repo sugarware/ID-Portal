@@ -22,13 +22,13 @@
       --shadow: 0 8px 24px rgba(0,0,0,.08);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; width:100%; height:100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    html, body { margin:0; padding:0; width:100%; height:100%; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
     button, input, select { font: inherit; }
-    body { min-height:100%; overflow:hidden; }
-    .app { max-width: 720px; height:100vh; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; }
+    body { position:fixed; inset:0; min-height:0; overflow:hidden; touch-action:none; }
+    .app { max-width:720px; width:100%; height:100%; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin:0 0 8px; }
-    .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; margin:0 0 8px; }
+    .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
     .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
     .tab.star-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:none; }
@@ -133,13 +133,14 @@
       <button class="tab" type="button" data-tab="2">Grp2</button>
       <button class="tab" type="button" data-tab="3">Grp3</button>
       <button class="tab" type="button" data-tab="4">Grp4</button>
+      <button class="tab" type="button" data-tab="5">Grp5</button>
     </nav>
 
     <div class="content-scroll" id="contentScroll">
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.06 — 公式アイコンを更新。QRコードのファインダーパターンを目立たせた新デザインを採用。
+        v1.07 — Grp5追加。タイプ表示をApp1/App2/Link/QR/BARに整理。画面全体スクロールを禁止。新規項目は☆で追加。
       </div>
     </div>
   </div>
@@ -162,6 +163,7 @@
           <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><select id="groupColor2" aria-label="Grp2の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
           <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><select id="groupColor3" aria-label="Grp3の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
           <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><select id="groupColor4" aria-label="Grp4の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
+          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><select id="groupColor5" aria-label="Grp5の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
         </div>
         <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ設定を保存</button>
       </div>
@@ -203,10 +205,11 @@
         <div class="field">
           <label for="type">動作</label>
           <select id="type">
-            <option value="qr">QRコードを表示</option>
-            <option value="barcode">バーコードを表示</option>
-            <option value="shortcut">公式アプリを開く（ショートカット）</option>
-            <option value="link">URLを開く</option>
+            <option value="app1">App1　URLスキームでアプリ起動</option>
+            <option value="shortcut">App2　ショートカットでアプリ起動</option>
+            <option value="link">Link　普通のURLを開く</option>
+            <option value="qr">QR　QRコードを表示</option>
+            <option value="barcode">BAR　バーコードを表示</option>
           </select>
         </div>
 
@@ -254,6 +257,7 @@
           <option value="2">Grp2</option>
           <option value="3">Grp3</option>
           <option value="4">Grp4</option>
+          <option value="5">Grp5</option>
         </select>
       </div>
 
@@ -305,7 +309,7 @@
     const GROUP_COLOR_HEX = {
       white:"#ffffff", blue:"#cfe0ff", green:"#ccebd5", yellow:"#ffe69a", orange:"#ffd0ad", pink:"#f6c7d8", purple:"#dccaff", gray:"#d7d7d2"
     };
-    const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple"];
+    const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple","gray"];
 
     function validColorName(value, fallback="white") {
       return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
@@ -328,8 +332,8 @@
     const importBtn = document.getElementById("importBtn");
     const importFileInput = document.getElementById("importFileInput");
     const closeDataBtn = document.getElementById("closeDataBtn");
-    const groupNameInputs = [1,2,3,4].map(i => document.getElementById(`groupName${i}`));
-    const groupColorInputs = [1,2,3,4].map(i => document.getElementById(`groupColor${i}`));
+    const groupNameInputs = [1,2,3,4,5].map(i => document.getElementById(`groupName${i}`));
+    const groupColorInputs = [1,2,3,4,5].map(i => document.getElementById(`groupColor${i}`));
     const saveGroupNamesBtn = document.getElementById("saveGroupNamesBtn");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
@@ -408,12 +412,12 @@
       const item = {
         id: x.id || crypto.randomUUID(),
         name: String(x.name || ""),
-        type: ["qr","barcode","shortcut","link"].includes(x.type) ? x.type : "qr",
+        type: ["qr","barcode","shortcut","link","app1"].includes(x.type) ? x.type : "qr",
         value: String(x.value || ""),
         barcodeFormat: x.barcodeFormat || "CODE128",
         color: x.color || "white",
         favorite: x.favorite !== false,
-        group: [1,2,3,4].includes(rawGroup) ? rawGroup : 1,
+        group: [1,2,3,4,5].includes(rawGroup) ? rawGroup : 1,
         codeSpec: x.codeSpec || null
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
@@ -423,17 +427,15 @@
     function loadSettings() {
       try {
         const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
-        if (saved && Array.isArray(saved.groupNames) && saved.groupNames.length === 4) {
-          const colors = Array.isArray(saved.groupColors) && saved.groupColors.length === 4
-            ? saved.groupColors.map((x,i) => validColorName(x, DEFAULT_GROUP_COLORS[i]))
-            : DEFAULT_GROUP_COLORS.slice();
-          return {
-            groupNames: saved.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)),
-            groupColors: colors
-          };
+        if (saved && Array.isArray(saved.groupNames) && (saved.groupNames.length === 4 || saved.groupNames.length === 5)) {
+          const names = saved.groupNames.slice(0,5);
+          while (names.length < 5) names.push(`Grp${names.length+1}`);
+          const srcColors = Array.isArray(saved.groupColors) ? saved.groupColors.slice(0,5) : [];
+          const colors = DEFAULT_GROUP_COLORS.map((fallback,i) => validColorName(srcColors[i], fallback));
+          return { groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)), groupColors:colors };
         }
       } catch {}
-      return { groupNames: ["Grp1","Grp2","Grp3","Grp4"], groupColors: DEFAULT_GROUP_COLORS.slice() };
+      return { groupNames:["Grp1","Grp2","Grp3","Grp4","Grp5"], groupColors:DEFAULT_GROUP_COLORS.slice() };
     }
 
     function saveSettings() {
@@ -487,10 +489,12 @@
     }
 
     function typeLabel(item) {
-      if (item.type === "qr") return "コード表示";
-      if (item.type === "barcode") return "コード表示";
-      if (item.type === "shortcut") return "公式アプリ";
-      return "リンク";
+      if (item.type === "app1") return "App1";
+      if (item.type === "shortcut") return "App2";
+      if (item.type === "link") return "Link";
+      if (item.type === "qr") return "QR";
+      if (item.type === "barcode") return "BAR";
+      return "";
     }
 
     function render() {
@@ -626,7 +630,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 9,
+        version: 10,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -661,12 +665,13 @@
         const normalized = data.items.map(normalizeItem);
         if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
         items = normalized;
-        if (data.settings && Array.isArray(data.settings.groupNames) && data.settings.groupNames.length === 4) {
+        if (data.settings && Array.isArray(data.settings.groupNames) && (data.settings.groupNames.length === 4 || data.settings.groupNames.length === 5)) {
+          const names = data.settings.groupNames.slice(0,5);
+          while (names.length < 5) names.push(`Grp${names.length+1}`);
+          const srcColors = Array.isArray(data.settings.groupColors) ? data.settings.groupColors.slice(0,5) : [];
           settings = {
-            groupNames: data.settings.groupNames.map((x,i) => String(x || `Grp${i+1}`).slice(0,12)),
-            groupColors: Array.isArray(data.settings.groupColors) && data.settings.groupColors.length === 4
-              ? data.settings.groupColors.map((x,i) => validColorName(x, DEFAULT_GROUP_COLORS[i]))
-              : DEFAULT_GROUP_COLORS.slice()
+            groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)),
+            groupColors:DEFAULT_GROUP_COLORS.map((fallback,i)=>validColorName(srcColors[i],fallback))
           };
           saveSettings();
         }
@@ -740,7 +745,10 @@
       barcodeFormatField.classList.toggle("hidden", type !== "barcode");
       shortcutSetupField.classList.toggle("hidden", type !== "shortcut");
 
-      if (type === "link") {
+      if (type === "app1") {
+        valueLabel.textContent = "URLスキーム";
+        valueInput.placeholder = "例：sampleapp://";
+      } else if (type === "link") {
         valueLabel.textContent = "URL";
         valueInput.placeholder = "例：https://example.com";
       } else if (type === "shortcut") {
@@ -1422,6 +1430,7 @@
     function validate(item) {
       if (!item.name.trim()) return "表示名を入力してください。";
       if (!item.value.trim()) {
+        if (item.type === "app1") return "URLスキームを入力してください。";
         if (item.type === "link") return "URLを入力してください。";
         if (item.type === "shortcut") return "ショートカット名を入力してください。";
         return "コード内容を入力してください。";
@@ -1453,7 +1462,7 @@
         value: valueNow,
         barcodeFormat: barcodeFormatInput.value,
         color: selectedColor,
-        favorite: existing ? existing.favorite : true,
+        favorite: existing ? existing.favorite : false,
         group: Number(groupSelect.value) || 1,
         codeSpec: spec
       };
@@ -1482,6 +1491,10 @@
     }
 
     async function activate(item) {
+      if (item.type === "app1") {
+        window.location.href = item.value;
+        return;
+      }
       if (item.type === "shortcut") {
         const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent(item.value)}`;
         window.location.href = shortcutUrl;
@@ -1602,6 +1615,11 @@
       }
     }
 
+    // iOS PWAでも画面全体は固定し、一覧とモーダル内部だけスクロール可能にする。
+    document.addEventListener("touchmove", (e) => {
+      if (!e.target.closest(".content-scroll, .sheet")) e.preventDefault();
+    }, { passive:false });
+
     tabBar.addEventListener("click", (e) => {
       const btn = e.target.closest(".tab");
       if (!btn) return;
@@ -1660,7 +1678,7 @@
       typeInput.value = "shortcut";
       valueInput.value = suggestedShortcutName();
       updateFormFields();
-      setScanStatus("公式アプリはAppleショートカットを経由して起動します。");
+      setScanStatus("App2：公式アプリをAppleショートカット経由で起動します。");
       if (!nameInput.value.trim()) nameInput.focus();
     });
 
