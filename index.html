@@ -32,15 +32,15 @@
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
     .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
-    .tab.star-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:none; }
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
-    .tab.location-tab.active { background:#2f7d4a; border-color:#2f7d4a; color:#fff; box-shadow:none; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
-    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 92px; gap:8px; align-items:center; }
+    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 138px; gap:8px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
-    .group-setting-row input, .group-setting-row select { min-height:40px; padding:9px 10px; }
-    .group-setting-row select { font-weight:700; transition:background-color .12s ease; }
+    .group-setting-row input { min-height:40px; padding:9px 10px; }
+    .mini-palette { display:grid; grid-template-columns:repeat(8,14px); gap:3px; align-items:center; justify-content:end; }
+    .mini-color { width:14px; height:14px; padding:0; border-radius:4px; border:1px solid rgba(0,0,0,.18); cursor:pointer; box-shadow:none; }
+    .mini-color.selected { outline:2px solid #111827; outline-offset:1px; }
     .data-file-actions .btn { min-width:0; white-space:nowrap; font-size:clamp(13px,3.7vw,16px); padding-left:6px; padding-right:6px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -51,7 +51,7 @@
     .list { display: grid; gap: 6px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
     .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
-    .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-green{background:#ccebd5}.item.color-yellow{background:#ffe69a}.item.color-orange{background:#ffd0ad}.item.color-pink{background:#f6c7d8}.item.color-purple{background:#dccaff}.item.color-gray{background:#d7d7d2}
+    .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
     .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
@@ -109,10 +109,10 @@
     .detect-box { position:absolute; border:5px solid #24d05a; border-radius:10px; box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 18px rgba(36,208,90,.55); z-index:8; pointer-events:none; transition:all .08s linear; }
     .detect-label { position:absolute; left:0; top:-36px; background:#24d05a; color:#07140a; font-size:14px; font-weight:800; padding:6px 10px; border-radius:8px; white-space:nowrap; max-width:70vw; overflow:hidden; text-overflow:ellipsis; }
     .notice { margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: #f7f7f4; font-size: 12px; line-height: 1.5; color: var(--muted); }
-    .color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-    .color-choice { min-height:40px; border:2px solid transparent; border-radius:10px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .color-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
+    .color-choice { min-height:36px; border:2px solid transparent; border-radius:9px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:2px; }
     .color-choice.selected { border-color:var(--accent); }
-    .color-dot { width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+    .color-dot { width:24px; height:24px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
     .location-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
     .location-list { display:grid; gap:7px; margin-top:9px; }
     .location-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:11px; padding:9px 10px; }
@@ -153,7 +153,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.10 — 📍タブと複数位置情報登録（現在地／地図）を追加。200m以内のIDを表示。
+        v1.12 — 地図上の登録地点をタップして情報確認・削除できるように改善。
       </div>
     </div>
   </div>
@@ -172,11 +172,13 @@
       <div class="field">
         <label>グループ設定</label>
         <div class="group-settings">
-          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><select id="groupColor1" aria-label="Grp1の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
-          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><select id="groupColor2" aria-label="Grp2の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
-          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><select id="groupColor3" aria-label="Grp3の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
-          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><select id="groupColor4" aria-label="Grp4の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
-          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><select id="groupColor5" aria-label="Grp5の色"><option value="blue">青</option><option value="green">緑</option><option value="yellow">黄</option><option value="orange">橙</option><option value="pink">桃</option><option value="purple">紫</option><option value="gray">灰</option><option value="white">白</option></select></label>
+          <div class="group-setting-row"><span>⭐️</span><input value="お気に入り" disabled aria-label="お気に入り"><div class="mini-palette" id="tabColorStar" aria-label="⭐️タブの色"></div></div>
+          <div class="group-setting-row"><span>📍</span><input value="現在地" disabled aria-label="現在地"><div class="mini-palette" id="tabColorLocation" aria-label="📍タブの色"></div></div>
+          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><div class="mini-palette" id="groupColor1" aria-label="Grp1の色"></div></label>
+          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><div class="mini-palette" id="groupColor2" aria-label="Grp2の色"></div></label>
+          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><div class="mini-palette" id="groupColor3" aria-label="Grp3の色"></div></label>
+          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><div class="mini-palette" id="groupColor4" aria-label="Grp4の色"></div></label>
+          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><div class="mini-palette" id="groupColor5" aria-label="Grp5の色"></div></label>
         </div>
         <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ設定を保存</button>
       </div>
@@ -287,14 +289,22 @@
       <div class="field">
         <label>ボタン色</label>
         <div class="color-grid" id="colorGrid">
-          <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
-          <button type="button" class="color-choice" data-color="blue"><span class="color-dot" style="background:#cfe0ff"></span></button>
-          <button type="button" class="color-choice" data-color="green"><span class="color-dot" style="background:#ccebd5"></span></button>
-          <button type="button" class="color-choice" data-color="yellow"><span class="color-dot" style="background:#ffe69a"></span></button>
-          <button type="button" class="color-choice" data-color="orange"><span class="color-dot" style="background:#ffd0ad"></span></button>
-          <button type="button" class="color-choice" data-color="pink"><span class="color-dot" style="background:#f6c7d8"></span></button>
-          <button type="button" class="color-choice" data-color="purple"><span class="color-dot" style="background:#dccaff"></span></button>
-          <button type="button" class="color-choice" data-color="gray"><span class="color-dot" style="background:#d7d7d2"></span></button>
+          <button type="button" class="color-choice" data-color="white" aria-label="white"><span class="color-dot" style="background:#ffffff"></span></button>
+          <button type="button" class="color-choice" data-color="blue" aria-label="blue"><span class="color-dot" style="background:#cfe0ff"></span></button>
+          <button type="button" class="color-choice" data-color="sky" aria-label="sky"><span class="color-dot" style="background:#bfe7ff"></span></button>
+          <button type="button" class="color-choice" data-color="cyan" aria-label="cyan"><span class="color-dot" style="background:#bfeeed"></span></button>
+          <button type="button" class="color-choice" data-color="green" aria-label="green"><span class="color-dot" style="background:#ccebd5"></span></button>
+          <button type="button" class="color-choice" data-color="lime" aria-label="lime"><span class="color-dot" style="background:#e1efb9"></span></button>
+          <button type="button" class="color-choice" data-color="yellow" aria-label="yellow"><span class="color-dot" style="background:#ffe69a"></span></button>
+          <button type="button" class="color-choice" data-color="cream" aria-label="cream"><span class="color-dot" style="background:#fff0c7"></span></button>
+          <button type="button" class="color-choice" data-color="orange" aria-label="orange"><span class="color-dot" style="background:#ffd0ad"></span></button>
+          <button type="button" class="color-choice" data-color="coral" aria-label="coral"><span class="color-dot" style="background:#ffc5b8"></span></button>
+          <button type="button" class="color-choice" data-color="pink" aria-label="pink"><span class="color-dot" style="background:#f6c7d8"></span></button>
+          <button type="button" class="color-choice" data-color="rose" aria-label="rose"><span class="color-dot" style="background:#efb8c6"></span></button>
+          <button type="button" class="color-choice" data-color="purple" aria-label="purple"><span class="color-dot" style="background:#dccaff"></span></button>
+          <button type="button" class="color-choice" data-color="lavender" aria-label="lavender"><span class="color-dot" style="background:#e8ddff"></span></button>
+          <button type="button" class="color-choice" data-color="gray" aria-label="gray"><span class="color-dot" style="background:#d7d7d2"></span></button>
+          <button type="button" class="color-choice" data-color="slate" aria-label="slate"><span class="color-dot" style="background:#c7d0d9"></span></button>
         </div>
       </div>
 
@@ -344,12 +354,41 @@
     const SETTINGS_KEY = "idPortalSettings.v10";
 
     const GROUP_COLOR_HEX = {
-      white:"#ffffff", blue:"#cfe0ff", green:"#ccebd5", yellow:"#ffe69a", orange:"#ffd0ad", pink:"#f6c7d8", purple:"#dccaff", gray:"#d7d7d2"
+      white:"#ffffff", blue:"#cfe0ff", sky:"#bfe7ff", cyan:"#bfeeed", green:"#ccebd5", lime:"#e1efb9", yellow:"#ffe69a", cream:"#fff0c7",
+      orange:"#ffd0ad", coral:"#ffc5b8", pink:"#f6c7d8", rose:"#efb8c6", purple:"#dccaff", lavender:"#e8ddff", gray:"#d7d7d2", slate:"#c7d0d9"
     };
+    const COLOR_NAMES = Object.keys(GROUP_COLOR_HEX);
     const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple","gray"];
 
     function validColorName(value, fallback="white") {
       return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
+    }
+
+    function renderMiniPalette(container, selected) {
+      if (!container) return;
+      container.innerHTML = "";
+      COLOR_NAMES.forEach(name => {
+        const b=document.createElement("button");
+        b.type="button"; b.className="mini-color" + (name===selected ? " selected" : "");
+        b.dataset.color=name; b.style.background=GROUP_COLOR_HEX[name]; b.setAttribute("aria-label",name);
+        container.appendChild(b);
+      });
+    }
+
+    function paletteValue(container, fallback="white") {
+      return validColorName(container?.dataset.selectedColor, fallback);
+    }
+
+    function wireMiniPalette(container, initial, onSelect) {
+      if (!container) return;
+      container.dataset.selectedColor=validColorName(initial,"white");
+      renderMiniPalette(container, container.dataset.selectedColor);
+      container.addEventListener("click", e => {
+        const b=e.target.closest(".mini-color"); if(!b) return;
+        container.dataset.selectedColor=b.dataset.color;
+        renderMiniPalette(container,b.dataset.color);
+        onSelect?.(b.dataset.color);
+      });
     }
 
     let settings = loadSettings();
@@ -362,6 +401,7 @@
     let editLocations = [];
     let mapInstance = null;
     let mapMarker = null;
+    let mapExistingMarkers = [];
     let mapSelected = null;
 
     const list = document.getElementById("list");
@@ -377,6 +417,8 @@
     const closeDataBtn = document.getElementById("closeDataBtn");
     const groupNameInputs = [1,2,3,4,5].map(i => document.getElementById(`groupName${i}`));
     const groupColorInputs = [1,2,3,4,5].map(i => document.getElementById(`groupColor${i}`));
+    const tabColorStar = document.getElementById("tabColorStar");
+    const tabColorLocation = document.getElementById("tabColorLocation");
     const saveGroupNamesBtn = document.getElementById("saveGroupNamesBtn");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
@@ -485,10 +527,15 @@
           while (names.length < 5) names.push(`Grp${names.length+1}`);
           const srcColors = Array.isArray(saved.groupColors) ? saved.groupColors.slice(0,5) : [];
           const colors = DEFAULT_GROUP_COLORS.map((fallback,i) => validColorName(srcColors[i], fallback));
-          return { groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)), groupColors:colors };
+          return {
+            groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)),
+            groupColors:colors,
+            starColor:validColorName(saved.starColor,"white"),
+            locationColor:validColorName(saved.locationColor,"white")
+          };
         }
       } catch {}
-      return { groupNames:["Grp1","Grp2","Grp3","Grp4","Grp5"], groupColors:DEFAULT_GROUP_COLORS.slice() };
+      return { groupNames:["Grp1","Grp2","Grp3","Grp4","Grp5"], groupColors:DEFAULT_GROUP_COLORS.slice(), starColor:"white", locationColor:"white" };
     }
 
     function saveSettings() {
@@ -505,20 +552,18 @@
           btn.style.background = GROUP_COLOR_HEX[colorName];
           btn.style.color = "var(--text)";
         } else if (key === "star") {
-          btn.style.background = key === activeTab ? "var(--accent)" : "#fff";
-          btn.style.color = key === activeTab ? "#fff" : "var(--text)";
+          btn.style.background = GROUP_COLOR_HEX[validColorName(settings.starColor,"white")];
+          btn.style.color = "var(--text)";
         } else if (key === "location") {
-          btn.style.background = key === activeTab ? "#2f7d4a" : "#fff";
-          btn.style.color = key === activeTab ? "#fff" : "var(--text)";
+          btn.style.background = GROUP_COLOR_HEX[validColorName(settings.locationColor,"white")];
+          btn.style.color = "var(--text)";
         }
         btn.classList.toggle("active", key === activeTab);
       });
       groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
-      groupColorInputs.forEach((input,i) => {
-        input.value = validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]);
-        input.style.backgroundColor = GROUP_COLOR_HEX[input.value];
-        input.style.color = "var(--text)";
-      });
+      tabColorStar.dataset.selectedColor=validColorName(settings.starColor,"white"); renderMiniPalette(tabColorStar, tabColorStar.dataset.selectedColor);
+      tabColorLocation.dataset.selectedColor=validColorName(settings.locationColor,"white"); renderMiniPalette(tabColorLocation, tabColorLocation.dataset.selectedColor);
+      groupColorInputs.forEach((input,i) => { input.dataset.selectedColor=validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]); renderMiniPalette(input, input.dataset.selectedColor); });
       [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
     }
 
@@ -747,7 +792,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 110,
+        version: 112,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -788,7 +833,9 @@
           const srcColors = Array.isArray(data.settings.groupColors) ? data.settings.groupColors.slice(0,5) : [];
           settings = {
             groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)),
-            groupColors:DEFAULT_GROUP_COLORS.map((fallback,i)=>validColorName(srcColors[i],fallback))
+            groupColors:DEFAULT_GROUP_COLORS.map((fallback,i)=>validColorName(srcColors[i],fallback)),
+            starColor:validColorName(data.settings.starColor,"white"),
+            locationColor:validColorName(data.settings.locationColor,"white")
           };
           saveSettings();
         }
@@ -887,8 +934,51 @@
           mapInstance.setView(center,zoom);
           if (mapMarker) { mapInstance.removeLayer(mapMarker); mapMarker=null; }
         }
+        renderMapExistingMarkers();
+        if (editLocations.length) {
+          const bounds=L.latLngBounds(editLocations.map(p=>[p.lat,p.lng]));
+          mapInstance.fitBounds(bounds.pad(0.25),{maxZoom:16});
+        }
         mapInstance.invalidateSize();
       },120);
+    }
+
+
+    function renderMapExistingMarkers() {
+      if (!mapInstance || typeof L === "undefined") return;
+      mapExistingMarkers.forEach(m=>mapInstance.removeLayer(m));
+      mapExistingMarkers=[];
+      editLocations.forEach((p,i)=>{
+        const m=L.marker([p.lat,p.lng]).addTo(mapInstance);
+        const popup=document.createElement("div");
+        popup.style.minWidth="180px";
+        const title=document.createElement("div");
+        title.style.fontWeight="700";
+        title.style.marginBottom="5px";
+        title.textContent=p.label || `地点${i+1}`;
+        const coord=document.createElement("div");
+        coord.style.fontSize="12px";
+        coord.style.marginBottom="8px";
+        coord.textContent=`${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
+        const del=document.createElement("button");
+        del.type="button";
+        del.className="btn danger";
+        del.style.width="100%";
+        del.textContent="この地点を削除";
+        del.addEventListener("click",()=>{
+          editLocations.splice(i,1);
+          renderLocationList();
+          renderMapExistingMarkers();
+          if (editLocations.length) {
+            const bounds=L.latLngBounds(editLocations.map(q=>[q.lat,q.lng]));
+            mapInstance.fitBounds(bounds.pad(0.25),{maxZoom:16});
+          }
+        });
+        popup.append(title,coord,del);
+        m.bindPopup(popup,{closeButton:true});
+        m.bindTooltip(p.label || `地点${i+1}`);
+        mapExistingMarkers.push(m);
+      });
     }
 
     function closeMapPicker() { mapModal.classList.remove("show"); mapModal.setAttribute("aria-hidden","true"); }
@@ -1803,21 +1893,17 @@
       if (activeTab === "location") await refreshNearbyItems(); else render();
     });
 
-    groupColorInputs.forEach((input,i) => {
-      const paint = () => {
-        const colorName = validColorName(input.value, DEFAULT_GROUP_COLORS[i]);
-        input.style.backgroundColor = GROUP_COLOR_HEX[colorName];
-        input.style.color = "var(--text)";
-      };
-      input.addEventListener("change", paint);
-      input.addEventListener("input", paint);
-    });
+    wireMiniPalette(tabColorStar, settings.starColor || "white", c => tabColorStar.dataset.selectedColor=c);
+    wireMiniPalette(tabColorLocation, settings.locationColor || "white", c => tabColorLocation.dataset.selectedColor=c);
+    groupColorInputs.forEach((input,i) => wireMiniPalette(input, settings.groupColors?.[i] || DEFAULT_GROUP_COLORS[i], c => input.dataset.selectedColor=c));
 
     saveGroupNamesBtn.addEventListener("click", () => {
       // 編集欄に残ったフォーカスによるiOSの自動ズームを解除する。
       releaseFormFocus();
       settings.groupNames = groupNameInputs.map((input,i) => input.value.trim().slice(0,12) || `Grp${i+1}`);
-      settings.groupColors = groupColorInputs.map((input,i) => validColorName(input.value, DEFAULT_GROUP_COLORS[i]));
+      settings.groupColors = groupColorInputs.map((input,i) => paletteValue(input, DEFAULT_GROUP_COLORS[i]));
+      settings.starColor = paletteValue(tabColorStar,"white");
+      settings.locationColor = paletteValue(tabColorLocation,"white");
       saveSettings();
       refreshTabs();
       render();
