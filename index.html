@@ -164,7 +164,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.17 — 直近の現在地を各項目へ1タップで追加できる📍ボタンを追加。
+        v1.18 — 📍タブはシングルタップで一覧表示、ダブルタップで現在地を更新。
       </div>
     </div>
   </div>
@@ -2052,14 +2052,60 @@
       if (!e.target.closest(".content-scroll, .sheet")) e.preventDefault();
     }, { passive:false });
 
-    tabBar.addEventListener("click", async (e) => {
-      const btn = e.target.closest(".tab");
-      if (!btn) return;
+    function showLocationUpdatedNotice() {
+      const el=document.createElement("div");
+      el.textContent="現在地を更新しました";
+      el.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:3000;background:#222;color:#fff;padding:9px 14px;border-radius:999px;font-size:14px;box-shadow:0 2px 10px #0004;pointer-events:none;";
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),1400);
+    }
+
+    let locationTabSingleTimer = null;
+
+    function openTabWithoutLocationRefresh(btn) {
       activeTab = btn.dataset.tab || "star";
       document.body.classList.remove("reorder-mode");
       reorderBtn.textContent = "↓↑";
       refreshTabs();
-      if (activeTab === "location") await refreshNearbyItems(); else render();
+      render();
+    }
+
+    tabBar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+
+      if (btn.dataset.tab !== "location") {
+        if (locationTabSingleTimer) {
+          clearTimeout(locationTabSingleTimer);
+          locationTabSingleTimer = null;
+        }
+        openTabWithoutLocationRefresh(btn);
+        return;
+      }
+
+      // 📍はシングルタップでは前回取得済みの結果を表示するだけ。
+      // ダブルタップとの競合を避けるため、単発クリックの確定を少し待つ。
+      if (locationTabSingleTimer) clearTimeout(locationTabSingleTimer);
+      locationTabSingleTimer = setTimeout(() => {
+        locationTabSingleTimer = null;
+        openTabWithoutLocationRefresh(btn);
+      }, 280);
+    });
+
+    tabBar.addEventListener("dblclick", async (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn || btn.dataset.tab !== "location") return;
+      e.preventDefault();
+      if (locationTabSingleTimer) {
+        clearTimeout(locationTabSingleTimer);
+        locationTabSingleTimer = null;
+      }
+      activeTab = "location";
+      document.body.classList.remove("reorder-mode");
+      reorderBtn.textContent = "↓↑";
+      refreshTabs();
+      await refreshNearbyItems();
+      if (locationState.status === "ok") showLocationUpdatedNotice();
     });
 
     wireColorButton(tabColorStar, settings.starColor || "white", c => tabColorStar.dataset.selectedColor=c, "⭐️タブの色");
