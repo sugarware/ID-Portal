@@ -9,6 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="IDポータル">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <title>IDポータル</title>
   <style>
     :root {
@@ -27,12 +28,14 @@
     body { position:fixed; inset:0; min-height:0; overflow:hidden; touch-action:none; }
     .app { max-width:720px; width:100%; height:100%; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(6,minmax(0,1fr)); gap:4px; margin:0 0 8px; }
+    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin:0 0 8px; }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
     .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
     .tab.star-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:none; }
     .tab.star-tab { font-size:21px; line-height:1; }
+    .tab.location-tab { font-size:20px; line-height:1; }
+    .tab.location-tab.active { background:#2f7d4a; border-color:#2f7d4a; color:#fff; box-shadow:none; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
     .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 92px; gap:8px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
@@ -110,6 +113,15 @@
     .color-choice { min-height:40px; border:2px solid transparent; border-radius:10px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .color-choice.selected { border-color:var(--accent); }
     .color-dot { width:28px; height:28px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+    .location-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+    .location-list { display:grid; gap:7px; margin-top:9px; }
+    .location-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:11px; padding:9px 10px; }
+    .location-row-text { min-width:0; font-size:12px; color:var(--muted); line-height:1.4; word-break:break-all; }
+    .location-row-text strong { color:var(--text); font-size:13px; }
+    .location-remove { min-width:42px; min-height:36px; padding:6px 9px; }
+    #mapPicker { height:min(58vh,460px); border-radius:14px; overflow:hidden; background:#ddd; touch-action:auto; }
+    .map-help { color:var(--muted); font-size:12px; line-height:1.5; margin:8px 0; }
+    .location-error { text-align:left; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -129,6 +141,7 @@
 
     <nav class="tabbar" id="tabBar" aria-label="IDグループ">
       <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
+      <button class="tab location-tab" type="button" data-tab="location" aria-label="現在地周辺">📍</button>
       <button class="tab" type="button" data-tab="1">Grp1</button>
       <button class="tab" type="button" data-tab="2">Grp2</button>
       <button class="tab" type="button" data-tab="3">Grp3</button>
@@ -140,7 +153,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.08 — iOSでグループ名編集後に画面が拡大したまま戻る問題を修正。
+        v1.10 — 📍タブと複数位置情報登録（現在地／地図）を追加。200m以内のIDを表示。
       </div>
     </div>
   </div>
@@ -262,6 +275,16 @@
       </div>
 
       <div class="field">
+        <label>位置情報</label>
+        <div class="location-actions">
+          <button class="btn" id="addCurrentLocationBtn" type="button">現在地を追加</button>
+          <button class="btn" id="addMapLocationBtn" type="button">地図から追加</button>
+        </div>
+        <div class="location-list" id="locationList"></div>
+        <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
+      </div>
+
+      <div class="field">
         <label>ボタン色</label>
         <div class="color-grid" id="colorGrid">
           <button type="button" class="color-choice" data-color="white"><span class="color-dot" style="background:#fff"></span></button>
@@ -286,6 +309,19 @@
     </div>
   </div>
 
+  <div class="modal" id="mapModal" aria-hidden="true">
+    <div class="sheet">
+      <h2>地図から位置を追加</h2>
+      <div class="map-help">地図をタップして地点を選択してください。選択位置にマーカーが表示されます。</div>
+      <div id="mapPicker"></div>
+      <div class="scan-status" id="mapCoordText">地点を選択してください。</div>
+      <div class="actions">
+        <button class="btn" id="cancelMapBtn" type="button">キャンセル</button>
+        <button class="btn primary" id="confirmMapBtn" type="button">この位置を追加</button>
+      </div>
+    </div>
+  </div>
+
   <div class="codeview" id="codeView">
     <button class="btn reconstruct-corner hidden" id="reconstructBtn">再構成</button>
     <div class="code-title" id="codeTitle"></div>
@@ -302,6 +338,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
     const SETTINGS_KEY = "idPortalSettings.v10";
@@ -320,6 +357,12 @@
     let items = loadItems();
     let editingId = null;
     let wakeLock = null;
+    const LOCATION_RADIUS_M = 200;
+    let locationState = { status:"idle", current:null, distances:new Map(), errorMessage:"" };
+    let editLocations = [];
+    let mapInstance = null;
+    let mapMarker = null;
+    let mapSelected = null;
 
     const list = document.getElementById("list");
     const tabBar = document.getElementById("tabBar");
@@ -357,6 +400,13 @@
     const scanStatus = document.getElementById("scanStatus");
     const manualToggleBtn = document.getElementById("manualToggleBtn");
     const manualFields = document.getElementById("manualFields");
+    const locationList = document.getElementById("locationList");
+    const addCurrentLocationBtn = document.getElementById("addCurrentLocationBtn");
+    const addMapLocationBtn = document.getElementById("addMapLocationBtn");
+    const mapModal = document.getElementById("mapModal");
+    const mapCoordText = document.getElementById("mapCoordText");
+    const cancelMapBtn = document.getElementById("cancelMapBtn");
+    const confirmMapBtn = document.getElementById("confirmMapBtn");
     const appRegisterBtn = document.getElementById("appRegisterBtn");
     const shortcutSetupField = document.getElementById("shortcutSetupField");
     const shortcutNamePreview = document.getElementById("shortcutNamePreview");
@@ -418,7 +468,10 @@
         color: x.color || "white",
         favorite: x.favorite !== false,
         group: [1,2,3,4,5].includes(rawGroup) ? rawGroup : 1,
-        codeSpec: x.codeSpec || null
+        codeSpec: x.codeSpec || null,
+        locations: Array.isArray(x.locations) ? x.locations.map((p,i) => ({
+          lat:Number(p.lat), lng:Number(p.lng), label:String(p.label || `地点${i+1}`)
+        })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat)<=90 && Math.abs(p.lng)<=180) : []
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
       return item;
@@ -445,14 +498,17 @@
     function refreshTabs() {
       tabBar.querySelectorAll(".tab").forEach(btn => {
         const key = btn.dataset.tab;
-        if (key !== "star") {
+        if (["1","2","3","4","5"].includes(key)) {
           const idx = Number(key)-1;
           btn.textContent = settings.groupNames[idx] || `Grp${key}`;
           const colorName = validColorName(settings.groupColors?.[idx], DEFAULT_GROUP_COLORS[idx]);
           btn.style.background = GROUP_COLOR_HEX[colorName];
           btn.style.color = "var(--text)";
-        } else {
+        } else if (key === "star") {
           btn.style.background = key === activeTab ? "var(--accent)" : "#fff";
+          btn.style.color = key === activeTab ? "#fff" : "var(--text)";
+        } else if (key === "location") {
+          btn.style.background = key === activeTab ? "#2f7d4a" : "#fff";
           btn.style.color = key === activeTab ? "#fff" : "var(--text)";
         }
         btn.classList.toggle("active", key === activeTab);
@@ -468,8 +524,54 @@
 
     function visibleItems() {
       if (activeTab === "star") return items.filter(x => x.favorite);
+      if (activeTab === "location") {
+        if (locationState.status !== "ok") return [];
+        return items.filter(x => locationState.distances.has(x.id))
+          .slice().sort((a,b) => locationState.distances.get(a.id) - locationState.distances.get(b.id));
+      }
       const g = Number(activeTab);
       return items.filter(x => x.group === g);
+    }
+
+    function distanceMeters(aLat,aLng,bLat,bLng) {
+      const R=6371000, toRad=x=>x*Math.PI/180;
+      const dLat=toRad(bLat-aLat), dLng=toRad(bLng-aLng);
+      const s1=Math.sin(dLat/2), s2=Math.sin(dLng/2);
+      const h=s1*s1+Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*s2*s2;
+      return 2*R*Math.asin(Math.min(1,Math.sqrt(h)));
+    }
+
+    function positionErrorMessage(err) {
+      if (err?.code === 1) return "位置情報を取得できませんでした。位置情報の利用を許可してから、もう一度お試しください。";
+      if (err?.code === 2) return "現在地を取得できませんでした。電波状況の良い場所で、もう一度お試しください。";
+      if (err?.code === 3) return "現在地の取得がタイムアウトしました。もう一度お試しください。";
+      return "現在地を取得できませんでした。位置情報の設定を確認して、もう一度お試しください。";
+    }
+
+    function getCurrentPositionPromise() {
+      return new Promise((resolve,reject) => {
+        if (!navigator.geolocation) return reject({code:0});
+        navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:12000,maximumAge:0});
+      });
+    }
+
+    async function refreshNearbyItems() {
+      locationState={status:"loading",current:null,distances:new Map(),errorMessage:""};
+      render();
+      try {
+        const pos=await getCurrentPositionPromise();
+        const current={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
+        const distances=new Map();
+        for (const item of items) {
+          let min=Infinity;
+          for (const p of (item.locations || [])) min=Math.min(min,distanceMeters(current.lat,current.lng,p.lat,p.lng));
+          if (min <= LOCATION_RADIUS_M) distances.set(item.id,min);
+        }
+        locationState={status:"ok",current,distances,errorMessage:""};
+      } catch(err) {
+        locationState={status:"error",current:null,distances:new Map(),errorMessage:positionErrorMessage(err)};
+      }
+      render();
     }
 
     function loadItems() {
@@ -503,9 +605,16 @@
       if (!shown.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.innerHTML = activeTab === "star"
-          ? "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。"
-          : `${settings.groupNames[Number(activeTab)-1]}にはIDがありません。`;
+        if (activeTab === "star") {
+          empty.innerHTML = "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。";
+        } else if (activeTab === "location") {
+          if (locationState.status === "loading") empty.textContent = "現在地を取得しています…";
+          else if (locationState.status === "error") { empty.classList.add("location-error"); empty.textContent = locationState.errorMessage; }
+          else if (locationState.status === "ok") empty.textContent = "現在地から200m以内に登録されたIDはありません。";
+          else empty.textContent = "📍をタップすると、現在地から200m以内のIDを表示します。";
+        } else {
+          empty.textContent = `${settings.groupNames[Number(activeTab)-1]}にはIDがありません。`;
+        }
         list.appendChild(empty);
         return;
       }
@@ -638,7 +747,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 10,
+        version: 110,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -712,10 +821,12 @@
       valueInput.value = item?.value || "";
       originalEditValue = item?.value || "";
       currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
-      const initialGroup = item?.group || (activeTab === "star" ? 1 : Number(activeTab));
+      const initialGroup = item?.group || (["1","2","3","4","5"].includes(activeTab) ? Number(activeTab) : 1);
       groupSelect.value = String(initialGroup);
       selectedColor = item?.color || validColorName(settings.groupColors?.[initialGroup-1], DEFAULT_GROUP_COLORS[initialGroup-1]);
       updateColorSelection();
+      editLocations = item?.locations ? structuredClone(item.locations) : [];
+      renderLocationList();
       deleteRow.classList.toggle("hidden", !item);
       manualFields.classList.toggle("hidden", !item);
       manualToggleBtn.textContent = item ? "詳細設定を隠す" : "手入力・詳細設定";
@@ -728,6 +839,59 @@
       modal.setAttribute("aria-hidden", "false");
       setTimeout(() => nameInput.focus(), 50);
     }
+
+    function renderLocationList() {
+      locationList.innerHTML="";
+      if (!editLocations.length) {
+        const div=document.createElement("div"); div.className="scan-status"; div.textContent="位置情報は未登録です。"; locationList.appendChild(div); return;
+      }
+      editLocations.forEach((p,i) => {
+        const row=document.createElement("div"); row.className="location-row";
+        const txt=document.createElement("div"); txt.className="location-row-text";
+        txt.innerHTML=`<strong></strong><br>${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}`;
+        txt.querySelector("strong").textContent=p.label || `地点${i+1}`;
+        const del=document.createElement("button"); del.type="button"; del.className="btn location-remove"; del.textContent="削除";
+        del.addEventListener("click",()=>{ editLocations.splice(i,1); renderLocationList(); });
+        row.append(txt,del); locationList.appendChild(row);
+      });
+    }
+
+    async function addCurrentLocation() {
+      addCurrentLocationBtn.disabled=true;
+      const old=addCurrentLocationBtn.textContent; addCurrentLocationBtn.textContent="取得中…";
+      try {
+        const pos=await getCurrentPositionPromise();
+        editLocations.push({lat:pos.coords.latitude,lng:pos.coords.longitude,label:`現在地 ${editLocations.length+1}`});
+        renderLocationList();
+      } catch(err) { alert(positionErrorMessage(err)); }
+      finally { addCurrentLocationBtn.disabled=false; addCurrentLocationBtn.textContent=old; }
+    }
+
+    async function openMapPicker() {
+      mapSelected=null; mapCoordText.textContent="地点を選択してください。";
+      mapModal.classList.add("show"); mapModal.setAttribute("aria-hidden","false");
+      let center=[35.681236,139.767125];
+      let zoom=12;
+      try { const pos=await getCurrentPositionPromise(); center=[pos.coords.latitude,pos.coords.longitude]; zoom=16; } catch {}
+      setTimeout(()=>{
+        if (typeof L === "undefined") { mapCoordText.textContent="地図を読み込めませんでした。通信状態を確認してください。"; return; }
+        if (!mapInstance) {
+          mapInstance=L.map("mapPicker").setView(center,zoom);
+          L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(mapInstance);
+          mapInstance.on("click",e=>{
+            mapSelected={lat:e.latlng.lat,lng:e.latlng.lng};
+            if (mapMarker) mapMarker.setLatLng(e.latlng); else mapMarker=L.marker(e.latlng).addTo(mapInstance);
+            mapCoordText.textContent=`${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
+          });
+        } else {
+          mapInstance.setView(center,zoom);
+          if (mapMarker) { mapInstance.removeLayer(mapMarker); mapMarker=null; }
+        }
+        mapInstance.invalidateSize();
+      },120);
+    }
+
+    function closeMapPicker() { mapModal.classList.remove("show"); mapModal.setAttribute("aria-hidden","true"); }
 
     async function closeEdit() {
       await stopCamera();
@@ -1472,7 +1636,8 @@
         color: selectedColor,
         favorite: existing ? existing.favorite : false,
         group: Number(groupSelect.value) || 1,
-        codeSpec: spec
+        codeSpec: spec,
+        locations: structuredClone(editLocations)
       };
       const error = validate(item);
       if (error) return alert(error);
@@ -1628,14 +1793,14 @@
       if (!e.target.closest(".content-scroll, .sheet")) e.preventDefault();
     }, { passive:false });
 
-    tabBar.addEventListener("click", (e) => {
+    tabBar.addEventListener("click", async (e) => {
       const btn = e.target.closest(".tab");
       if (!btn) return;
       activeTab = btn.dataset.tab || "star";
       document.body.classList.remove("reorder-mode");
       reorderBtn.textContent = "↓↑";
       refreshTabs();
-      render();
+      if (activeTab === "location") await refreshNearbyItems(); else render();
     });
 
     groupColorInputs.forEach((input,i) => {
@@ -1705,6 +1870,16 @@
       }
     });
 
+
+    addCurrentLocationBtn.addEventListener("click", addCurrentLocation);
+    addMapLocationBtn.addEventListener("click", openMapPicker);
+    cancelMapBtn.addEventListener("click", closeMapPicker);
+    confirmMapBtn.addEventListener("click", () => {
+      if (!mapSelected) return alert("地図上で位置を選択してください。");
+      editLocations.push({lat:mapSelected.lat,lng:mapSelected.lng,label:`地図 ${editLocations.length+1}`});
+      renderLocationList(); closeMapPicker();
+    });
+    mapModal.addEventListener("click",e=>{ if(e.target===mapModal) closeMapPicker(); });
 
     groupSelect.addEventListener("change", () => {
       if (editingId) return;
