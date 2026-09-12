@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f5f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -69,7 +69,7 @@
     .sheet h2 { margin: 0 0 16px; font-size: 22px; }
     .field { margin: 14px 0; }
     label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
-    input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; }
+    input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; font-size:16px; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
     .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: calc(54px + env(safe-area-inset-top)) 18px 18px; }
     .codeview.show { display: flex; }
@@ -140,7 +140,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.07 — Grp5追加。タイプ表示をApp1/App2/Link/QR/BARに整理。画面全体スクロールを禁止。新規項目は☆で追加。
+        v1.08 — iOSでグループ名編集後に画面が拡大したまま戻る問題を修正。
       </div>
     </div>
   </div>
@@ -622,7 +622,15 @@
       dataModal.setAttribute("aria-hidden", "false");
     }
 
+    function releaseFormFocus() {
+      const el = document.activeElement;
+      if (el && typeof el.blur === "function") el.blur();
+    }
+
     function closeDataModal() {
+      // iOS Safari/PWAは入力欄フォーカス時の拡大表示が、
+      // モーダルを閉じた後も残ることがあるため先にフォーカスを外す。
+      releaseFormFocus();
       dataModal.classList.remove("show");
       dataModal.setAttribute("aria-hidden", "true");
     }
@@ -1641,6 +1649,8 @@
     });
 
     saveGroupNamesBtn.addEventListener("click", () => {
+      // 編集欄に残ったフォーカスによるiOSの自動ズームを解除する。
+      releaseFormFocus();
       settings.groupNames = groupNameInputs.map((input,i) => input.value.trim().slice(0,12) || `Grp${i+1}`);
       settings.groupColors = groupColorInputs.map((input,i) => validColorName(input.value, DEFAULT_GROUP_COLORS[i]));
       saveSettings();
