@@ -35,12 +35,18 @@
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
-    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 138px; gap:8px; align-items:center; }
+    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 54px; gap:8px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
     .group-setting-row input { min-height:40px; padding:9px 10px; }
-    .mini-palette { display:grid; grid-template-columns:repeat(8,14px); gap:3px; align-items:center; justify-content:end; }
-    .mini-color { width:14px; height:14px; padding:0; border-radius:4px; border:1px solid rgba(0,0,0,.18); cursor:pointer; box-shadow:none; }
-    .mini-color.selected { outline:2px solid #111827; outline-offset:1px; }
+    .color-current { width:48px; height:40px; padding:5px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .color-current-swatch { width:30px; height:26px; border-radius:7px; border:1px solid rgba(0,0,0,.18); display:block; }
+    .color-picker-modal { z-index:60; align-items:center; padding:18px; }
+    .color-picker-card { width:min(430px,100%); background:var(--bg); border-radius:18px; padding:18px; box-shadow:0 16px 50px rgba(0,0,0,.24); }
+    .color-picker-card h3 { margin:0 0 14px; font-size:18px; }
+    .large-color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    .large-color-choice { aspect-ratio:1.25; min-height:58px; border:3px solid transparent; border-radius:13px; padding:6px; background:#fff; cursor:pointer; }
+    .large-color-choice.selected { border-color:#111827; box-shadow:0 0 0 2px rgba(255,255,255,.9) inset; }
+    .large-color-swatch { width:100%; height:100%; min-height:42px; border-radius:8px; border:1px solid rgba(0,0,0,.14); display:block; }
     .data-file-actions .btn { min-width:0; white-space:nowrap; font-size:clamp(13px,3.7vw,16px); padding-left:6px; padding-right:6px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -109,10 +115,7 @@
     .detect-box { position:absolute; border:5px solid #24d05a; border-radius:10px; box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 18px rgba(36,208,90,.55); z-index:8; pointer-events:none; transition:all .08s linear; }
     .detect-label { position:absolute; left:0; top:-36px; background:#24d05a; color:#07140a; font-size:14px; font-weight:800; padding:6px 10px; border-radius:8px; white-space:nowrap; max-width:70vw; overflow:hidden; text-overflow:ellipsis; }
     .notice { margin-top: 10px; padding: 10px 11px; border-radius: 10px; background: #f7f7f4; font-size: 12px; line-height: 1.5; color: var(--muted); }
-    .color-grid { display:grid; grid-template-columns:repeat(8,1fr); gap:6px; }
-    .color-choice { min-height:36px; border:2px solid transparent; border-radius:9px; background:white; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:2px; }
-    .color-choice.selected { border-color:var(--accent); }
-    .color-dot { width:24px; height:24px; border-radius:50%; border:1px solid rgba(0,0,0,.15); }
+
     .location-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
     .location-list { display:grid; gap:7px; margin-top:9px; }
     .location-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; background:#fff; border:1px solid var(--line); border-radius:11px; padding:9px 10px; }
@@ -153,7 +156,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.12 — 地図上の登録地点をタップして情報確認・削除できるように改善。
+        v1.13 — 色設定を選択色ボタン＋大型カラーパレット方式に改善。
       </div>
     </div>
   </div>
@@ -172,13 +175,13 @@
       <div class="field">
         <label>グループ設定</label>
         <div class="group-settings">
-          <div class="group-setting-row"><span>⭐️</span><input value="お気に入り" disabled aria-label="お気に入り"><div class="mini-palette" id="tabColorStar" aria-label="⭐️タブの色"></div></div>
-          <div class="group-setting-row"><span>📍</span><input value="現在地" disabled aria-label="現在地"><div class="mini-palette" id="tabColorLocation" aria-label="📍タブの色"></div></div>
-          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><div class="mini-palette" id="groupColor1" aria-label="Grp1の色"></div></label>
-          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><div class="mini-palette" id="groupColor2" aria-label="Grp2の色"></div></label>
-          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><div class="mini-palette" id="groupColor3" aria-label="Grp3の色"></div></label>
-          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><div class="mini-palette" id="groupColor4" aria-label="Grp4の色"></div></label>
-          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><div class="mini-palette" id="groupColor5" aria-label="Grp5の色"></div></label>
+          <div class="group-setting-row"><span>⭐️</span><input value="お気に入り" disabled aria-label="お気に入り"><button type="button" class="color-current" id="tabColorStar" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button></div>
+          <div class="group-setting-row"><span>📍</span><input value="現在地" disabled aria-label="現在地"><button type="button" class="color-current" id="tabColorLocation" aria-label="📍タブの色"><span class="color-current-swatch"></span></button></div>
+          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><button type="button" class="color-current" id="groupColor1" aria-label="Grp1の色"><span class="color-current-swatch"></span></button></label>
+          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><button type="button" class="color-current" id="groupColor2" aria-label="Grp2の色"><span class="color-current-swatch"></span></button></label>
+          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><button type="button" class="color-current" id="groupColor3" aria-label="Grp3の色"><span class="color-current-swatch"></span></button></label>
+          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><button type="button" class="color-current" id="groupColor4" aria-label="Grp4の色"><span class="color-current-swatch"></span></button></label>
+          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><button type="button" class="color-current" id="groupColor5" aria-label="Grp5の色"><span class="color-current-swatch"></span></button></label>
         </div>
         <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ設定を保存</button>
       </div>
@@ -288,24 +291,7 @@
 
       <div class="field">
         <label>ボタン色</label>
-        <div class="color-grid" id="colorGrid">
-          <button type="button" class="color-choice" data-color="white" aria-label="white"><span class="color-dot" style="background:#ffffff"></span></button>
-          <button type="button" class="color-choice" data-color="blue" aria-label="blue"><span class="color-dot" style="background:#cfe0ff"></span></button>
-          <button type="button" class="color-choice" data-color="sky" aria-label="sky"><span class="color-dot" style="background:#bfe7ff"></span></button>
-          <button type="button" class="color-choice" data-color="cyan" aria-label="cyan"><span class="color-dot" style="background:#bfeeed"></span></button>
-          <button type="button" class="color-choice" data-color="green" aria-label="green"><span class="color-dot" style="background:#ccebd5"></span></button>
-          <button type="button" class="color-choice" data-color="lime" aria-label="lime"><span class="color-dot" style="background:#e1efb9"></span></button>
-          <button type="button" class="color-choice" data-color="yellow" aria-label="yellow"><span class="color-dot" style="background:#ffe69a"></span></button>
-          <button type="button" class="color-choice" data-color="cream" aria-label="cream"><span class="color-dot" style="background:#fff0c7"></span></button>
-          <button type="button" class="color-choice" data-color="orange" aria-label="orange"><span class="color-dot" style="background:#ffd0ad"></span></button>
-          <button type="button" class="color-choice" data-color="coral" aria-label="coral"><span class="color-dot" style="background:#ffc5b8"></span></button>
-          <button type="button" class="color-choice" data-color="pink" aria-label="pink"><span class="color-dot" style="background:#f6c7d8"></span></button>
-          <button type="button" class="color-choice" data-color="rose" aria-label="rose"><span class="color-dot" style="background:#efb8c6"></span></button>
-          <button type="button" class="color-choice" data-color="purple" aria-label="purple"><span class="color-dot" style="background:#dccaff"></span></button>
-          <button type="button" class="color-choice" data-color="lavender" aria-label="lavender"><span class="color-dot" style="background:#e8ddff"></span></button>
-          <button type="button" class="color-choice" data-color="gray" aria-label="gray"><span class="color-dot" style="background:#d7d7d2"></span></button>
-          <button type="button" class="color-choice" data-color="slate" aria-label="slate"><span class="color-dot" style="background:#c7d0d9"></span></button>
-        </div>
+        <button type="button" class="color-current" id="itemColorButton" aria-label="ボタン色を選択"><span class="color-current-swatch"></span></button>
       </div>
 
       <div class="actions">
@@ -347,6 +333,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <div class="modal color-picker-modal" id="colorPickerModal" aria-hidden="true">
+    <div class="color-picker-card" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
+      <h3 id="colorPickerTitle">色を選択</h3>
+      <div class="large-color-grid" id="largeColorGrid"></div>
+      <button class="btn" id="closeColorPickerBtn" type="button" style="width:100%;margin-top:14px;">閉じる</button>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -364,31 +358,46 @@
       return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
     }
 
-    function renderMiniPalette(container, selected) {
-      if (!container) return;
-      container.innerHTML = "";
-      COLOR_NAMES.forEach(name => {
+    function updateColorButton(button, color) {
+      if (!button) return;
+      const c=validColorName(color,"white");
+      button.dataset.selectedColor=c;
+      const swatch=button.querySelector(".color-current-swatch");
+      if (swatch) swatch.style.background=GROUP_COLOR_HEX[c];
+    }
+
+    function paletteValue(button, fallback="white") {
+      return validColorName(button?.dataset.selectedColor, fallback);
+    }
+
+    let colorPickerTarget=null;
+    let colorPickerOnSelect=null;
+    function openColorPicker(target, selected, onSelect, title="色を選択") {
+      colorPickerTarget=target; colorPickerOnSelect=onSelect || null;
+      colorPickerTitle.textContent=title;
+      const current=validColorName(selected,"white");
+      largeColorGrid.innerHTML="";
+      COLOR_NAMES.forEach(name=>{
         const b=document.createElement("button");
-        b.type="button"; b.className="mini-color" + (name===selected ? " selected" : "");
-        b.dataset.color=name; b.style.background=GROUP_COLOR_HEX[name]; b.setAttribute("aria-label",name);
-        container.appendChild(b);
+        b.type="button"; b.className="large-color-choice" + (name===current ? " selected" : "");
+        b.dataset.color=name; b.setAttribute("aria-label",name);
+        const sw=document.createElement("span"); sw.className="large-color-swatch"; sw.style.background=GROUP_COLOR_HEX[name];
+        b.appendChild(sw); largeColorGrid.appendChild(b);
       });
+      colorPickerModal.classList.add("show"); colorPickerModal.setAttribute("aria-hidden","false");
     }
 
-    function paletteValue(container, fallback="white") {
-      return validColorName(container?.dataset.selectedColor, fallback);
+    function closeColorPicker() {
+      colorPickerModal.classList.remove("show"); colorPickerModal.setAttribute("aria-hidden","true");
+      colorPickerTarget=null; colorPickerOnSelect=null;
     }
 
-    function wireMiniPalette(container, initial, onSelect) {
-      if (!container) return;
-      container.dataset.selectedColor=validColorName(initial,"white");
-      renderMiniPalette(container, container.dataset.selectedColor);
-      container.addEventListener("click", e => {
-        const b=e.target.closest(".mini-color"); if(!b) return;
-        container.dataset.selectedColor=b.dataset.color;
-        renderMiniPalette(container,b.dataset.color);
-        onSelect?.(b.dataset.color);
-      });
+    function wireColorButton(button, initial, onSelect, title) {
+      if (!button) return;
+      updateColorButton(button, initial);
+      button.addEventListener("click", ()=>openColorPicker(button, paletteValue(button), color=>{
+        updateColorButton(button,color); onSelect?.(color);
+      }, title));
     }
 
     let settings = loadSettings();
@@ -455,7 +464,11 @@
     const copyShortcutNameBtn = document.getElementById("copyShortcutNameBtn");
     const createShortcutBtn = document.getElementById("createShortcutBtn");
     const testShortcutBtn = document.getElementById("testShortcutBtn");
-    const colorGrid = document.getElementById("colorGrid");
+    const itemColorButton = document.getElementById("itemColorButton");
+    const colorPickerModal = document.getElementById("colorPickerModal");
+    const colorPickerTitle = document.getElementById("colorPickerTitle");
+    const largeColorGrid = document.getElementById("largeColorGrid");
+    const closeColorPickerBtn = document.getElementById("closeColorPickerBtn");
     const groupSelect = document.getElementById("groupSelect");
     let selectedColor = "white";
     let html5Qr = null;
@@ -561,9 +574,9 @@
         btn.classList.toggle("active", key === activeTab);
       });
       groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
-      tabColorStar.dataset.selectedColor=validColorName(settings.starColor,"white"); renderMiniPalette(tabColorStar, tabColorStar.dataset.selectedColor);
-      tabColorLocation.dataset.selectedColor=validColorName(settings.locationColor,"white"); renderMiniPalette(tabColorLocation, tabColorLocation.dataset.selectedColor);
-      groupColorInputs.forEach((input,i) => { input.dataset.selectedColor=validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i]); renderMiniPalette(input, input.dataset.selectedColor); });
+      updateColorButton(tabColorStar, validColorName(settings.starColor,"white"));
+      updateColorButton(tabColorLocation, validColorName(settings.locationColor,"white"));
+      groupColorInputs.forEach((input,i) => updateColorButton(input, validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i])));
       [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
     }
 
@@ -792,7 +805,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 112,
+        version: 113,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -852,9 +865,7 @@
     }
 
     function updateColorSelection() {
-      colorGrid.querySelectorAll(".color-choice").forEach(btn => {
-        btn.classList.toggle("selected", btn.dataset.color === selectedColor);
-      });
+      updateColorButton(itemColorButton, selectedColor);
     }
 
     function openEdit(id = null) {
@@ -1893,9 +1904,10 @@
       if (activeTab === "location") await refreshNearbyItems(); else render();
     });
 
-    wireMiniPalette(tabColorStar, settings.starColor || "white", c => tabColorStar.dataset.selectedColor=c);
-    wireMiniPalette(tabColorLocation, settings.locationColor || "white", c => tabColorLocation.dataset.selectedColor=c);
-    groupColorInputs.forEach((input,i) => wireMiniPalette(input, settings.groupColors?.[i] || DEFAULT_GROUP_COLORS[i], c => input.dataset.selectedColor=c));
+    wireColorButton(tabColorStar, settings.starColor || "white", c => tabColorStar.dataset.selectedColor=c, "⭐️タブの色");
+    wireColorButton(tabColorLocation, settings.locationColor || "white", c => tabColorLocation.dataset.selectedColor=c, "📍タブの色");
+    groupColorInputs.forEach((input,i) => wireColorButton(input, settings.groupColors?.[i] || DEFAULT_GROUP_COLORS[i], c => input.dataset.selectedColor=c, `${settings.groupNames?.[i] || `Grp${i+1}`}の色`));
+    wireColorButton(itemColorButton, selectedColor, c => { selectedColor=c; updateColorSelection(); }, "ボタン色");
 
     saveGroupNamesBtn.addEventListener("click", () => {
       // 編集欄に残ったフォーカスによるiOSの自動ズームを解除する。
@@ -1974,12 +1986,15 @@
       updateColorSelection();
     });
 
-    colorGrid.addEventListener("click", (e) => {
-      const btn = e.target.closest(".color-choice");
-      if (!btn) return;
-      selectedColor = btn.dataset.color || "white";
-      updateColorSelection();
+    largeColorGrid.addEventListener("click", (e) => {
+      const btn=e.target.closest(".large-color-choice"); if(!btn) return;
+      const color=validColorName(btn.dataset.color,"white");
+      if (colorPickerTarget) updateColorButton(colorPickerTarget,color);
+      colorPickerOnSelect?.(color);
+      closeColorPicker();
     });
+    closeColorPickerBtn.addEventListener("click", closeColorPicker);
+    colorPickerModal.addEventListener("click", e=>{ if(e.target===colorPickerModal) closeColorPicker(); });
 
     testShortcutBtn.addEventListener("click", () => {
       updateShortcutPreview();
