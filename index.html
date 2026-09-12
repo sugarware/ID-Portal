@@ -58,7 +58,10 @@
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
     .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
+    .item-leading { display:flex; align-items:center; gap:1px; }
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
+    .quick-location-toggle { width:32px; height:36px; padding:0; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .quick-location-toggle:active { transform:scale(.94); }
     .item-main { min-width: 0; cursor: pointer; display:flex; align-items:center; min-height:36px; }
     .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height:1.25; }
     .meta { margin-top:0; color: var(--muted); font-size:12px; white-space:nowrap; cursor:pointer; }
@@ -161,7 +164,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.16 — 地図検索を表示範囲内優先のローカル検索に改善。
+        v1.17 — 直近の現在地を各項目へ1タップで追加できる📍ボタンを追加。
       </div>
     </div>
   </div>
@@ -416,7 +419,9 @@
     let editingId = null;
     let wakeLock = null;
     const LOCATION_RADIUS_M = 200;
-    let locationState = { status:"idle", current:null, distances:new Map(), errorMessage:"" };
+    const QUICK_LOCATION_VALID_MS = 60 * 1000;
+    let locationState = { status:"idle", current:null, currentAt:0, distances:new Map(), errorMessage:"" };
+    let quickLocationExpiryTimer = null;
     let editLocations = [];
     let mapInstance = null;
     let mapMarker = null;
@@ -629,7 +634,7 @@
     }
 
     async function refreshNearbyItems() {
-      locationState={status:"loading",current:null,distances:new Map(),errorMessage:""};
+      locationState={status:"loading",current:null,currentAt:0,distances:new Map(),errorMessage:""};
       render();
       try {
         const pos=await getCurrentPositionPromise();
@@ -640,10 +645,44 @@
           for (const p of (item.locations || [])) min=Math.min(min,distanceMeters(current.lat,current.lng,p.lat,p.lng));
           if (min <= LOCATION_RADIUS_M) distances.set(item.id,min);
         }
-        locationState={status:"ok",current,distances,errorMessage:""};
+        const currentAt=Date.now();
+        locationState={status:"ok",current,currentAt,distances,errorMessage:""};
+        if (quickLocationExpiryTimer) clearTimeout(quickLocationExpiryTimer);
+        quickLocationExpiryTimer=setTimeout(()=>{
+          quickLocationExpiryTimer=null;
+          render();
+        }, QUICK_LOCATION_VALID_MS + 50);
       } catch(err) {
-        locationState={status:"error",current:null,distances:new Map(),errorMessage:positionErrorMessage(err)};
+        if (quickLocationExpiryTimer) { clearTimeout(quickLocationExpiryTimer); quickLocationExpiryTimer=null; }
+        locationState={status:"error",current:null,currentAt:0,distances:new Map(),errorMessage:positionErrorMessage(err)};
       }
+      render();
+    }
+
+    function hasRecentNearbyLocation() {
+      return locationState.status === "ok" && !!locationState.current &&
+        Date.now() - Number(locationState.currentAt || 0) <= QUICK_LOCATION_VALID_MS;
+    }
+
+    function canQuickAddLocation(item) {
+      return hasRecentNearbyLocation() && !locationState.distances.has(item.id);
+    }
+
+    function quickAddCurrentLocation(item) {
+      if (!canQuickAddLocation(item)) {
+        alert("現在地情報の有効時間が切れています。📍タブをタップして現在地を更新してください。");
+        render();
+        return;
+      }
+      const current=locationState.current;
+      if (!Array.isArray(item.locations)) item.locations=[];
+      item.locations.push({
+        lat:Number(current.lat),
+        lng:Number(current.lng),
+        label:`現在地 ${item.locations.length+1}`
+      });
+      locationState.distances.set(item.id,0);
+      saveItems();
       render();
     }
 
@@ -709,6 +748,23 @@
           render();
         });
 
+        const leading = document.createElement("div");
+        leading.className = "item-leading";
+        leading.appendChild(favorite);
+        if (canQuickAddLocation(item)) {
+          const quickLocation = document.createElement("button");
+          quickLocation.className = "quick-location-toggle";
+          quickLocation.type = "button";
+          quickLocation.textContent = "📍";
+          quickLocation.title = "直近の現在地をこの項目に追加";
+          quickLocation.setAttribute("aria-label", `${item.name}に直近の現在地を追加`);
+          quickLocation.addEventListener("click", (e) => {
+            e.stopPropagation();
+            quickAddCurrentLocation(item);
+          });
+          leading.appendChild(quickLocation);
+        }
+
         const main = document.createElement("div");
         main.className = "item-main";
         main.innerHTML = `<div class="name"></div>`;
@@ -737,7 +793,7 @@
         edit.addEventListener("click", () => openEdit(item.id));
 
         buttons.append(handle, edit);
-        row.append(favorite, main, meta, buttons);
+        row.append(leading, main, meta, buttons);
         list.appendChild(row);
       });
     }
