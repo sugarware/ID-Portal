@@ -44,8 +44,8 @@
     .color-picker-card { width:min(430px,100%); background:var(--bg); border-radius:18px; padding:18px; box-shadow:0 16px 50px rgba(0,0,0,.24); }
     .color-picker-card h3 { margin:0 0 14px; font-size:18px; }
     .large-color-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-    .large-color-choice { aspect-ratio:1.25; min-height:58px; border:3px solid transparent; border-radius:13px; padding:6px; background:#fff; cursor:pointer; }
-    .large-color-choice.selected { border-color:#111827; box-shadow:0 0 0 2px rgba(255,255,255,.9) inset; }
+    .large-color-choice { position:relative; aspect-ratio:1.25; min-height:58px; border:0; border-radius:13px; padding:6px; background:#fff; cursor:pointer; }
+    .large-color-choice.selected::after { content:""; position:absolute; inset:5px; border:3px solid #111827; border-radius:10px; pointer-events:none; }
     .large-color-swatch { width:100%; height:100%; min-height:42px; border-radius:8px; border:1px solid rgba(0,0,0,.14); display:block; }
     .data-file-actions .btn { min-width:0; white-space:nowrap; font-size:clamp(13px,3.7vw,16px); padding-left:6px; padding-right:6px; }
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
@@ -122,8 +122,13 @@
     .location-row-text { min-width:0; font-size:12px; color:var(--muted); line-height:1.4; word-break:break-all; }
     .location-row-text strong { color:var(--text); font-size:13px; }
     .location-remove { min-width:42px; min-height:36px; padding:6px 9px; }
-    #mapPicker { height:min(58vh,460px); border-radius:14px; overflow:hidden; background:#ddd; touch-action:auto; }
+    #mapPicker { height:min(54vh,430px); border-radius:14px; overflow:hidden; background:#ddd; touch-action:auto; }
     .map-help { color:var(--muted); font-size:12px; line-height:1.5; margin:8px 0; }
+    .map-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin:8px 0; }
+    .map-search input { min-height:42px; padding:9px 11px; }
+    .map-search-results { display:grid; gap:5px; margin:0 0 8px; max-height:150px; overflow:auto; }
+    .map-search-result { text-align:left; min-height:38px; padding:7px 9px; font-size:12px; line-height:1.35; }
+    .current-location-dot { width:18px; height:18px; border-radius:50%; background:#1f5eff; border:4px solid #fff; box-shadow:0 0 0 2px #1f5eff,0 2px 7px rgba(0,0,0,.35); }
     .location-error { text-align:left; }
     .hidden { display: none !important; }
   </style>
@@ -156,7 +161,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.13 — 色設定を選択色ボタン＋大型カラーパレット方式に改善。
+        v1.14 — 色設定を選択色ボタン＋大型カラーパレット方式に改善。
       </div>
     </div>
   </div>
@@ -294,13 +299,13 @@
         <button type="button" class="color-current" id="itemColorButton" aria-label="ボタン色を選択"><span class="color-current-swatch"></span></button>
       </div>
 
-      <div class="actions">
-        <button class="btn" id="cancelBtn">キャンセル</button>
+      <div class="actions" id="editPrimaryActions">
+        <button class="btn danger hidden" id="deleteBtn">このIDを削除</button>
         <button class="btn primary" id="saveBtn">保存</button>
       </div>
 
-      <div class="actions hidden" id="deleteRow">
-        <button class="btn danger" id="deleteBtn" style="grid-column:1 / -1;">このIDを削除</button>
+      <div class="actions" id="cancelRow">
+        <button class="btn" id="cancelBtn" style="grid-column:1 / -1;">キャンセル</button>
       </div>
     </div>
   </div>
@@ -308,7 +313,12 @@
   <div class="modal" id="mapModal" aria-hidden="true">
     <div class="sheet">
       <h2>地図から位置を追加</h2>
-      <div class="map-help">地図をタップして地点を選択してください。選択位置にマーカーが表示されます。</div>
+      <div class="map-help">店名・施設名・ゴルフ場名などを検索するか、地図をタップして地点を選択してください。登録済み地点は📍、現在地は青い丸で表示します。</div>
+      <div class="map-search">
+        <input id="mapSearchInput" type="search" placeholder="店名・施設名・住所を検索" autocomplete="off">
+        <button class="btn" id="mapSearchBtn" type="button">検索</button>
+      </div>
+      <div class="map-search-results hidden" id="mapSearchResults"></div>
       <div id="mapPicker"></div>
       <div class="scan-status" id="mapCoordText">地点を選択してください。</div>
       <div class="actions">
@@ -410,8 +420,10 @@
     let editLocations = [];
     let mapInstance = null;
     let mapMarker = null;
+    let mapCurrentMarker = null;
     let mapExistingMarkers = [];
     let mapSelected = null;
+    let mapCurrentPosition = null;
 
     const list = document.getElementById("list");
     const tabBar = document.getElementById("tabBar");
@@ -432,7 +444,7 @@
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
     const deleteBtn = document.getElementById("deleteBtn");
-    const deleteRow = document.getElementById("deleteRow");
+    const editPrimaryActions = document.getElementById("editPrimaryActions");
     const formTitle = document.getElementById("formTitle");
     const nameInput = document.getElementById("name");
     const typeInput = document.getElementById("type");
@@ -456,6 +468,9 @@
     const addMapLocationBtn = document.getElementById("addMapLocationBtn");
     const mapModal = document.getElementById("mapModal");
     const mapCoordText = document.getElementById("mapCoordText");
+    const mapSearchInput = document.getElementById("mapSearchInput");
+    const mapSearchBtn = document.getElementById("mapSearchBtn");
+    const mapSearchResults = document.getElementById("mapSearchResults");
     const cancelMapBtn = document.getElementById("cancelMapBtn");
     const confirmMapBtn = document.getElementById("confirmMapBtn");
     const appRegisterBtn = document.getElementById("appRegisterBtn");
@@ -885,7 +900,8 @@
       updateColorSelection();
       editLocations = item?.locations ? structuredClone(item.locations) : [];
       renderLocationList();
-      deleteRow.classList.toggle("hidden", !item);
+      deleteBtn.classList.toggle("hidden", !item);
+      editPrimaryActions.style.gridTemplateColumns = item ? "1fr 1fr" : "1fr";
       manualFields.classList.toggle("hidden", !item);
       manualToggleBtn.textContent = item ? "詳細設定を隠す" : "手入力・詳細設定";
       scanStatus.textContent = item ? "登録済みコードです。再読み取りすると置き換わります。" : "QRコード／主要バーコードを自動判定します。";
@@ -926,34 +942,79 @@
     }
 
     async function openMapPicker() {
-      mapSelected=null; mapCoordText.textContent="地点を選択してください。";
+      mapSelected=null; mapCurrentPosition=null; mapCoordText.textContent="地点を選択してください。";
+      mapSearchInput.value=""; mapSearchResults.innerHTML=""; mapSearchResults.classList.add("hidden");
       mapModal.classList.add("show"); mapModal.setAttribute("aria-hidden","false");
       let center=[35.681236,139.767125];
       let zoom=12;
-      try { const pos=await getCurrentPositionPromise(); center=[pos.coords.latitude,pos.coords.longitude]; zoom=16; } catch {}
+      try {
+        const pos=await getCurrentPositionPromise();
+        mapCurrentPosition={lat:pos.coords.latitude,lng:pos.coords.longitude};
+        center=[mapCurrentPosition.lat,mapCurrentPosition.lng]; zoom=16;
+      } catch {}
       setTimeout(()=>{
         if (typeof L === "undefined") { mapCoordText.textContent="地図を読み込めませんでした。通信状態を確認してください。"; return; }
         if (!mapInstance) {
           mapInstance=L.map("mapPicker").setView(center,zoom);
           L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"}).addTo(mapInstance);
-          mapInstance.on("click",e=>{
-            mapSelected={lat:e.latlng.lat,lng:e.latlng.lng};
-            if (mapMarker) mapMarker.setLatLng(e.latlng); else mapMarker=L.marker(e.latlng).addTo(mapInstance);
-            mapCoordText.textContent=`${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}`;
-          });
+          mapInstance.on("click",e=>selectMapPoint(e.latlng.lat,e.latlng.lng));
         } else {
           mapInstance.setView(center,zoom);
           if (mapMarker) { mapInstance.removeLayer(mapMarker); mapMarker=null; }
+          if (mapCurrentMarker) { mapInstance.removeLayer(mapCurrentMarker); mapCurrentMarker=null; }
+        }
+        if (mapCurrentPosition) {
+          const icon=L.divIcon({className:"",html:'<div class="current-location-dot"></div>',iconSize:[22,22],iconAnchor:[11,11]});
+          mapCurrentMarker=L.marker([mapCurrentPosition.lat,mapCurrentPosition.lng],{icon,zIndexOffset:800}).addTo(mapInstance).bindPopup("現在地");
         }
         renderMapExistingMarkers();
-        if (editLocations.length) {
-          const bounds=L.latLngBounds(editLocations.map(p=>[p.lat,p.lng]));
-          mapInstance.fitBounds(bounds.pad(0.25),{maxZoom:16});
-        }
+        const fitPoints=[...editLocations.map(p=>[p.lat,p.lng])];
+        if (mapCurrentPosition) fitPoints.push([mapCurrentPosition.lat,mapCurrentPosition.lng]);
+        if (fitPoints.length>=2) mapInstance.fitBounds(L.latLngBounds(fitPoints).pad(0.22),{maxZoom:16});
+        else if (fitPoints.length===1) mapInstance.setView(fitPoints[0],16);
         mapInstance.invalidateSize();
       },120);
     }
 
+    function selectMapPoint(lat,lng,label="") {
+      if (!mapInstance || typeof L === "undefined") return;
+      mapSelected={lat:Number(lat),lng:Number(lng),label:String(label||"")};
+      const ll=[mapSelected.lat,mapSelected.lng];
+      if (mapMarker) mapMarker.setLatLng(ll); else mapMarker=L.marker(ll,{zIndexOffset:1000}).addTo(mapInstance);
+      mapInstance.setView(ll,Math.max(mapInstance.getZoom(),16));
+      mapCoordText.textContent=(label ? `${label} ／ ` : "") + `${mapSelected.lat.toFixed(6)}, ${mapSelected.lng.toFixed(6)}`;
+    }
+
+    async function searchMapPlace() {
+      const q=mapSearchInput.value.trim();
+      if (!q) return;
+      mapSearchBtn.disabled=true; mapSearchBtn.textContent="検索中…";
+      mapSearchResults.innerHTML=""; mapSearchResults.classList.add("hidden");
+      try {
+        const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=ja&q=${encodeURIComponent(q)}`;
+        const res=await fetch(url,{headers:{"Accept":"application/json"}});
+        if (!res.ok) throw new Error("search failed");
+        const data=await res.json();
+        if (!Array.isArray(data) || !data.length) {
+          mapSearchResults.classList.remove("hidden");
+          mapSearchResults.innerHTML='<div class="scan-status">該当する場所が見つかりませんでした。</div>';
+          return;
+        }
+        data.forEach(r=>{
+          const b=document.createElement("button"); b.type="button"; b.className="btn map-search-result";
+          b.textContent=r.display_name || q;
+          b.addEventListener("click",()=>{
+            selectMapPoint(Number(r.lat),Number(r.lon),r.display_name || q);
+            mapSearchResults.classList.add("hidden");
+          });
+          mapSearchResults.appendChild(b);
+        });
+        mapSearchResults.classList.remove("hidden");
+      } catch {
+        mapSearchResults.classList.remove("hidden");
+        mapSearchResults.innerHTML='<div class="scan-status">検索できませんでした。通信状態を確認してください。</div>';
+      } finally { mapSearchBtn.disabled=false; mapSearchBtn.textContent="検索"; }
+    }
 
     function renderMapExistingMarkers() {
       if (!mapInstance || typeof L === "undefined") return;
@@ -1971,10 +2032,12 @@
 
     addCurrentLocationBtn.addEventListener("click", addCurrentLocation);
     addMapLocationBtn.addEventListener("click", openMapPicker);
+    mapSearchBtn.addEventListener("click", searchMapPlace);
+    mapSearchInput.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); searchMapPlace(); } });
     cancelMapBtn.addEventListener("click", closeMapPicker);
     confirmMapBtn.addEventListener("click", () => {
       if (!mapSelected) return alert("地図上で位置を選択してください。");
-      editLocations.push({lat:mapSelected.lat,lng:mapSelected.lng,label:`地図 ${editLocations.length+1}`});
+      editLocations.push({lat:mapSelected.lat,lng:mapSelected.lng,label:mapSelected.label || `地図 ${editLocations.length+1}`});
       renderLocationList(); closeMapPicker();
     });
     mapModal.addEventListener("click",e=>{ if(e.target===mapModal) closeMapPicker(); });
