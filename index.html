@@ -134,6 +134,12 @@
     .current-location-dot { width:18px; height:18px; border-radius:50%; background:#1f5eff; border:4px solid #fff; box-shadow:0 0 0 2px #1f5eff,0 2px 7px rgba(0,0,0,.35); }
     .location-error { text-align:left; }
     .hidden { display: none !important; }
+  
+    .location-tab {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
@@ -164,7 +170,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.18 — 📍タブはシングルタップで一覧表示、ダブルタップで現在地を更新。
+        v1.19 — 📍タブのダブルタップ判定をiPhone/PWA対応方式に変更。
       </div>
     </div>
   </div>
@@ -2060,7 +2066,8 @@
       setTimeout(()=>el.remove(),1400);
     }
 
-    let locationTabSingleTimer = null;
+    let lastLocationTabTapAt = 0;
+    const LOCATION_DOUBLE_TAP_MS = 450;
 
     function openTabWithoutLocationRefresh(btn) {
       activeTab = btn.dataset.tab || "star";
@@ -2070,40 +2077,33 @@
       render();
     }
 
-    tabBar.addEventListener("click", (e) => {
+    tabBar.addEventListener("click", async (e) => {
       const btn = e.target.closest(".tab");
       if (!btn) return;
 
       if (btn.dataset.tab !== "location") {
-        if (locationTabSingleTimer) {
-          clearTimeout(locationTabSingleTimer);
-          locationTabSingleTimer = null;
-        }
+        lastLocationTabTapAt = 0;
         openTabWithoutLocationRefresh(btn);
         return;
       }
 
-      // 📍はシングルタップでは前回取得済みの結果を表示するだけ。
-      // ダブルタップとの競合を避けるため、単発クリックの確定を少し待つ。
-      if (locationTabSingleTimer) clearTimeout(locationTabSingleTimer);
-      locationTabSingleTimer = setTimeout(() => {
-        locationTabSingleTimer = null;
-        openTabWithoutLocationRefresh(btn);
-      }, 280);
-    });
+      // iOS PWAでは dblclick が安定しないため、2回のタップ間隔をアプリ側で判定する。
+      const now = Date.now();
+      const isDoubleTap = lastLocationTabTapAt > 0 &&
+        (now - lastLocationTabTapAt) <= LOCATION_DOUBLE_TAP_MS;
+      lastLocationTabTapAt = isDoubleTap ? 0 : now;
 
-    tabBar.addEventListener("dblclick", async (e) => {
-      const btn = e.target.closest(".tab");
-      if (!btn || btn.dataset.tab !== "location") return;
-      e.preventDefault();
-      if (locationTabSingleTimer) {
-        clearTimeout(locationTabSingleTimer);
-        locationTabSingleTimer = null;
-      }
       activeTab = "location";
       document.body.classList.remove("reorder-mode");
       reorderBtn.textContent = "↓↑";
       refreshTabs();
+
+      if (!isDoubleTap) {
+        render();
+        return;
+      }
+
+      e.preventDefault();
       await refreshNearbyItems();
       if (locationState.status === "ok") showLocationUpdatedNotice();
     });
