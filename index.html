@@ -190,7 +190,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.26 — 全タブ横断検索と設定内バージョン表示を追加。
+        v1.27 — 検索タブ色設定・かな/英字表記ゆれ検索・検索結果タブ名省スペース化。
       </div>
     </div>
   </div>
@@ -213,7 +213,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.26</div>
+      <div class="app-version">IDポータル v1.27</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -227,6 +227,7 @@
       <div class="group-settings" id="fixedTabSettings">
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>⭐️</span><input value="お気に入り" disabled><button type="button" class="color-current" id="tabSettingsStarColor" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>📍</span><input value="現在地" disabled><button type="button" class="color-current" id="tabSettingsLocationColor" aria-label="📍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
+        <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>🔍</span><input value="検索" disabled><button type="button" class="color-current" id="tabSettingsSearchColor" aria-label="🔍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
       </div>
       <div class="group-settings" id="tabSettingsList"></div>
       <button class="btn" id="addGroupBtn" type="button" style="width:100%;margin-top:9px;">＋ タブ追加</button>
@@ -598,7 +599,7 @@
       const names = srcNames.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12));
       const srcColors = Array.isArray(raw?.groupColors) ? raw.groupColors : [];
       const colors = names.map((_,i)=>validColorName(srcColors[i], DEFAULT_GROUP_COLORS[i % DEFAULT_GROUP_COLORS.length]));
-      return { groupNames:names, groupColors:colors, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white") };
+      return { groupNames:names, groupColors:colors, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white") };
     }
 
     function loadSettings() {
@@ -636,7 +637,7 @@
       const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="uncategorized";unc.dataset.fullName="？未分類";unc.setAttribute("aria-label","？未分類");unc.textContent=portrait?"？":"？未分類";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="uncategorized");groupTabScroll.appendChild(unc);
       tabBar.querySelector('[data-tab="star"]').style.background=GROUP_COLOR_HEX[validColorName(settings.starColor,"white")];
       tabBar.querySelector('[data-tab="location"]').style.background=GROUP_COLOR_HEX[validColorName(settings.locationColor,"white")];
-      tabBar.querySelector('[data-tab="search"]').style.background=GROUP_COLOR_HEX.white;
+      tabBar.querySelector('[data-tab="search"]').style.background=GROUP_COLOR_HEX[validColorName(settings.searchColor,"white")];
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");
       tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");
       tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
@@ -647,11 +648,15 @@
     window.addEventListener("orientationchange", () => setTimeout(refreshTabs, 80));
     window.addEventListener("resize", () => refreshTabs());
 
+    function normalizeSearchText(text) {
+      return String(text || "").normalize("NFKC").toLocaleLowerCase("ja").replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+    }
+
     function visibleItems() {
       if (activeTab === "search") {
-        const q=searchQuery.trim().toLocaleLowerCase("ja");
+        const q=normalizeSearchText(searchQuery.trim());
         if (!q) return [];
-        return items.filter(x => String(x.name || "").toLocaleLowerCase("ja").includes(q));
+        return items.filter(x => normalizeSearchText(x.name).includes(q));
       }
       if (activeTab === "star") return items.filter(x => x.favorite);
       if (activeTab === "location") {
@@ -829,7 +834,8 @@
         const meta = document.createElement("div");
         meta.className = "meta";
         const groupName = item.group === 0 ? "？未分類" : (settings.groupNames[item.group-1] || "？未分類");
-        meta.textContent = activeTab === "search" ? `${typeLabel(item)}・${groupName}` : typeLabel(item);
+        const groupMark = item.group === 0 ? "？" : firstGrapheme(groupName);
+        meta.textContent = activeTab === "search" ? `${typeLabel(item)}・${groupMark}` : typeLabel(item);
         meta.addEventListener("click", () => activate(item));
 
         const buttons = document.createElement("div");
@@ -2171,7 +2177,7 @@
     let tabDraftDrag=null;
     function openTabSettings() {
       tabDraft=settings.groupNames.map((name,i)=>({name,color:validColorName(settings.groupColors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]),oldIndex:i+1}));
-      updateColorButton(tabSettingsStarColor, settings.starColor); updateColorButton(tabSettingsLocationColor, settings.locationColor);
+      updateColorButton(tabSettingsStarColor, settings.starColor); updateColorButton(tabSettingsLocationColor, settings.locationColor); updateColorButton(tabSettingsSearchColor, settings.searchColor);
       renderTabSettings(); tabSettingsModal.classList.add("show"); tabSettingsModal.setAttribute("aria-hidden","false");
     }
     function closeTabSettings(){ releaseFormFocus(); tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true"); }
@@ -2197,13 +2203,14 @@
       items=items.map(x=>({...x,group:x.group===0?0:(oldToNew.get(x.group)||0)}));
       settings.groupNames=tabDraft.map((t,i)=>String(t.name||`Grp${i+1}`).trim().slice(0,12)||`Grp${i+1}`);
       settings.groupColors=tabDraft.map((t,i)=>validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]));
-      settings.starColor=paletteValue(tabSettingsStarColor,"white"); settings.locationColor=paletteValue(tabSettingsLocationColor,"white");
+      settings.starColor=paletteValue(tabSettingsStarColor,"white"); settings.locationColor=paletteValue(tabSettingsLocationColor,"white"); settings.searchColor=paletteValue(tabSettingsSearchColor,"white");
       if (/^\d+$/.test(activeTab)) activeTab=oldToNew.get(Number(activeTab))?String(oldToNew.get(Number(activeTab))):"uncategorized";
       saveSettings();saveItems();refreshTabs();render();closeTabSettings();
     }
 
     wireColorButton(tabSettingsStarColor, settings.starColor, c=>tabSettingsStarColor.dataset.selectedColor=c, "⭐️タブの色");
     wireColorButton(tabSettingsLocationColor, settings.locationColor, c=>tabSettingsLocationColor.dataset.selectedColor=c, "📍タブの色");
+    wireColorButton(tabSettingsSearchColor, settings.searchColor, c=>tabSettingsSearchColor.dataset.selectedColor=c, "🔍タブの色");
 
     addBtn.addEventListener("click", () => openEdit());
     dataBtn.addEventListener("click", openDataModal);
