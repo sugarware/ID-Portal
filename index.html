@@ -190,7 +190,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.31 — iOSで縦横回転後にずれる上端位置を、起動時の実測位置へ補正。
+        v1.32 — 回転時の上端補正を端末の向き変更時だけに限定し、操作中の画面揺れを抑制。
       </div>
     </div>
   </div>
@@ -213,7 +213,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.31</div>
+      <div class="app-version">IDポータル v1.32</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -684,17 +684,18 @@
       });
     }
     requestAnimationFrame(()=>requestAnimationFrame(captureInitialPortraitHeaderTop));
-    function scheduleViewportCorrection() {
-      setTimeout(correctPortraitHeaderPosition, 80);
-      setTimeout(correctPortraitHeaderPosition, 300);
-      setTimeout(correctPortraitHeaderPosition, 700);
+    // Re-measure only after an actual device orientation change.
+    // resize / visualViewport events also occur during normal operation on iOS
+    // and caused a brief whole-screen jump in v1.31.
+    let rotationCorrectionTimers=[];
+    function scheduleOrientationCorrection() {
+      rotationCorrectionTimers.forEach(clearTimeout);
+      rotationCorrectionTimers=[
+        setTimeout(correctPortraitHeaderPosition, 250),
+        setTimeout(correctPortraitHeaderPosition, 700)
+      ];
     }
-    window.addEventListener("orientationchange", scheduleViewportCorrection);
-    window.addEventListener("resize", scheduleViewportCorrection);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", scheduleViewportCorrection);
-      window.visualViewport.addEventListener("scroll", scheduleViewportCorrection);
-    }
+    window.addEventListener("orientationchange", scheduleOrientationCorrection);
 
     function normalizeSearchText(text) {
       return String(text || "").normalize("NFKC").toLocaleLowerCase("ja").replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
