@@ -24,6 +24,7 @@
     }
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; width:100%; height:100%; height:100dvh; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
+    html { position:fixed; inset:0; overflow:hidden; }
     button, input, select { font: inherit; }
     button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
     body { position:fixed; inset:0; min-height:0; height:100dvh; overflow:hidden; touch-action:none; }
@@ -190,7 +191,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.32 — 回転時の上端補正を端末の向き変更時だけに限定し、操作中の画面揺れを抑制。
+        v1.33 — ルート画面をViewportに固定し、アプリ画面全体の不要なスクロールを禁止。
       </div>
     </div>
   </div>
@@ -213,7 +214,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.32</div>
+      <div class="app-version">IDポータル v1.33</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
