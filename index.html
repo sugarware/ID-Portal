@@ -27,7 +27,7 @@
     button, input, select { font: inherit; }
     button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
     body { position:fixed; inset:0; min-height:0; height:100dvh; overflow:hidden; touch-action:none; }
-    .app { max-width:720px; width:100%; height:100%; height:100dvh; margin:0 auto; padding:calc(12px + max(env(safe-area-inset-top), var(--portrait-safe-top-fallback, 0px))) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
+    .app { max-width:720px; width:100%; height:100%; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top) + var(--rotation-top-correction, 0px)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .tabbar { display:flex; flex:0 0 auto; gap:4px; margin:0 0 8px; min-width:0; overflow:hidden; }
     .tab-fixed { display:flex; flex:0 0 auto; gap:4px; }
@@ -190,7 +190,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.30 — iOSで縦横回転後にSafe Areaが失われる場合の上端補正を追加。
+        v1.31 — iOSで縦横回転後にずれる上端位置を、起動時の実測位置へ補正。
       </div>
     </div>
   </div>
@@ -213,7 +213,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.30</div>
+      <div class="app-version">IDポータル v1.31</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -645,32 +645,55 @@
       refreshGroupSelect();
     }
 
-    // iOS standalone PWA can temporarily lose safe-area-inset-top after
-    // portrait -> landscape -> portrait. Preserve the correct portrait inset
-    // measured at startup and use it only as a portrait fallback.
-    let portraitSafeTopFallback = 0;
-    function captureInitialPortraitSafeTop() {
+    // iOS standalone PWA may place the web content too high after
+    // portrait -> landscape -> portrait.  Do not infer the Safe Area value:
+    // remember the header's actual initial portrait Y position and restore it.
+    let initialPortraitHeaderTop = null;
+    function setRotationTopCorrection(px) {
+      document.documentElement.style.setProperty("--rotation-top-correction", `${Math.max(0, px)}px`);
+    }
+    function captureInitialPortraitHeaderTop() {
       if (!window.matchMedia("(orientation: portrait)").matches) return;
-      const app=document.querySelector(".app");
-      if (!app) return;
-      const top=parseFloat(getComputedStyle(app).paddingTop)||12;
-      portraitSafeTopFallback=Math.max(0, top-12);
-      document.documentElement.style.setProperty("--portrait-safe-top-fallback", `${portraitSafeTopFallback}px`);
+      const header=document.querySelector(".app > header");
+      if (!header) return;
+      setRotationTopCorrection(0);
+      initialPortraitHeaderTop=header.getBoundingClientRect().top;
     }
-    function refreshAfterViewportChange() {
+    function correctPortraitHeaderPosition() {
       const portrait=window.matchMedia("(orientation: portrait)").matches;
-      document.documentElement.style.setProperty("--portrait-safe-top-fallback", portrait ? `${portraitSafeTopFallback}px` : "0px");
-      refreshTabs();
+      if (!portrait) {
+        setRotationTopCorrection(0);
+        refreshTabs();
+        return;
+      }
+      if (initialPortraitHeaderTop == null) {
+        captureInitialPortraitHeaderTop();
+        refreshTabs();
+        return;
+      }
+      // Measure from the uncorrected layout so repeated resize events cannot
+      // accumulate the correction.
+      setRotationTopCorrection(0);
+      requestAnimationFrame(() => {
+        const header=document.querySelector(".app > header");
+        if (!header) return;
+        const currentTop=header.getBoundingClientRect().top;
+        const missing=Math.round(initialPortraitHeaderTop-currentTop);
+        setRotationTopCorrection(missing > 1 ? missing : 0);
+        refreshTabs();
+      });
     }
-    requestAnimationFrame(()=>requestAnimationFrame(captureInitialPortraitSafeTop));
-    window.addEventListener("orientationchange", () => {
-      setTimeout(refreshAfterViewportChange, 80);
-      setTimeout(refreshAfterViewportChange, 300);
-    });
-    window.addEventListener("resize", refreshAfterViewportChange);
+    requestAnimationFrame(()=>requestAnimationFrame(captureInitialPortraitHeaderTop));
+    function scheduleViewportCorrection() {
+      setTimeout(correctPortraitHeaderPosition, 80);
+      setTimeout(correctPortraitHeaderPosition, 300);
+      setTimeout(correctPortraitHeaderPosition, 700);
+    }
+    window.addEventListener("orientationchange", scheduleViewportCorrection);
+    window.addEventListener("resize", scheduleViewportCorrection);
     if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", refreshAfterViewportChange);
-      window.visualViewport.addEventListener("scroll", refreshAfterViewportChange);
+      window.visualViewport.addEventListener("resize", scheduleViewportCorrection);
+      window.visualViewport.addEventListener("scroll", scheduleViewportCorrection);
     }
 
     function normalizeSearchText(text) {
