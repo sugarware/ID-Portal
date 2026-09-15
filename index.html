@@ -46,8 +46,11 @@
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
-    .group-setting-row { display:grid; grid-template-columns:52px minmax(0,1fr) 54px; gap:8px; align-items:center; }
+    .group-setting-row { display:grid; grid-template-columns:36px minmax(0,1fr) 48px 42px; gap:7px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
+    .tab-setting-handle { width:36px;height:40px;border:1px solid var(--line);border-radius:10px;background:#fafafa;font-size:20px;touch-action:none;cursor:grab; }
+    .tab-setting-row.dragging { opacity:.75; }
+    .tab-setting-row.drag-target { outline:2px solid var(--accent); border-radius:10px; }
     .group-setting-row input { min-height:40px; padding:9px 10px; }
     .color-current { width:48px; height:40px; padding:5px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .color-current-swatch { width:30px; height:26px; border-radius:7px; border:1px solid rgba(0,0,0,.18); display:block; }
@@ -161,7 +164,7 @@
         <div class="sub">IDを探さなくてよくする入口</div>
       </div>
       <div class="toolbar">
-        <button class="btn" id="dataBtn">File</button>
+        <button class="btn" id="dataBtn">設定</button>
         <button class="btn" id="reorderBtn">↓↑</button>
         <button class="btn primary" id="addBtn" aria-label="追加">＋</button>
       </div>
@@ -172,20 +175,14 @@
         <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
         <button class="tab location-tab" type="button" data-tab="location" aria-label="現在地周辺">📍</button>
       </div>
-      <div class="tab-scroll" id="groupTabScroll">
-        <button class="tab" type="button" data-tab="1">Grp1</button>
-        <button class="tab" type="button" data-tab="2">Grp2</button>
-        <button class="tab" type="button" data-tab="3">Grp3</button>
-        <button class="tab" type="button" data-tab="4">Grp4</button>
-        <button class="tab" type="button" data-tab="5">Grp5</button>
-      </div>
+      <div class="tab-scroll" id="groupTabScroll"></div>
     </nav>
 
     <div class="content-scroll" id="contentScroll">
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.23 — タブ表示を縦画面では先頭1文字、横画面では全文表示にし、⭐️・📍以外を横スクロール対応。
+        v1.24 — ユーザータブを可変化。設定から追加・削除・名称変更・並び替えが可能。
       </div>
     </div>
   </div>
@@ -202,20 +199,28 @@
       <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
       <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       <div class="field">
-        <label>グループ設定</label>
-        <div class="group-settings">
-          <div class="group-setting-row"><span>⭐️</span><input value="お気に入り" disabled aria-label="お気に入り"><button type="button" class="color-current" id="tabColorStar" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button></div>
-          <div class="group-setting-row"><span>📍</span><input value="現在地" disabled aria-label="現在地"><button type="button" class="color-current" id="tabColorLocation" aria-label="📍タブの色"><span class="color-current-swatch"></span></button></div>
-          <label class="group-setting-row"><span>Grp1</span><input id="groupName1" maxlength="12"><button type="button" class="color-current" id="groupColor1" aria-label="Grp1の色"><span class="color-current-swatch"></span></button></label>
-          <label class="group-setting-row"><span>Grp2</span><input id="groupName2" maxlength="12"><button type="button" class="color-current" id="groupColor2" aria-label="Grp2の色"><span class="color-current-swatch"></span></button></label>
-          <label class="group-setting-row"><span>Grp3</span><input id="groupName3" maxlength="12"><button type="button" class="color-current" id="groupColor3" aria-label="Grp3の色"><span class="color-current-swatch"></span></button></label>
-          <label class="group-setting-row"><span>Grp4</span><input id="groupName4" maxlength="12"><button type="button" class="color-current" id="groupColor4" aria-label="Grp4の色"><span class="color-current-swatch"></span></button></label>
-          <label class="group-setting-row"><span>Grp5</span><input id="groupName5" maxlength="12"><button type="button" class="color-current" id="groupColor5" aria-label="Grp5の色"><span class="color-current-swatch"></span></button></label>
-        </div>
-        <button class="btn" id="saveGroupNamesBtn" type="button" style="width:100%;margin-top:9px;">グループ設定を保存</button>
+        <label>タブ</label>
+        <button class="btn" id="openTabSettingsBtn" type="button" style="width:100%;">タブ設定</button>
       </div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="tabSettingsModal" aria-hidden="true">
+    <div class="sheet">
+      <h2>タブ設定</h2>
+      <div class="notice">ユーザータブの名称・色・並び順を設定できます。タブを削除しても項目は削除されず「？未分類」へ移動します。</div>
+      <div class="group-settings" id="fixedTabSettings">
+        <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 42px;"><span>⭐️</span><input value="お気に入り" disabled><button type="button" class="color-current" id="tabSettingsStarColor" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
+        <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 42px;"><span>📍</span><input value="現在地" disabled><button type="button" class="color-current" id="tabSettingsLocationColor" aria-label="📍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
+      </div>
+      <div class="group-settings" id="tabSettingsList"></div>
+      <button class="btn" id="addGroupBtn" type="button" style="width:100%;margin-top:9px;">＋ タブ追加</button>
+      <div class="actions">
+        <button class="btn primary" id="saveTabSettingsBtn" type="button">保存</button>
+        <button class="btn" id="closeTabSettingsBtn" type="button">閉じる</button>
       </div>
     </div>
   </div>
@@ -299,13 +304,7 @@
 
       <div class="field">
         <label for="groupSelect">グループ</label>
-        <select id="groupSelect">
-          <option value="1">Grp1</option>
-          <option value="2">Grp2</option>
-          <option value="3">Grp3</option>
-          <option value="4">Grp4</option>
-          <option value="5">Grp5</option>
-        </select>
+        <select id="groupSelect"></select>
       </div>
 
       <div class="field">
@@ -387,6 +386,7 @@
     };
     const COLOR_NAMES = Object.keys(GROUP_COLOR_HEX);
     const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple","gray"];
+    const UNCATEGORIZED = 0;
 
     function validColorName(value, fallback="white") {
       return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
@@ -437,6 +437,8 @@
     let settings = loadSettings();
     let activeTab = "star";
     let items = loadItems();
+    // 旧版/不整合データで存在しないGrpを参照する項目は「？未分類」へ救済する。
+    items = items.map(x => (x.group === 0 || (x.group >= 1 && x.group <= settings.groupNames.length)) ? x : ({...x, group:0}));
     let editingId = null;
     let wakeLock = null;
     const LOCATION_RADIUS_M = 200;
@@ -462,11 +464,15 @@
     const importBtn = document.getElementById("importBtn");
     const importFileInput = document.getElementById("importFileInput");
     const closeDataBtn = document.getElementById("closeDataBtn");
-    const groupNameInputs = [1,2,3,4,5].map(i => document.getElementById(`groupName${i}`));
-    const groupColorInputs = [1,2,3,4,5].map(i => document.getElementById(`groupColor${i}`));
-    const tabColorStar = document.getElementById("tabColorStar");
-    const tabColorLocation = document.getElementById("tabColorLocation");
-    const saveGroupNamesBtn = document.getElementById("saveGroupNamesBtn");
+    const groupTabScroll = document.getElementById("groupTabScroll");
+    const tabSettingsModal = document.getElementById("tabSettingsModal");
+    const tabSettingsList = document.getElementById("tabSettingsList");
+    const openTabSettingsBtn = document.getElementById("openTabSettingsBtn");
+    const addGroupBtn = document.getElementById("addGroupBtn");
+    const saveTabSettingsBtn = document.getElementById("saveTabSettingsBtn");
+    const closeTabSettingsBtn = document.getElementById("closeTabSettingsBtn");
+    const tabSettingsStarColor = document.getElementById("tabSettingsStarColor");
+    const tabSettingsLocationColor = document.getElementById("tabSettingsLocationColor");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
     const deleteBtn = document.getElementById("deleteBtn");
@@ -563,7 +569,7 @@
         barcodeFormat: x.barcodeFormat || "CODE128",
         color: x.color || "white",
         favorite: x.favorite !== false,
-        group: [1,2,3,4,5].includes(rawGroup) ? rawGroup : 1,
+        group: Number.isInteger(rawGroup) && rawGroup >= 0 ? rawGroup : 0,
         codeSpec: x.codeSpec || null,
         locations: Array.isArray(x.locations) ? x.locations.map((p,i) => ({
           lat:Number(p.lat), lng:Number(p.lng), label:String(p.label || `地点${i+1}`)
@@ -573,65 +579,52 @@
       return item;
     }
 
-    function loadSettings() {
-      try {
-        const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null");
-        if (saved && Array.isArray(saved.groupNames) && (saved.groupNames.length === 4 || saved.groupNames.length === 5)) {
-          const names = saved.groupNames.slice(0,5);
-          while (names.length < 5) names.push(`Grp${names.length+1}`);
-          const srcColors = Array.isArray(saved.groupColors) ? saved.groupColors.slice(0,5) : [];
-          const colors = DEFAULT_GROUP_COLORS.map((fallback,i) => validColorName(srcColors[i], fallback));
-          return {
-            groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)),
-            groupColors:colors,
-            starColor:validColorName(saved.starColor,"white"),
-            locationColor:validColorName(saved.locationColor,"white")
-          };
-        }
-      } catch {}
-      return { groupNames:["Grp1","Grp2","Grp3","Grp4","Grp5"], groupColors:DEFAULT_GROUP_COLORS.slice(), starColor:"white", locationColor:"white" };
+    function normalizeSettings(raw) {
+      const srcNames = Array.isArray(raw?.groupNames) ? raw.groupNames : ["Grp1","Grp2","Grp3","Grp4","Grp5"];
+      const names = srcNames.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12));
+      const srcColors = Array.isArray(raw?.groupColors) ? raw.groupColors : [];
+      const colors = names.map((_,i)=>validColorName(srcColors[i], DEFAULT_GROUP_COLORS[i % DEFAULT_GROUP_COLORS.length]));
+      return { groupNames:names, groupColors:colors, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white") };
     }
 
-    function saveSettings() {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    function loadSettings() {
+      try { const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||"null"); if(saved) return normalizeSettings(saved); } catch {}
+      return normalizeSettings(null);
+    }
+
+    function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+
+    function firstGrapheme(text) {
+      if (typeof Intl !== "undefined" && Intl.Segmenter) {
+        const seg=new Intl.Segmenter("ja",{granularity:"grapheme"});
+        return seg.segment(text)[Symbol.iterator]().next().value?.segment || text;
+      }
+      return Array.from(text)[0] || text;
+    }
+
+    function refreshGroupSelect() {
+      const current=Number(groupSelect.value);
+      groupSelect.innerHTML="";
+      settings.groupNames.forEach((name,i)=>{ const o=document.createElement("option");o.value=String(i+1);o.textContent=name||`Grp${i+1}`;groupSelect.appendChild(o); });
+      const u=document.createElement("option");u.value="0";u.textContent="？未分類";groupSelect.appendChild(u);
+      if ([0,...settings.groupNames.map((_,i)=>i+1)].includes(current)) groupSelect.value=String(current);
     }
 
     function refreshTabs() {
-      tabBar.querySelectorAll(".tab").forEach(btn => {
-        const key = btn.dataset.tab;
-        if (["1","2","3","4","5"].includes(key)) {
-          const idx = Number(key)-1;
-          const fullName = settings.groupNames[idx] || `Grp${key}`;
-          btn.dataset.fullName = fullName;
-          btn.setAttribute("aria-label", fullName);
-          const portrait = window.matchMedia("(orientation: portrait)").matches;
-          if (portrait) {
-            if (typeof Intl !== "undefined" && Intl.Segmenter) {
-              const seg = new Intl.Segmenter("ja", { granularity:"grapheme" });
-              btn.textContent = seg.segment(fullName)[Symbol.iterator]().next().value?.segment || fullName;
-            } else {
-              btn.textContent = Array.from(fullName)[0] || fullName;
-            }
-          } else {
-            btn.textContent = fullName;
-          }
-          const colorName = validColorName(settings.groupColors?.[idx], DEFAULT_GROUP_COLORS[idx]);
-          btn.style.background = GROUP_COLOR_HEX[colorName];
-          btn.style.color = "var(--text)";
-        } else if (key === "star") {
-          btn.style.background = GROUP_COLOR_HEX[validColorName(settings.starColor,"white")];
-          btn.style.color = "var(--text)";
-        } else if (key === "location") {
-          btn.style.background = GROUP_COLOR_HEX[validColorName(settings.locationColor,"white")];
-          btn.style.color = "var(--text)";
-        }
-        btn.classList.toggle("active", key === activeTab);
+      groupTabScroll.innerHTML="";
+      const portrait=window.matchMedia("(orientation: portrait)").matches;
+      settings.groupNames.forEach((fullName,idx)=>{
+        const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=String(idx+1);btn.dataset.fullName=fullName;
+        btn.setAttribute("aria-label",fullName);btn.textContent=portrait?firstGrapheme(fullName):fullName;
+        btn.style.background=GROUP_COLOR_HEX[validColorName(settings.groupColors[idx],DEFAULT_GROUP_COLORS[idx%DEFAULT_GROUP_COLORS.length])];
+        btn.classList.toggle("active",activeTab===String(idx+1));groupTabScroll.appendChild(btn);
       });
-      groupNameInputs.forEach((input,i) => input.value = settings.groupNames[i]);
-      updateColorButton(tabColorStar, validColorName(settings.starColor,"white"));
-      updateColorButton(tabColorLocation, validColorName(settings.locationColor,"white"));
-      groupColorInputs.forEach((input,i) => updateColorButton(input, validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i])));
-      [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="uncategorized";unc.dataset.fullName="？未分類";unc.setAttribute("aria-label","？未分類");unc.textContent=portrait?"？":"？未分類";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="uncategorized");groupTabScroll.appendChild(unc);
+      tabBar.querySelector('[data-tab="star"]').style.background=GROUP_COLOR_HEX[validColorName(settings.starColor,"white")];
+      tabBar.querySelector('[data-tab="location"]').style.background=GROUP_COLOR_HEX[validColorName(settings.locationColor,"white")];
+      tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");
+      tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");
+      refreshGroupSelect();
     }
 
     window.addEventListener("orientationchange", () => setTimeout(refreshTabs, 80));
@@ -644,6 +637,7 @@
         return items.filter(x => locationState.distances.has(x.id))
           .slice().sort((a,b) => locationState.distances.get(a.id) - locationState.distances.get(b.id));
       }
+      if (activeTab === "uncategorized") return items.filter(x => x.group === UNCATEGORIZED);
       const g = Number(activeTab);
       return items.filter(x => x.group === g);
     }
@@ -762,7 +756,7 @@
           else if (locationState.status === "ok") empty.textContent = "現在地から200m以内に登録されたIDはありません。";
           else empty.textContent = "📍をタップすると、現在地から200m以内のIDを表示します。";
         } else {
-          empty.textContent = `${settings.groupNames[Number(activeTab)-1]}にはIDがありません。`;
+          empty.textContent = activeTab === "uncategorized" ? "？未分類にはIDがありません。" : `${settings.groupNames[Number(activeTab)-1]}にはIDがありません。`;
         }
         list.appendChild(empty);
         return;
@@ -913,7 +907,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 113,
+        version: 124,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -936,40 +930,26 @@
     async function importData(file) {
       if (!file) return;
       try {
-        // file.text() に任せずUTF-8として明示的に復号する。
-        const buffer = await file.arrayBuffer();
-        let text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-        // UTF-8 BOMがある場合は除去してからJSON解析する。
-        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-        const data = JSON.parse(text);
-        if (!data || data.format !== "IDPortal" || !Array.isArray(data.items)) {
-          throw new Error("invalid-format");
+        const buffer=await file.arrayBuffer(); let text=new TextDecoder("utf-8",{fatal:false}).decode(buffer); if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+        const data=JSON.parse(text); if(!data || data.format!=="IDPortal" || !Array.isArray(data.items)) throw new Error("invalid-format");
+        const legacySettings = data.settings ? structuredClone(data.settings) : null;
+        if ((Number(data.version)||0) < 124 && legacySettings && Array.isArray(legacySettings.groupNames) && legacySettings.groupNames.length === 4) {
+          legacySettings.groupNames = legacySettings.groupNames.concat(["Grp5"]);
+          legacySettings.groupColors = (Array.isArray(legacySettings.groupColors) ? legacySettings.groupColors : []).concat(["gray"]).slice(0,5);
         }
-        const normalized = data.items.map(normalizeItem);
-        if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
-        items = normalized;
-        if (data.settings && Array.isArray(data.settings.groupNames) && (data.settings.groupNames.length === 4 || data.settings.groupNames.length === 5)) {
-          const names = data.settings.groupNames.slice(0,5);
-          while (names.length < 5) names.push(`Grp${names.length+1}`);
-          const srcColors = Array.isArray(data.settings.groupColors) ? data.settings.groupColors.slice(0,5) : [];
-          settings = {
-            groupNames:names.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12)),
-            groupColors:DEFAULT_GROUP_COLORS.map((fallback,i)=>validColorName(srcColors[i],fallback)),
-            starColor:validColorName(data.settings.starColor,"white"),
-            locationColor:validColorName(data.settings.locationColor,"white")
-          };
-          saveSettings();
-        }
-        saveItems();
-        refreshTabs();
-        render();
-        closeDataModal();
-        alert(`${items.length}件を読み込みました。`);
-      } catch {
-        alert("IDポータルのバックアップファイルとして読み込めませんでした。");
-      } finally {
-        importFileInput.value = "";
-      }
+        const nextSettings=normalizeSettings(legacySettings);
+        let rescued=0;
+        const nextItems=data.items.map(x=>normalizeItem(x)).map(item=>{
+          if (!(Number.isInteger(item.group) && item.group>=1 && item.group<=nextSettings.groupNames.length) && item.group!==0) { item.group=0; rescued++; }
+          return item;
+        });
+        if (!confirm(`現在の${items.length}件を、読み込んだ${nextItems.length}件で置き換えますか？`)) return;
+        // 検証・変換完了後にだけ現在データを書き換える。
+        items=nextItems; settings=nextSettings; activeTab="star"; saveSettings(); saveItems(); refreshTabs(); render(); closeDataModal();
+        alert(`${items.length}件を読み込みました。${rescued ? `\n${rescued}項目を「？未分類」へ移しました。` : ""}`);
+      } catch(e) {
+        alert("このデータは読み込めませんでした。\n現在のデータは変更されていません。");
+      } finally { importFileInput.value=""; }
     }
 
     function updateColorSelection() {
@@ -987,9 +967,9 @@
       valueInput.value = item?.value || "";
       originalEditValue = item?.value || "";
       currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
-      const initialGroup = item?.group || (["1","2","3","4","5"].includes(activeTab) ? Number(activeTab) : 1);
+      const initialGroup = item ? item.group : (/^\d+$/.test(activeTab) ? Number(activeTab) : (activeTab === "uncategorized" ? 0 : (settings.groupNames.length ? 1 : 0)));
       groupSelect.value = String(initialGroup);
-      selectedColor = item?.color || validColorName(settings.groupColors?.[initialGroup-1], DEFAULT_GROUP_COLORS[initialGroup-1]);
+      selectedColor = item?.color || (initialGroup > 0 ? validColorName(settings.groupColors?.[initialGroup-1], DEFAULT_GROUP_COLORS[(initialGroup-1)%DEFAULT_GROUP_COLORS.length]) : "gray");
       updateColorSelection();
       editLocations = item?.locations ? structuredClone(item.locations) : [];
       renderLocationList();
@@ -1947,7 +1927,7 @@
         barcodeFormat: barcodeFormatInput.value,
         color: selectedColor,
         favorite: existing ? existing.favorite : false,
-        group: Number(groupSelect.value) || 1,
+        group: Number(groupSelect.value),
         codeSpec: spec,
         locations: structuredClone(editLocations)
       };
@@ -2155,25 +2135,51 @@
       if (locationState.status === "ok") showLocationUpdatedNotice();
     });
 
-    wireColorButton(tabColorStar, settings.starColor || "white", c => tabColorStar.dataset.selectedColor=c, "⭐️タブの色");
-    wireColorButton(tabColorLocation, settings.locationColor || "white", c => tabColorLocation.dataset.selectedColor=c, "📍タブの色");
-    groupColorInputs.forEach((input,i) => wireColorButton(input, settings.groupColors?.[i] || DEFAULT_GROUP_COLORS[i], c => input.dataset.selectedColor=c, `${settings.groupNames?.[i] || `Grp${i+1}`}の色`));
-    wireColorButton(itemColorButton, selectedColor, c => { selectedColor=c; updateColorSelection(); }, "ボタン色");
-
-    saveGroupNamesBtn.addEventListener("click", () => {
-      // 編集欄に残ったフォーカスによるiOSの自動ズームを解除する。
+    let tabDraft=[];
+    let tabDraftDrag=null;
+    function openTabSettings() {
+      tabDraft=settings.groupNames.map((name,i)=>({name,color:validColorName(settings.groupColors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]),oldIndex:i+1}));
+      updateColorButton(tabSettingsStarColor, settings.starColor); updateColorButton(tabSettingsLocationColor, settings.locationColor);
+      renderTabSettings(); tabSettingsModal.classList.add("show"); tabSettingsModal.setAttribute("aria-hidden","false");
+    }
+    function closeTabSettings(){ releaseFormFocus(); tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true"); }
+    function renderTabSettings(){
+      tabSettingsList.innerHTML="";
+      tabDraft.forEach((t,i)=>{
+        const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);
+        const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));
+        const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);
+        const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Grp${i+1}`}の色`);
+        const del=document.createElement("button");del.type="button";del.className="btn";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));
+        row.append(h,inp,col,del);tabSettingsList.appendChild(row);
+      });
+    }
+    function addTabDraft(){ const n=tabDraft.length+1;tabDraft.push({name:`Grp${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length],oldIndex:null});renderTabSettings(); }
+    function deleteTabDraft(i){ const t=tabDraft[i];const count=t.oldIndex?items.filter(x=>x.group===t.oldIndex).length:0;if(!confirm(`「${t.name||`Grp${i+1}`}」を削除します。${count}項目は「？未分類」へ移動します。`))return;tabDraft.splice(i,1);renderTabSettings(); }
+    function beginTabDraftDrag(e,index){e.preventDefault();const row=e.currentTarget.closest(".tab-setting-row");e.currentTarget.setPointerCapture?.(e.pointerId);tabDraftDrag={pointerId:e.pointerId,row,from:index,to:index,startY:e.clientY};row.classList.add("dragging");document.addEventListener("pointermove",moveTabDraftDrag,{passive:false});document.addEventListener("pointerup",endTabDraftDrag,{once:true});document.addEventListener("pointercancel",endTabDraftDrag,{once:true});}
+    function moveTabDraftDrag(e){if(!tabDraftDrag||e.pointerId!==tabDraftDrag.pointerId)return;e.preventDefault();const rows=[...tabSettingsList.querySelectorAll(".tab-setting-row")];let target=rows.length-1;for(let i=0;i<rows.length;i++){const r=rows[i].getBoundingClientRect();if(e.clientY<r.top+r.height/2){target=i;break;}}tabDraftDrag.to=Math.max(0,Math.min(target,rows.length-1));rows.forEach((r,i)=>r.classList.toggle("drag-target",i===tabDraftDrag.to&&r!==tabDraftDrag.row));}
+    function endTabDraftDrag(){if(!tabDraftDrag)return;const {from,to}=tabDraftDrag;if(from!==to){const [m]=tabDraft.splice(from,1);tabDraft.splice(to,0,m);}tabDraftDrag=null;renderTabSettings();}
+    function saveTabSettings(){
       releaseFormFocus();
-      settings.groupNames = groupNameInputs.map((input,i) => input.value.trim().slice(0,12) || `Grp${i+1}`);
-      settings.groupColors = groupColorInputs.map((input,i) => paletteValue(input, DEFAULT_GROUP_COLORS[i]));
-      settings.starColor = paletteValue(tabColorStar,"white");
-      settings.locationColor = paletteValue(tabColorLocation,"white");
-      saveSettings();
-      refreshTabs();
-      render();
-    });
+      const oldToNew=new Map();tabDraft.forEach((t,i)=>{if(t.oldIndex)oldToNew.set(t.oldIndex,i+1);});
+      items=items.map(x=>({...x,group:x.group===0?0:(oldToNew.get(x.group)||0)}));
+      settings.groupNames=tabDraft.map((t,i)=>String(t.name||`Grp${i+1}`).trim().slice(0,12)||`Grp${i+1}`);
+      settings.groupColors=tabDraft.map((t,i)=>validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]));
+      settings.starColor=paletteValue(tabSettingsStarColor,"white"); settings.locationColor=paletteValue(tabSettingsLocationColor,"white");
+      if (/^\d+$/.test(activeTab)) activeTab=oldToNew.get(Number(activeTab))?String(oldToNew.get(Number(activeTab))):"uncategorized";
+      saveSettings();saveItems();refreshTabs();render();closeTabSettings();
+    }
+
+    wireColorButton(tabSettingsStarColor, settings.starColor, c=>tabSettingsStarColor.dataset.selectedColor=c, "⭐️タブの色");
+    wireColorButton(tabSettingsLocationColor, settings.locationColor, c=>tabSettingsLocationColor.dataset.selectedColor=c, "📍タブの色");
 
     addBtn.addEventListener("click", () => openEdit());
     dataBtn.addEventListener("click", openDataModal);
+    openTabSettingsBtn.addEventListener("click", () => { closeDataModal(); openTabSettings(); });
+    addGroupBtn.addEventListener("click", addTabDraft);
+    saveTabSettingsBtn.addEventListener("click", saveTabSettings);
+    closeTabSettingsBtn.addEventListener("click", closeTabSettings);
+    tabSettingsModal.addEventListener("click", e => { if(e.target===tabSettingsModal) closeTabSettings(); });
     exportBtn.addEventListener("click", exportData);
     importBtn.addEventListener("click", () => importFileInput.click());
     importFileInput.addEventListener("change", () => importData(importFileInput.files?.[0]));
@@ -2234,8 +2240,8 @@
 
     groupSelect.addEventListener("change", () => {
       if (editingId) return;
-      const g = Number(groupSelect.value) || 1;
-      selectedColor = validColorName(settings.groupColors?.[g-1], DEFAULT_GROUP_COLORS[g-1]);
+      const g = Number(groupSelect.value);
+      selectedColor = g > 0 ? validColorName(settings.groupColors?.[g-1], DEFAULT_GROUP_COLORS[(g-1)%DEFAULT_GROUP_COLORS.length]) : "gray";
       updateColorSelection();
     });
 
