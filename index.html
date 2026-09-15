@@ -185,7 +185,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.22 — タブ表示を縦画面では先頭1文字、横画面では全文表示にし、⭐️・📍以外を横スクロール対応。
+        v1.23 — タブ表示を縦画面では先頭1文字、横画面では全文表示にし、⭐️・📍以外を横スクロール対応。
       </div>
     </div>
   </div>
@@ -2102,7 +2102,7 @@
 
     // iOS PWAでも画面全体は固定し、一覧とモーダル内部だけスクロール可能にする。
     document.addEventListener("touchmove", (e) => {
-      if (!e.target.closest(".content-scroll, .sheet")) e.preventDefault();
+      if (!e.target.closest(".content-scroll, .sheet, .tab-scroll")) e.preventDefault();
     }, { passive:false });
 
     function showLocationUpdatedNotice() {
