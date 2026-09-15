@@ -170,7 +170,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.19 — 📍タブのダブルタップ判定をiPhone/PWA対応方式に変更。
+        v1.20 — 地図上の登録地点から地点名を編集できるように変更。
       </div>
     </div>
   </div>
@@ -1127,10 +1127,26 @@
         const m=L.marker([p.lat,p.lng]).addTo(mapInstance);
         const popup=document.createElement("div");
         popup.style.minWidth="180px";
-        const title=document.createElement("div");
-        title.style.fontWeight="700";
-        title.style.marginBottom="5px";
-        title.textContent=p.label || `地点${i+1}`;
+        const title=document.createElement("input");
+        title.type="text";
+        title.value=p.label || `地点${i+1}`;
+        title.setAttribute("aria-label","地点名");
+        title.style.width="100%";
+        title.style.boxSizing="border-box";
+        title.style.marginBottom="6px";
+        title.style.padding="7px 8px";
+        const saveName=document.createElement("button");
+        saveName.type="button";
+        saveName.className="btn primary";
+        saveName.style.width="100%";
+        saveName.style.marginBottom="8px";
+        saveName.textContent="地点名を保存";
+        saveName.addEventListener("click",()=>{
+          const name=title.value.trim();
+          p.label=name || `地点${i+1}`;
+          renderLocationList();
+          renderMapExistingMarkers();
+        });
         const coord=document.createElement("div");
         coord.style.fontSize="12px";
         coord.style.marginBottom="8px";
@@ -1149,7 +1165,7 @@
             mapInstance.fitBounds(bounds.pad(0.25),{maxZoom:16});
           }
         });
-        popup.append(title,coord,del);
+        popup.append(title,saveName,coord,del);
         m.bindPopup(popup,{closeButton:true});
         m.bindTooltip(p.label || `地点${i+1}`);
         mapExistingMarkers.push(m);
