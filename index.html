@@ -28,7 +28,18 @@
     body { position:fixed; inset:0; min-height:0; overflow:hidden; touch-action:none; }
     .app { max-width:720px; width:100%; height:100%; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .tabbar { display:grid; flex:0 0 auto; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px; margin:0 0 8px; }
+    .tabbar { display:flex; flex:0 0 auto; gap:4px; margin:0 0 8px; min-width:0; overflow:hidden; }
+    .tab-fixed { display:flex; flex:0 0 auto; gap:4px; }
+    .tab-scroll { display:flex; flex:1 1 auto; min-width:0; gap:4px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; scrollbar-width:none; touch-action:pan-x; }
+    .tab-scroll::-webkit-scrollbar { display:none; }
+    .tab-fixed .tab { width:42px; flex:0 0 42px; }
+    .tab-scroll .tab { flex:0 0 auto; }
+    @media (orientation:portrait) {
+      .tab-scroll .tab { width:42px; min-width:42px; padding-left:2px; padding-right:2px; font-size:18px; }
+    }
+    @media (orientation:landscape) {
+      .tab-scroll .tab { min-width:58px; max-width:none; padding-left:10px; padding-right:10px; overflow:visible; text-overflow:clip; }
+    }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
     .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
@@ -157,20 +168,24 @@
     </header>
 
     <nav class="tabbar" id="tabBar" aria-label="IDグループ">
-      <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
-      <button class="tab location-tab" type="button" data-tab="location" aria-label="現在地周辺">📍</button>
-      <button class="tab" type="button" data-tab="1">Grp1</button>
-      <button class="tab" type="button" data-tab="2">Grp2</button>
-      <button class="tab" type="button" data-tab="3">Grp3</button>
-      <button class="tab" type="button" data-tab="4">Grp4</button>
-      <button class="tab" type="button" data-tab="5">Grp5</button>
+      <div class="tab-fixed">
+        <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
+        <button class="tab location-tab" type="button" data-tab="location" aria-label="現在地周辺">📍</button>
+      </div>
+      <div class="tab-scroll" id="groupTabScroll">
+        <button class="tab" type="button" data-tab="1">Grp1</button>
+        <button class="tab" type="button" data-tab="2">Grp2</button>
+        <button class="tab" type="button" data-tab="3">Grp3</button>
+        <button class="tab" type="button" data-tab="4">Grp4</button>
+        <button class="tab" type="button" data-tab="5">Grp5</button>
+      </div>
     </nav>
 
     <div class="content-scroll" id="contentScroll">
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.21 — 地点名編集欄を拡大し、「地図から追加」を「地図」に変更。
+        v1.22 — タブ表示を縦画面では先頭1文字、横画面では全文表示にし、⭐️・📍以外を横スクロール対応。
       </div>
     </div>
   </div>
@@ -586,7 +601,20 @@
         const key = btn.dataset.tab;
         if (["1","2","3","4","5"].includes(key)) {
           const idx = Number(key)-1;
-          btn.textContent = settings.groupNames[idx] || `Grp${key}`;
+          const fullName = settings.groupNames[idx] || `Grp${key}`;
+          btn.dataset.fullName = fullName;
+          btn.setAttribute("aria-label", fullName);
+          const portrait = window.matchMedia("(orientation: portrait)").matches;
+          if (portrait) {
+            if (typeof Intl !== "undefined" && Intl.Segmenter) {
+              const seg = new Intl.Segmenter("ja", { granularity:"grapheme" });
+              btn.textContent = seg.segment(fullName)[Symbol.iterator]().next().value?.segment || fullName;
+            } else {
+              btn.textContent = Array.from(fullName)[0] || fullName;
+            }
+          } else {
+            btn.textContent = fullName;
+          }
           const colorName = validColorName(settings.groupColors?.[idx], DEFAULT_GROUP_COLORS[idx]);
           btn.style.background = GROUP_COLOR_HEX[colorName];
           btn.style.color = "var(--text)";
@@ -605,6 +633,9 @@
       groupColorInputs.forEach((input,i) => updateColorButton(input, validColorName(settings.groupColors?.[i], DEFAULT_GROUP_COLORS[i])));
       [...groupSelect.options].forEach((opt,i) => opt.textContent = settings.groupNames[i] || `Grp${i+1}`);
     }
+
+    window.addEventListener("orientationchange", () => setTimeout(refreshTabs, 80));
+    window.addEventListener("resize", () => refreshTabs());
 
     function visibleItems() {
       if (activeTab === "star") return items.filter(x => x.favorite);
