@@ -170,7 +170,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.20 — 地図上の登録地点から地点名を編集できるように変更。
+        v1.21 — 地点名編集欄を拡大し、「地図から追加」を「地図」に変更。
       </div>
     </div>
   </div>
@@ -297,7 +297,7 @@
         <label>位置情報</label>
         <div class="location-actions">
           <button class="btn" id="addCurrentLocationBtn" type="button">現在地を追加</button>
-          <button class="btn" id="addMapLocationBtn" type="button">地図から追加</button>
+          <button class="btn" id="addMapLocationBtn" type="button">地図</button>
         </div>
         <div class="location-list" id="locationList"></div>
         <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
@@ -1126,7 +1126,7 @@
       editLocations.forEach((p,i)=>{
         const m=L.marker([p.lat,p.lng]).addTo(mapInstance);
         const popup=document.createElement("div");
-        popup.style.minWidth="180px";
+        popup.style.minWidth="280px";
         const title=document.createElement("input");
         title.type="text";
         title.value=p.label || `地点${i+1}`;
