@@ -190,7 +190,7 @@
       <main id="list" class="list"></main>
 
       <div class="footnote">
-        v1.27 — 検索タブ色設定・かな/英字表記ゆれ検索・検索結果タブ名省スペース化。
+        v1.28 — 検索欄が空の場合は全🆔項目を表示。
       </div>
     </div>
   </div>
@@ -213,7 +213,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.27</div>
+      <div class="app-version">IDポータル v1.28</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -655,7 +655,7 @@
     function visibleItems() {
       if (activeTab === "search") {
         const q=normalizeSearchText(searchQuery.trim());
-        if (!q) return [];
+        if (!q) return items.slice();
         return items.filter(x => normalizeSearchText(x.name).includes(q));
       }
       if (activeTab === "star") return items.filter(x => x.favorite);
@@ -776,7 +776,7 @@
         const empty = document.createElement("div");
         empty.className = "empty";
         if (activeTab === "search") {
-          empty.textContent = searchQuery.trim() ? "一致する🆔項目がありません。" : "検索するID項目名を入力してください。";
+          empty.textContent = "一致する🆔項目がありません。";
         } else if (activeTab === "star") {
           empty.innerHTML = "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。";
         } else if (activeTab === "location") {
