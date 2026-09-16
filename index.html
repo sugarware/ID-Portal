@@ -215,7 +215,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.38</div>
+      <div class="app-version">IDポータル v1.39</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -1823,7 +1823,7 @@
 
     function startHighResolutionFrameScan() {
       if (frameDecodeTimer) clearInterval(frameDecodeTimer);
-      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,650);
+      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,400);
       setTimeout(scanHighResolutionCameraFrame,250);
     }
 
