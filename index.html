@@ -124,8 +124,10 @@
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .scan-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
-    .scan-mode-btn { min-height:42px; font-weight:800; }
-    .scan-mode-btn.active { background:#111827; border-color:#111827; color:#fff; }
+    .scan-mode { gap:0; border:2px solid #2563eb; border-radius:12px; overflow:hidden; background:#fff; }
+    .scan-mode-btn { min-height:44px; font-weight:800; border:0; border-radius:0; background:#fff; color:#1f2937; box-shadow:none; }
+    .scan-mode-btn + .scan-mode-btn { border-left:1px solid #2563eb; }
+    .scan-mode-btn.active { background:#2563eb; color:#fff; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
     .frame-decoder { position:fixed; left:-10000px; top:-10000px; width:640px; height:480px; overflow:hidden; pointer-events:none; }
@@ -219,7 +221,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.35</div>
+      <div class="app-version">IDポータル v1.36</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -407,7 +409,8 @@
     const GROUP_COLOR_HEX = {
       white:"#ffffff", blue:"#cfe0ff", sky:"#bfe7ff", cyan:"#bfeeed", green:"#ccebd5", lime:"#e1efb9", yellow:"#ffe69a", cream:"#fff0c7",
       orange:"#ffd0ad", coral:"#ffc5b8", pink:"#f6c7d8", rose:"#efb8c6", purple:"#dccaff", lavender:"#e8ddff", gray:"#d7d7d2", slate:"#c7d0d9",
-      red:"#e53935", darkorange:"#d86b00", darkyellow:"#b58a00", darkgreen:"#27864a", teal:"#087f7b", darkcyan:"#087ea4", darkblue:"#3267c8", navy:"#334b78", darkpurple:"#7450b8", darkpink:"#b84778", brown:"#8a6248", darkslate:"#596675"
+      red:"#e53935", darkorange:"#d86b00", darkyellow:"#b58a00", darkgreen:"#27864a", teal:"#087f7b", darkcyan:"#087ea4", darkblue:"#3267c8", navy:"#334b78", darkpurple:"#7450b8", darkpink:"#b84778", brown:"#8a6248", darkslate:"#596675",
+      vividred:"#ff453a", vividorange:"#ff9500", vividyellow:"#ffd60a", vividlime:"#b7f000", vividgreen:"#30d158", vividcyan:"#00d7c7", vividblue:"#0a84ff", vividpurple:"#bf5af2", vividpink:"#ff375f"
     };
     const COLOR_NAMES = Object.keys(GROUP_COLOR_HEX);
     const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple","gray"];
@@ -1833,8 +1836,8 @@
 
     function startHighResolutionFrameScan() {
       if (frameDecodeTimer) clearInterval(frameDecodeTimer);
-      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,250);
-      setTimeout(scanHighResolutionCameraFrame,0);
+      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,650);
+      setTimeout(scanHighResolutionCameraFrame,250);
     }
 
     function stopHighResolutionFrameScan() {
@@ -1906,6 +1909,10 @@
       const vh = Number(sourceSize?.height) || video.videoHeight || 1;
       const rw = video.clientWidth || reader.clientWidth || 1;
       const rh = video.clientHeight || reader.clientHeight || 1;
+      const videoRect = video.getBoundingClientRect();
+      const readerRect = reader.getBoundingClientRect();
+      const offsetX = videoRect.left - readerRect.left;
+      const offsetY = videoRect.top - readerRect.top;
       let pts = explicitPoints || decodedResult?.result?.cornerPoints || decodedResult?.result?.resultPoints || decodedResult?.resultPoints || [];
       pts = Array.from(pts || []).map(p => ({x:Number(p?.x ?? p?.getX?.()), y:Number(p?.y ?? p?.getY?.())})).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
 
@@ -1917,17 +1924,26 @@
       }
 
       const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
-      let left=Math.min(...xs)/vw*rw;
-      let top=Math.min(...ys)/vh*rh;
-      let width=(Math.max(...xs)-Math.min(...xs))/vw*rw;
-      let height=(Math.max(...ys)-Math.min(...ys))/vh*rh;
+      const fit=(getComputedStyle(video).objectFit || "fill").toLowerCase();
+      let scaleX=rw/vw, scaleY=rh/vh, imageOffsetX=0, imageOffsetY=0;
+      if (fit === "cover" || fit === "contain") {
+        const scale = fit === "cover" ? Math.max(rw/vw,rh/vh) : Math.min(rw/vw,rh/vh);
+        scaleX=scaleY=scale;
+        imageOffsetX=(rw-vw*scale)/2;
+        imageOffsetY=(rh-vh*scale)/2;
+      }
+      let left=offsetX + imageOffsetX + Math.min(...xs)*scaleX;
+      let top=offsetY + imageOffsetY + Math.min(...ys)*scaleY;
+      let width=(Math.max(...xs)-Math.min(...xs))*scaleX;
+      let height=(Math.max(...ys)-Math.min(...ys))*scaleY;
 
       // 実コード領域を示す。小さ過ぎる場合だけ最低表示サイズを確保。
       const minBox=44;
       if (width < minBox) { left -= (minBox-width)/2; width=minBox; }
       if (height < minBox) { top -= (minBox-height)/2; height=minBox; }
+      const boxW=reader.clientWidth || rw, boxH=reader.clientHeight || rh;
       left=Math.max(0,left); top=Math.max(0,top);
-      width=Math.min(rw-left,width); height=Math.min(rh-top,height);
+      width=Math.min(boxW-left,width); height=Math.min(boxH-top,height);
 
       detectBox.style.left=`${left}px`; detectBox.style.top=`${top}px`;
       detectBox.style.width=`${width}px`; detectBox.style.height=`${height}px`;
@@ -1966,7 +1982,7 @@
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
-          { fps: cameraMode === "qr" ? 10 : 1 },
+          { fps: 10 },
           async (decodedText, decodedResult) => {
             if (cameraMode !== "qr") return;
             try { html5Qr.pause(true); } catch {}
