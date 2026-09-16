@@ -123,18 +123,12 @@
     .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .scan-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
-    .scan-mode { gap:0; border:2px solid #2563eb; border-radius:12px; overflow:hidden; background:#fff; }
-    .scan-mode-btn { min-height:44px; font-weight:800; border:0; border-radius:0; background:#fff; color:#1f2937; box-shadow:none; }
-    .scan-mode-btn + .scan-mode-btn { border-left:1px solid #2563eb; }
-    .scan-mode-btn.active { background:#2563eb; color:#fff; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
     .frame-decoder { position:fixed; left:-10000px; top:-10000px; width:640px; height:480px; overflow:hidden; pointer-events:none; }
     #reader { width: 100%; background: #111; }
     #reader video { width: 100% !important; display:block; }
-    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; transition:width .15s ease,aspect-ratio .15s ease; }
-    .camera-guide.bar-mode { width:min(92%,620px); aspect-ratio:2.35/1; }
+    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; }
     .camera-guide::before, .camera-guide::after { content:""; position:absolute; inset:0; border:0 solid transparent; }
     .camera-guide .corner { position:absolute; width:54px; height:54px; border-color:#fff; border-style:solid; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
     .camera-guide .tl { left:0; top:0; border-width:7px 0 0 7px; }
@@ -221,7 +215,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.37</div>
+      <div class="app-version">IDポータル v1.38</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -264,10 +258,6 @@
         <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <input id="imageFileInput" type="file" accept="image/*" class="hidden">
         <div id="readerWrap" class="reader-wrap hidden">
-          <div class="scan-mode" id="scanModeSwitch">
-            <button type="button" class="btn scan-mode-btn active" id="scanModeQr">QR</button>
-            <button type="button" class="btn scan-mode-btn" id="scanModeBar">BAR</button>
-          </div>
           <div id="reader"></div>
           <div id="cameraGuide" class="camera-guide hidden" aria-hidden="true">
             <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
@@ -527,8 +517,6 @@
     const readerWrap = document.getElementById("readerWrap");
     const frameDecoderEl = document.getElementById("frameDecoder");
     const cameraGuide = document.getElementById("cameraGuide");
-    const scanModeQr = document.getElementById("scanModeQr");
-    const scanModeBar = document.getElementById("scanModeBar");
     const detectBox = document.getElementById("detectBox");
     const detectLabel = document.getElementById("detectLabel");
     const scanStatus = document.getElementById("scanStatus");
@@ -562,7 +550,6 @@
     let frameDecodeTimer = null;
     let frameDecodeBusy = false;
     let cameraRunning = false;
-    let cameraMode = "qr";
     let currentCodeSpec = null;
     let originalEditValue = "";
     let activeQrItem = null;
@@ -1803,7 +1790,7 @@
     }
 
     async function scanHighResolutionCameraFrame() {
-      if (!cameraRunning || cameraMode !== "bar" || frameDecodeBusy) return;
+      if (!cameraRunning || frameDecodeBusy) return;
       frameDecodeBusy=true;
       try {
         const file=await captureCameraFrameFile();
@@ -1953,21 +1940,6 @@
       return true;
     }
 
-    function updateCameraModeUI() {
-      scanModeQr.classList.toggle("active",cameraMode==="qr");
-      scanModeBar.classList.toggle("active",cameraMode==="bar");
-      cameraGuide.classList.toggle("bar-mode",cameraMode==="bar");
-    }
-
-    async function setCameraMode(mode) {
-      if (mode!=="qr" && mode!=="bar") return;
-      if (cameraMode===mode) return;
-      const wasRunning=cameraRunning;
-      if (wasRunning) await stopCamera();
-      cameraMode=mode; updateCameraModeUI();
-      if (wasRunning) await startCamera();
-    }
-
     async function startCamera() {
       if (cameraRunning) {
         await stopCamera();
@@ -1984,20 +1956,9 @@
           { facingMode: "environment" },
           { fps: 10 },
           async (decodedText, decodedResult) => {
+            try { html5Qr.pause(true); } catch {}
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
             const mapped = mapScanFormat(fmtName);
-            // BARモードではv1.34と同様、ライブ経路で拾えた1次元コードも採用する。
-            // 高解像度フレーム解析は並行して継続し、先に成功した経路を使う。
-            if (cameraMode === "bar") {
-              if (mapped.type !== "barcode") return;
-              try { html5Qr.pause(true); } catch {}
-              setScanStatus(`認識成功：${mapped.label} ／ ${decodedText}`);
-              applyDecoded(decodedText, decodedResult);
-              await stopCamera();
-              return;
-            }
-            if (cameraMode !== "qr") return;
-            try { html5Qr.pause(true); } catch {}
             let usedFrameSpec = false;
             let qr = null;
 
@@ -2043,12 +2004,9 @@
           () => {}
         );
         cameraRunning = true;
-        updateCameraModeUI();
-        if (cameraMode === "bar") startHighResolutionFrameScan();
+        startHighResolutionFrameScan();
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus(cameraMode === "qr"
-          ? "QRモード：正方形の枠を目安にQRコードを映してください。"
-          : "BARモード：横長の枠を目安にバーコードを映してください。高解像度で連続解析します。");
+        setScanStatus("大きな枠を目安にコードを映してください。QRのライブ解析に加え、バーコードは高解像度フレームでも解析します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
         readerWrap.classList.add("hidden");
@@ -2446,12 +2404,7 @@
     });
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
-    cameraScanBtn.addEventListener("click", async () => {
-      if (!cameraRunning) { cameraMode="qr"; updateCameraModeUI(); }
-      await startCamera();
-    });
-    scanModeQr.addEventListener("click", ()=>setCameraMode("qr"));
-    scanModeBar.addEventListener("click", ()=>setCameraMode("bar"));
+    cameraScanBtn.addEventListener("click", startCamera);
     manualToggleBtn.addEventListener("click", () => {
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
