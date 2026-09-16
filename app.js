@@ -1,251 +1,907 @@
-(()=>{"use strict";
-const $=id=>document.getElementById(id), pages=[...document.querySelectorAll(".page")], back=$("back"), title=$("title");
-let current="home", stream=null, scanRAF=0, fileData=null, blocks=[], blockIndex=0, recv=null, scanEnableAt=0, scanning=false, lastSeenKey="", lastSeenAt=0, autoTimer=null, autoRunning=false, normalResultText="";
-const START=new Uint8Array([0xD3,0x51,0x52,0x43]), SHORT=new Uint8Array([0xD3,0x43]), VERSION=1;
-function go(id){stopAuto();stopCamera();pages.forEach(p=>p.classList.toggle("active",p.id===id));current=id;back.classList.toggle("hidden",id==="home");const sh=$("settingsHome");if(sh)sh.classList.toggle("hidden",id!=="home");title.textContent=id==="home"?"QR通信":({send:"送信 / 表示",show:"送信",receive:"受信 / 読込",settings:"設定"}[id]||"QR通信");if(id==="receive"){resetReceiveState();startCamera();}}
-document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));back.onclick=()=>go("home");$("end").onclick=()=>{stopAuto();go("home")};$("stop").onclick=()=>go("home");
-function resetReceiveState(){
-  recv=null; scanning=false; lastSeenKey=""; lastSeenAt=0; scanEnableAt=0;
-  $("recvStatus").textContent="コードを認識枠内に合わせてください"; const startBtn=$("startRead"); if(startBtn){startBtn.classList.remove("hidden");startBtn.disabled=false;startBtn.textContent="読取開始";} const rbs=$("receiveBlockStatus"); if(rbs){rbs.classList.add("hidden");rbs.innerHTML="";}
-  $("bar").style.width="0%";
-  $("result").textContent=""; normalResultText="";
-  $("result").classList.add("hidden");
-  $("copy").classList.add("hidden");
-  $("save").classList.add("hidden");
-  $("copy").onclick=null; $("save").onclick=null;
-  const v=$("video"), cap=$("capturedCanvas"), guide=$("cameraGuide");
-  if(v)v.classList.remove("hidden"); if(cap){cap.classList.add("hidden"); const cx=cap.getContext("2d");cx.clearRect(0,0,cap.width||1,cap.height||1)} if(guide)guide.classList.remove("hidden");
-}
-function senderStatus(){
-  if(!blocks.length)return;
-  $("sendStatus").innerHTML='<div class="blockStatus"><span class="label">送信中</span><span class="current">'+(blockIndex+1)+'</span><span class="total">/ '+blocks.length+'</span></div>';
-}
-function receiverStatus(done,total){
-  const el=$("receiveBlockStatus");
-  if(!el)return;
-  el.classList.remove("hidden");
-  el.innerHTML='<span class="label">受信済み</span><span class="current">'+done+'</span><span class="total">/ '+total+'</span>';
-}
-function stopAuto(){
-  if(autoTimer){clearInterval(autoTimer);autoTimer=null}
-  autoRunning=false;
-  const b=$("autoToggle");
-  if(b){b.textContent="▶ 自動送信";b.disabled=!blocks.length}
-}
-function startAuto(){
-  if(!blocks.length||autoRunning)return;
-  autoRunning=true;
-  const b=$("autoToggle"); if(b)b.textContent="⏸ 停止";
-  const intervalMs=parseInt(($("autoInterval")&&$("autoInterval").value)||localStorage.autoInterval||"200",10);
-  autoTimer=setInterval(()=>{
-    if(blockIndex>=blocks.length-1){stopAuto();return}
-    blockIndex++;
-    renderBlock();
-  },intervalMs);
-}
-function toggleAuto(){autoRunning?stopAuto():startAuto()}
+    const STORAGE_KEY = "idPortalItems.v01";
 
-$("fileBtn").onclick=()=>$("file").click();$("file").onchange=async e=>{let f=e.target.files[0];if(!f)return;fileData={name:f.name,bytes:new Uint8Array(await f.arrayBuffer())};$("fileInfo").textContent=`📄 ${f.name}  ${f.size.toLocaleString()} bytes`;};
-function bytesText(){return new TextEncoder().encode($("text").value);}
-function concat(...aa){let n=aa.reduce((s,a)=>s+a.length,0),o=new Uint8Array(n),p=0;aa.forEach(a=>{o.set(a,p);p+=a.length});return o;}
-function makeBlocks(bytes,type,name=""){let size=+$("block").value, payloads=[];for(let p=0;p<bytes.length||p===0;p+=size)payloads.push(bytes.slice(p,p+size));if(payloads.length>255)throw Error("255ブロックを超えるデータは対象外です");let total=payloads.length,out=[];let meta=type===2?new TextEncoder().encode(name):new Uint8Array();if(meta.length>255)throw Error("ファイル名が長すぎます");let first=concat(START,new Uint8Array([VERSION,type,total,1]),type===2?new Uint8Array([meta.length]):new Uint8Array(),meta,payloads[0]);out.push(first);for(let i=1;i<total;i++)out.push(concat(SHORT,new Uint8Array([i+1]),payloads[i]));return out;}
-function binaryString(u8){let s="";for(let i=0;i<u8.length;i++)s+=String.fromCharCode(u8[i]);return s}
-function drawQR(data,binary=false){let c=$("qrCanvas"),ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);try{let qr=qrcode(0,$("ecc").value);qr.addData(binary?binaryString(data):data,binary?"Byte":"Byte");qr.make();let n=qr.getModuleCount(),pad=24,cell=Math.floor((c.width-pad*2)/n),used=cell*n,x=(c.width-used)/2,y=x;ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#000";for(let r=0;r<n;r++)for(let col=0;col<n;col++)if(qr.isDark(r,col))ctx.fillRect(x+col*cell,y+r*cell,cell,cell);}catch(e){alert("QR生成に失敗しました: "+e.message)}}
-function drawHomeQR(){const c=$("homeQR");if(!c||!window.qrcode)return;const ctx=c.getContext("2d");ctx.clearRect(0,0,c.width,c.height);try{const qr=qrcode(0,"M");qr.addData("https://sugarware.github.io/QR-Comm/","Byte");qr.make();const n=qr.getModuleCount(),pad=20,cell=Math.floor((c.width-pad*2)/n),used=cell*n,x=(c.width-used)/2,y=x;ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#000";for(let r=0;r<n;r++)for(let col=0;col<n;col++)if(qr.isDark(r,col))ctx.fillRect(x+col*cell,y+r*cell,cell,cell);}catch(e){console.error(e)}}
-$("normalQR").onclick=()=>{let t=$("text").value;if(!t){alert("テキストを入力してください");return}blocks=[];go("show");$("sendStatus").textContent="通常QR";if($("showHelp"))$("showHelp").classList.add("hidden");$("waitText").textContent="相手に読み取ってもらってください";$("back10").classList.add("hidden");$("prev").classList.add("hidden");$("next").classList.add("hidden");if($("autoToggle"))$("autoToggle").classList.add("hidden");drawQR(new TextEncoder().encode(t),true)};
-$("commQR").onclick=()=>{try{if($("showHelp"))$("showHelp").classList.remove("hidden");let type=fileData?2:1,bytes=fileData?fileData.bytes:bytesText();if(!bytes.length){alert("テキストまたはファイルを指定してください");return}blocks=makeBlocks(bytes,type,fileData?.name||"");blockIndex=0;go("show");$("back10").classList.remove("hidden");$("prev").classList.remove("hidden");$("next").classList.remove("hidden");if($("autoToggle"))$("autoToggle").classList.remove("hidden");renderBlock()}catch(e){alert(e.message)}};
-function renderBlock(){senderStatus();$("waitText").textContent="相手の読み取りを待っています…";drawQR(blocks[blockIndex],true);$("back10").disabled=blockIndex===0;$("prev").disabled=blockIndex===0;$("next").disabled=blockIndex===blocks.length-1;if($("autoToggle"))$("autoToggle").disabled=blocks.length<=1}
-$("back10").onclick=()=>{stopAuto();blockIndex=Math.max(0,blockIndex-10);renderBlock()};$("prev").onclick=()=>{stopAuto();if(blockIndex>0){blockIndex--;renderBlock()}};$("next").onclick=()=>{stopAuto();if(blockIndex<blocks.length-1){blockIndex++;renderBlock()}};$("autoToggle").onclick=toggleAuto;
-async function startCamera(){
-  if(!navigator.mediaDevices?.getUserMedia){$("recvStatus").textContent="カメラAPIに対応していません";return}
-  try{
-    const v=$("video");
-    try{v.pause()}catch(e){}
-    v.srcObject=null;
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
-    v.srcObject=stream;
-    await v.play();
-    startCameraPeriodMeasurement(v);
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    scanEnableAt=0;
-    scanning=false;
-    $("recvStatus").textContent="コードを認識枠内に合わせ、読取開始を押してください";
-  }catch(e){$("recvStatus").textContent="カメラを開始できません: "+e.name}
-}
-function stopCamera(){if(scanRAF)cancelAnimationFrame(scanRAF);scanRAF=0;scanning=false;const v=$("video");try{v.pause()}catch(e){};if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}v.srcObject=null;scanEnableAt=0;}
-$("startRead").onclick=()=>{
-  if(!stream)return;
-  const b=$("startRead");
-  b.disabled=true;
-  b.textContent="安定待ち…";
-  $("recvStatus").textContent="端末を動かさず、そのままお待ちください";
-  scanning=true;
-  scanEnableAt=performance.now()+300;
-  if(scanRAF)cancelAnimationFrame(scanRAF);
-  scanRAF=requestAnimationFrame(scan);
-  setTimeout(()=>{
-    if(scanning){b.classList.add("hidden");$("recvStatus").textContent="読取中…";}
-  },300);
-};
-function scan(){
-  if(!scanning)return;
-  const v=$("video"), c=$("scanCanvas"), ctx=c.getContext("2d",{willReadFrequently:true});
-  if(performance.now()>=scanEnableAt && v.readyState>=2 && v.videoWidth>0 && v.videoHeight>0){
-    const side=Math.min(v.videoWidth,v.videoHeight);
-    const sx=Math.floor((v.videoWidth-side)/2);
-    const sy=Math.floor((v.videoHeight-side)/2);
-    c.width=side;c.height=side;ctx.clearRect(0,0,side,side);ctx.drawImage(v,sx,sy,side,side,0,0,side,side);
-    const im=ctx.getImageData(0,0,side,side);
-    const code=window.jsQR&&jsQR(im.data,side,side,{inversionAttempts:"dontInvert"});
-    if(code) handleDecoded(code);
-  }
-  if(scanning)scanRAF=requestAnimationFrame(scan);
-}
-function captureRecognized(code,sourceCanvas=null){
-  const src=sourceCanvas||$("scanCanvas"), dst=$("capturedCanvas"), v=$("video"), guide=$("cameraGuide");
-  if(!src||!dst||!src.width)return;
-  let x=0,y=0,w=src.width,h=src.height;
-  if(code&&code.location){
-    const pts=[code.location.topLeftCorner,code.location.topRightCorner,code.location.bottomRightCorner,code.location.bottomLeftCorner].filter(Boolean);
-    if(pts.length){const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y);const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);const m=Math.max(20,Math.round(Math.max(maxx-minx,maxy-miny)*.18));x=Math.max(0,Math.floor(minx-m));y=Math.max(0,Math.floor(miny-m));w=Math.min(src.width-x,Math.ceil(maxx-minx+2*m));h=Math.min(src.height-y,Math.ceil(maxy-miny+2*m));}
-  }
-  dst.width=Math.max(1,w);dst.height=Math.max(1,h);dst.getContext("2d").drawImage(src,x,y,w,h,0,0,w,h);
-  if(v)v.classList.add("hidden");dst.classList.remove("hidden");if(guide)guide.classList.add("hidden");
-}
-function rawBytes(code){if(code.binaryData)return new Uint8Array(code.binaryData);return new TextEncoder().encode(code.data||"")}
-function eq(a,b,off=0){if(a.length<off+b.length)return false;for(let i=0;i<b.length;i++)if(a[off+i]!==b[i])return false;return true}
-function handleDecoded(code){
-  let b=rawBytes(code);
-  const now=performance.now();
-  const key=(code.data||"")+"|"+b.length+"|"+Array.from(b.slice(0,12)).join(",");
-  if(key===lastSeenKey && now-lastSeenAt<350)return;
-  lastSeenKey=key; lastSeenAt=now;if(eq(b,START)&&b.length>=8&&b[4]===VERSION&&(b[5]===1||b[5]===2)&&b[6]>=1&&b[7]===1){let type=b[5],total=b[6],p=8,name="";if(type===2){let n=b[p++];name=new TextDecoder().decode(b.slice(p,p+n));p+=n}recv={type,total,name,parts:[b.slice(p)],next:2};updateRecv();if(total===1)finishRecv();return}if(recv&&eq(b,SHORT)&&b.length>=3){let no=b[2];if(no===recv.next){recv.parts.push(b.slice(3));recv.next++;updateRecv();if(no===recv.total)finishRecv()}return}if(!recv){
-    // jsQR can very rarely return a false-positive object with no decoded text.
-    // Empty-text false positives are ignored and scanning continues.
-    const text=String(code.data||"");
-    if(!text)return;
-    captureRecognized(code);showNormal(text)
-  }}
-function updateRecv(){
-  let done=recv.parts.length;
-  const el=$("receiveBlockStatus");
-  if(el){
-    el.classList.remove("hidden");
-    el.innerHTML='<span class="label">受信済み</span><span class="current">'+done+'</span><span class="total">/ '+recv.total+'</span>';
-  }
-  $("recvStatus").textContent="そのままQRコードにカメラを向けてください";
-  $("bar").style.width=(done/recv.total*100)+"%";
-}
-async function copyTextReliable(text){
-  const value=String(text??"");
-  if(!value)return false;
-  try{
-    if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(value);return true;}
-  }catch(_e){}
-  try{
-    const ta=document.createElement("textarea");
-    ta.value=value;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";
-    document.body.appendChild(ta);ta.focus();ta.select();
-    const ok=document.execCommand("copy");document.body.removeChild(ta);return !!ok;
-  }catch(_e){return false;}
-}
-function showNormal(t){
-  normalResultText=String(t??"");
-  stopCamera();
-  $("recvStatus").textContent="✓ QRコード 読み取り完了";
-  $("result").classList.remove("hidden");
-  $("result").textContent=normalResultText;
-  $("copy").classList.remove("hidden");
-  $("save").classList.remove("hidden");
-  $("copy").onclick=async()=>{
-    const ok=await copyTextReliable(normalResultText);
-    $("recvStatus").textContent=ok?"✓ QRコード 読み取り完了・コピーしました":"✓ QRコード 読み取り完了（コピーに失敗）";
-  };
-  $("save").onclick=()=>download(new TextEncoder().encode(normalResultText),"qr.txt","text/plain");
-}
-function finishRecv(){stopCamera();let data=concat(...recv.parts);$("recvStatus").textContent="✓ 受信完了";$("result").classList.remove("hidden");if(recv.type===1){let t=new TextDecoder().decode(data);$("result").textContent=t;$("copy").classList.remove("hidden");$("copy").onclick=()=>navigator.clipboard.writeText(t);$("save").classList.remove("hidden");$("save").onclick=()=>download(data,"qr通信.txt","text/plain")}else{$("result").textContent=`📄 ${recv.name||"受信ファイル"}  ${data.length.toLocaleString()} bytes`;$("save").classList.remove("hidden");$("save").onclick=()=>download(data,recv.name||"received.bin","application/octet-stream")}}
-function download(bytes,name,type){let u=URL.createObjectURL(new Blob([bytes],{type})),a=document.createElement("a");a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
-$("block").value=localStorage.block||"512";$("ecc").value=localStorage.ecc||"M";$("block").onchange=e=>localStorage.block=e.target.value;$("ecc").onchange=e=>localStorage.ecc=e.target.value;
-drawHomeQR();
-if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js?v=050").catch(console.error));
+    let items = loadItems();
+    let editingId = null;
+    let wakeLock = null;
 
-if($("autoInterval"))$("autoInterval").onchange=()=>{localStorage.autoInterval=$("autoInterval").value};
+    const list = document.getElementById("list");
+    const modal = document.getElementById("editModal");
+    const addBtn = document.getElementById("addBtn");
+    const dataBtn = document.getElementById("dataBtn");
+    const reorderBtn = document.getElementById("reorderBtn");
+    const dataModal = document.getElementById("dataModal");
+    const exportBtn = document.getElementById("exportBtn");
+    const importBtn = document.getElementById("importBtn");
+    const importFileInput = document.getElementById("importFileInput");
+    const closeDataBtn = document.getElementById("closeDataBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const deleteRow = document.getElementById("deleteRow");
+    const formTitle = document.getElementById("formTitle");
+    const nameInput = document.getElementById("name");
+    const typeInput = document.getElementById("type");
+    const barcodeFormatInput = document.getElementById("barcodeFormat");
+    const barcodeFormatField = document.getElementById("barcodeFormatField");
+    const valueInput = document.getElementById("value");
+    const valueLabel = document.getElementById("valueLabel");
+    const imageScanBtn = document.getElementById("imageScanBtn");
+    const cameraScanBtn = document.getElementById("cameraScanBtn");
+    const imageFileInput = document.getElementById("imageFileInput");
+    const reader = document.getElementById("reader");
+    const scanStatus = document.getElementById("scanStatus");
+    const manualToggleBtn = document.getElementById("manualToggleBtn");
+    const manualFields = document.getElementById("manualFields");
+    const appRegisterBtn = document.getElementById("appRegisterBtn");
+    const shortcutSetupField = document.getElementById("shortcutSetupField");
+    const shortcutNamePreview = document.getElementById("shortcutNamePreview");
+    const copyShortcutNameBtn = document.getElementById("copyShortcutNameBtn");
+    const createShortcutBtn = document.getElementById("createShortcutBtn");
+    const testShortcutBtn = document.getElementById("testShortcutBtn");
+    const colorGrid = document.getElementById("colorGrid");
+    let selectedColor = "white";
+    let html5Qr = null;
+    let cameraRunning = false;
+    let currentCodeSpec = null;
+    let originalEditValue = "";
 
-function measureDisplayPeriod(){
- const o=$("displayDiag"); if(!o)return; o.textContent="測定中…";
- let a=[],last=performance.now(),start=last;
- function f(now){let d=now-last;last=now;if(d>0&&d<100)a.push(d);
-  if(now-start<1800)return requestAnimationFrame(f);
-  if(a.length){a.sort((x,y)=>x-y);let d=a[Math.floor(a.length/2)];o.textContent=`${(1000/d).toFixed(1)} Hz / ${d.toFixed(1)} ms`;}
- }
- requestAnimationFrame(f);
-}
-function startCameraPeriodMeasurement(v){
-  const o=$("cameraDiag");
-  if(!o||!v) return;
-  o.textContent="測定中…";
+    const codeView = document.getElementById("codeView");
+    const codeTitle = document.getElementById("codeTitle");
+    const qrcodeEl = document.getElementById("qrcode");
+    const barcode = document.getElementById("barcode");
+    const codeText = document.getElementById("codeText");
+    const codeVerify = document.getElementById("codeVerify");
+    const closeCodeBtn = document.getElementById("closeCodeBtn");
 
-  let finished=false;
-  const finish=(fps)=>{
-    if(finished) return;
-    finished=true;
-    if(Number.isFinite(fps) && fps>1){
-      const ms=1000/fps;
-      o.textContent=`${fps.toFixed(1)} fps / ${ms.toFixed(1)} ms`;
-    }else{
-      o.textContent="測定できません";
+    function legacySpec(item, source = "legacy") {
+      if (item.type === "qr") {
+        const value = String(item.value || "");
+        const mode = inferQrMode(value);
+        return {
+          symbology: "QR_CODE",
+          version: null,
+          errorCorrection: null,
+          maskPattern: null,
+          mode,
+          segments: [{ mode, text: value }],
+          characterEncoding: null,
+          source,
+          detected: { symbology: true, mode: false, version: false, errorCorrection: false, maskPattern: false }
+        };
+      }
+      if (item.type === "barcode") {
+        return { symbology: item.barcodeFormat || "CODE128", source, detected: { symbology: true } };
+      }
+      return null;
     }
-  };
 
-  // Primary: count actual video-frame callbacks using wall-clock time.
-  if(typeof v.requestVideoFrameCallback==="function"){
-    let count=0;
-    let first=null;
-    let last=null;
-    const cb=(now,meta)=>{
-      if(finished) return;
-      if(first===null) first=now;
-      last=now;
-      count++;
-      if(now-first>=2200){
-        const elapsed=(last-first)/1000;
-        finish(elapsed>0 ? (count-1)/elapsed : NaN);
+    function normalizeItem(x) {
+      const item = {
+        id: x.id || crypto.randomUUID(),
+        name: String(x.name || ""),
+        type: ["qr","barcode","shortcut","link"].includes(x.type) ? x.type : "qr",
+        value: String(x.value || ""),
+        barcodeFormat: x.barcodeFormat || "CODE128",
+        color: x.color || "white",
+        codeSpec: x.codeSpec || null
+      };
+      if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
+      return item;
+    }
+
+    function loadItems() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (Array.isArray(saved)) return saved.map(normalizeItem);
+      } catch {}
+      return [
+        normalizeItem({ id: crypto.randomUUID(), name: "サンプル病院", type: "qr", value: "SAMPLE-HOSPITAL-001", barcodeFormat: "CODE128" }),
+        normalizeItem({ id: crypto.randomUUID(), name: "サンプルスーパー", type: "barcode", value: "123456789012", barcodeFormat: "CODE128" }),
+        normalizeItem({ id: crypto.randomUUID(), name: "OpenAI", type: "link", value: "https://chatgpt.com/", barcodeFormat: "CODE128" })
+      ];
+    }
+
+    function saveItems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function typeLabel(item) {
+      if (item.type === "qr") return "コード表示";
+      if (item.type === "barcode") return "コード表示";
+      if (item.type === "shortcut") return "公式アプリ";
+      return "リンク";
+    }
+
+    function render() {
+      list.innerHTML = "";
+      if (!items.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.innerHTML = "まだIDが登録されていません。<br>右上の「＋」から登録してください。";
+        list.appendChild(empty);
         return;
       }
-      v.requestVideoFrameCallback(cb);
-    };
-    v.requestVideoFrameCallback(cb);
 
-    // Safari fallback: if callback remains stalled, switch method.
-    setTimeout(()=>{
-      if(!finished && count<3) measureCameraByCurrentTime(v,finish);
-    },2600);
-    return;
-  }
+      items.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = `item color-${item.color || "white"}`;
 
-  measureCameraByCurrentTime(v,finish);
-}
+        const main = document.createElement("div");
+        main.className = "item-main";
+        main.innerHTML = `<div class="name"></div>`;
+        main.querySelector(".name").textContent = item.name;
+        main.addEventListener("click", () => activate(item));
 
-function measureCameraByCurrentTime(v,finish){
-  let changes=0;
-  let lastTime=v.currentTime;
-  const start=performance.now();
-  let lastChange=start;
-  function poll(now){
-    if(v.currentTime!==lastTime){
-      lastTime=v.currentTime;
-      changes++;
-      lastChange=now;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = typeLabel(item);
+        meta.addEventListener("click", () => activate(item));
+
+        const buttons = document.createElement("div");
+        buttons.className = "drag";
+
+        const handle = document.createElement("button");
+        handle.className = "drag-handle reorder-only";
+        handle.textContent = "≡";
+        handle.title = "ドラッグして並び替え";
+        handle.setAttribute("aria-label", `${item.name}を並び替え`);
+        handle.addEventListener("pointerdown", e => beginDrag(e, item.id));
+
+        const edit = document.createElement("button");
+        edit.className = "mini edit-only";
+        edit.textContent = "⋯";
+        edit.title = "編集";
+        edit.addEventListener("click", () => openEdit(item.id));
+
+        buttons.append(handle, edit);
+        row.append(main, meta, buttons);
+        list.appendChild(row);
+      });
     }
-    if(now-start>=2500){
-      const elapsed=(now-start)/1000;
-      finish(changes/elapsed);
-      return;
-    }
-    requestAnimationFrame(poll);
-  }
-  requestAnimationFrame(poll);
-}
 
-if($("measureDisplay"))$("measureDisplay").onclick=measureDisplayPeriod;
-})();
+    let dragState = null;
+
+    function beginDrag(e, id) {
+      if (!document.body.classList.contains("reorder-mode")) return;
+      e.preventDefault();
+      const row = e.currentTarget.closest(".item");
+      if (!row) return;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      dragState = { id, pointerId: e.pointerId, row, targetIndex: items.findIndex(x => x.id === id) };
+      row.classList.add("dragging");
+      document.addEventListener("pointermove", dragMove, { passive:false });
+      document.addEventListener("pointerup", endDrag, { once:true });
+      document.addEventListener("pointercancel", endDrag, { once:true });
+    }
+
+    function dragMove(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      e.preventDefault();
+      const rows = [...list.querySelectorAll(".item")];
+      let target = rows.length - 1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (e.clientY < r.top + r.height / 2) { target = i; break; }
+      }
+      dragState.targetIndex = Math.max(0, Math.min(target, items.length - 1));
+      rows.forEach((r,i) => r.classList.toggle("drag-target", i === dragState.targetIndex && r !== dragState.row));
+    }
+
+    function endDrag(e) {
+      if (!dragState) return;
+      const from = items.findIndex(x => x.id === dragState.id);
+      const to = dragState.targetIndex;
+      dragState.row.classList.remove("dragging");
+      list.querySelectorAll(".drag-target").forEach(r => r.classList.remove("drag-target"));
+      document.removeEventListener("pointermove", dragMove);
+      if (from >= 0 && to >= 0 && from !== to) {
+        const [moved] = items.splice(from, 1);
+        items.splice(to, 0, moved);
+        saveItems();
+      }
+      dragState = null;
+      render();
+    }
+
+    function openDataModal() {
+      dataModal.classList.add("show");
+      dataModal.setAttribute("aria-hidden", "false");
+    }
+
+    function closeDataModal() {
+      dataModal.classList.remove("show");
+      dataModal.setAttribute("aria-hidden", "true");
+    }
+
+    function exportData() {
+      const backup = {
+        format: "IDPortal",
+        version: 3,
+        exportedAt: new Date().toISOString(),
+        items
+      };
+      // UTF-8 BOMを付け、iOS/Safariやファイル共有経由でも文字コードを誤判定されにくくする。
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob(["\uFEFF", json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const d = new Date();
+      const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      a.href = url;
+      a.download = `IDPortal_backup_${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function importData(file) {
+      if (!file) return;
+      try {
+        // file.text() に任せずUTF-8として明示的に復号する。
+        const buffer = await file.arrayBuffer();
+        let text = new TextDecoder("utf-8", { fatal: false }).decode(buffer);
+        // UTF-8 BOMがある場合は除去してからJSON解析する。
+        if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+        const data = JSON.parse(text);
+        if (!data || data.format !== "IDPortal" || !Array.isArray(data.items)) {
+          throw new Error("invalid-format");
+        }
+        const normalized = data.items.map(normalizeItem);
+        if (!confirm(`現在の${items.length}件を、読み込んだ${normalized.length}件で置き換えますか？`)) return;
+        items = normalized;
+        saveItems();
+        render();
+        closeDataModal();
+        alert(`${items.length}件を読み込みました。`);
+      } catch {
+        alert("IDポータルのバックアップファイルとして読み込めませんでした。");
+      } finally {
+        importFileInput.value = "";
+      }
+    }
+
+    function updateColorSelection() {
+      colorGrid.querySelectorAll(".color-choice").forEach(btn => {
+        btn.classList.toggle("selected", btn.dataset.color === selectedColor);
+      });
+    }
+
+    function openEdit(id = null) {
+      editingId = id;
+      const item = items.find(x => x.id === id);
+
+      formTitle.textContent = item ? "IDを編集" : "IDを追加";
+      nameInput.value = item?.name || "";
+      typeInput.value = item?.type || "qr";
+      barcodeFormatInput.value = item?.barcodeFormat || "CODE128";
+      valueInput.value = item?.value || "";
+      originalEditValue = item?.value || "";
+      currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
+      selectedColor = item?.color || "white";
+      updateColorSelection();
+      deleteRow.classList.toggle("hidden", !item);
+      manualFields.classList.toggle("hidden", !item);
+      manualToggleBtn.textContent = item ? "詳細設定を隠す" : "手入力・詳細設定";
+      scanStatus.textContent = item ? "登録済みコードです。再読み取りすると置き換わります。" : "QRコード／主要バーコードを自動判定します。";
+
+      stopCamera();
+      updateFormFields();
+      updateShortcutPreview();
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+      setTimeout(() => nameInput.focus(), 50);
+    }
+
+    async function closeEdit() {
+      await stopCamera();
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+      editingId = null;
+    }
+
+    function suggestedShortcutName() {
+      const base = nameInput.value.trim() || "アプリ";
+      return `${base}を開く`;
+    }
+
+    function updateShortcutPreview() {
+      if (typeInput.value === "shortcut") {
+        if (!valueInput.value.trim()) valueInput.value = suggestedShortcutName();
+        shortcutNamePreview.textContent = valueInput.value.trim() || suggestedShortcutName();
+      }
+    }
+
+    function updateFormFields() {
+      const type = typeInput.value;
+      barcodeFormatField.classList.toggle("hidden", type !== "barcode");
+      shortcutSetupField.classList.toggle("hidden", type !== "shortcut");
+
+      if (type === "link") {
+        valueLabel.textContent = "URL";
+        valueInput.placeholder = "例：https://example.com";
+      } else if (type === "shortcut") {
+        valueLabel.textContent = "ショートカット名";
+        valueInput.placeholder = "例：楽天GORAを開く";
+        updateShortcutPreview();
+      } else {
+        valueLabel.textContent = "コード内容";
+        valueInput.placeholder = "文字列または番号";
+      }
+    }
+
+
+    function setScanStatus(text, isError = false) {
+      scanStatus.textContent = text;
+      scanStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function inferQrMode(text) {
+      if (/^[0-9]+$/.test(text)) return "numeric";
+      if (/^[0-9A-Z $%*+\-./:]+$/.test(text)) return "alphanumeric";
+      return "byte";
+    }
+
+    function normalizeModeName(mode) {
+      const m = String(mode || "").toLowerCase();
+      // "alphanumeric" contains the substring "numeric", so test it first.
+      if (m.includes("alphanumeric")) return "alphanumeric";
+      if (m.includes("numeric")) return "numeric";
+      if (m.includes("kanji")) return "kanji";
+      if (m.includes("byte")) return "byte";
+      if (m.includes("eci")) return "eci";
+      return m || "byte";
+    }
+
+    function extractSegmentsFromJsQr(result, fallbackText) {
+      const chunks = Array.isArray(result?.chunks) ? result.chunks : [];
+      const segments = [];
+      for (const ch of chunks) {
+        const mode = normalizeModeName(ch.type || ch.mode);
+        if (!["numeric","alphanumeric","byte","kanji"].includes(mode)) continue;
+        let text = typeof ch.text === "string" ? ch.text : "";
+        if (!text && Array.isArray(ch.bytes)) {
+          try { text = new TextDecoder("utf-8", {fatal:false}).decode(new Uint8Array(ch.bytes)); } catch {}
+        }
+        if (text) segments.push({ mode, text });
+      }
+      if (!segments.length) {
+        const mode = inferQrMode(fallbackText || "");
+        segments.push({ mode, text: fallbackText || "" });
+      }
+      return segments;
+    }
+
+    function bchTypeInfo(data) {
+      function digit(n) { let d=0; while(n){d++; n >>>= 1;} return d; }
+      const G15 = 0x537, G15_MASK = 0x5412;
+      let d = data << 10;
+      while (digit(d) - digit(G15) >= 0) d ^= (G15 << (digit(d) - digit(G15)));
+      return ((data << 10) | d) ^ G15_MASK;
+    }
+
+    function hamming15(a,b) {
+      let x=(a^b)&0x7fff, n=0;
+      while(x){ n += x & 1; x >>>= 1; }
+      return n;
+    }
+
+    function sampleQrModule(imageData, loc, n, row, col) {
+      if (!loc?.topLeftCorner || !loc?.topRightCorner || !loc?.bottomLeftCorner || !loc?.bottomRightCorner) return null;
+      const u=(col+0.5)/n, v=(row+0.5)/n;
+      const tl=loc.topLeftCorner, tr=loc.topRightCorner, bl=loc.bottomLeftCorner, br=loc.bottomRightCorner;
+      const x=(1-u)*(1-v)*tl.x + u*(1-v)*tr.x + (1-u)*v*bl.x + u*v*br.x;
+      const y=(1-u)*(1-v)*tl.y + u*(1-v)*tr.y + (1-u)*v*bl.y + u*v*br.y;
+      const ix=Math.max(0,Math.min(imageData.width-1,Math.round(x)));
+      const iy=Math.max(0,Math.min(imageData.height-1,Math.round(y)));
+      const k=(iy*imageData.width+ix)*4;
+      const lum=0.299*imageData.data[k]+0.587*imageData.data[k+1]+0.114*imageData.data[k+2];
+      return lum < 128 ? 1 : 0;
+    }
+
+    function bitsToHex(bits) {
+      let out = "";
+      for (let i = 0; i < bits.length; i += 4) {
+        const nibble = bits.slice(i, i + 4).padEnd(4, "0");
+        out += parseInt(nibble, 2).toString(16).toUpperCase();
+      }
+      return out;
+    }
+
+    function hexToBits(hex, bitCount) {
+      const clean = String(hex || "").replace(/\s+/g, "");
+      let bits = "";
+      for (const ch of clean) {
+        const n = parseInt(ch, 16);
+        if (Number.isNaN(n)) return null;
+        bits += n.toString(2).padStart(4, "0");
+      }
+      return bits.slice(0, bitCount);
+    }
+
+    function extractQrMatrix(imageData, result) {
+      const version = Number(result?.version || 0);
+      if (!version) return null;
+      const n = 17 + 4 * version;
+      let bits = "";
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const b = sampleQrModule(imageData, result.location, n, r, c);
+          if (b == null) return null;
+          bits += b ? "1" : "0";
+        }
+      }
+      return {
+        width: n,
+        height: n,
+        encoding: "hex",
+        bitOrder: "row-major-msb",
+        quietZone: 4,
+        data: bitsToHex(bits)
+      };
+    }
+
+    function renderStoredMatrix(matrix, container) {
+      const w = Number(matrix?.width || 0), h = Number(matrix?.height || 0);
+      if (!w || !h || matrix?.encoding !== "hex") return null;
+      const bits = hexToBits(matrix.data, w * h);
+      if (!bits || bits.length !== w * h) return null;
+      const quiet = Number.isFinite(Number(matrix.quietZone)) ? Number(matrix.quietZone) : 4;
+      const maxSize = Math.min(window.innerWidth * 0.82, 520);
+      const scale = Math.max(2, Math.floor(maxSize / (Math.max(w, h) + quiet * 2)));
+      const cw = (w + quiet * 2) * scale, ch = (h + quiet * 2) * scale;
+      const canvas = document.createElement("canvas");
+      canvas.width = cw; canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cw, ch); ctx.fillStyle = "#000";
+      for (let r = 0; r < h; r++) {
+        for (let c = 0; c < w; c++) {
+          if (bits[r * w + c] === "1") ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+        }
+      }
+      container.appendChild(canvas);
+      return { canvas, ctx, width: cw, height: ch };
+    }
+
+    function extractQrFormatInfo(imageData, result) {
+      const version = Number(result?.version || 0);
+      if (!version) return { errorCorrection:null, maskPattern:null, confidence:null };
+      const n=17+4*version, loc=result.location;
+      const copies=[];
+      let bitsV=0, okV=true;
+      for(let i=0;i<15;i++){
+        let row;
+        if(i<6) row=i; else if(i<8) row=i+1; else row=n-15+i;
+        const b=sampleQrModule(imageData,loc,n,row,8); if(b==null){okV=false;break;} bitsV|=(b<<i);
+      }
+      if(okV) copies.push(bitsV);
+      let bitsH=0, okH=true;
+      for(let i=0;i<15;i++){
+        let col;
+        if(i<8) col=n-i-1; else if(i<9) col=15-i; else col=15-i-1;
+        const b=sampleQrModule(imageData,loc,n,8,col); if(b==null){okH=false;break;} bitsH|=(b<<i);
+      }
+      if(okH) copies.push(bitsH);
+      let best=null;
+      for(const observed of copies){
+        for(let data=0;data<32;data++){
+          const dist=hamming15(observed,bchTypeInfo(data));
+          if(!best || dist<best.dist) best={data,dist};
+        }
+      }
+      if(!best || best.dist>3) return { errorCorrection:null, maskPattern:null, confidence:null };
+      const ecBits=best.data>>3;
+      const ecMap={0:"M",1:"L",2:"H",3:"Q"};
+      return { errorCorrection:ecMap[ecBits] || null, maskPattern:best.data&7, confidence:best.dist===0?"exact":"corrected" };
+    }
+
+    async function decodeQrFromImageFile(file) {
+      if (typeof jsQR !== "function") return null;
+      const bmp = await createImageBitmap(file);
+      const canvas=document.createElement("canvas");
+      canvas.width=bmp.width; canvas.height=bmp.height;
+      const ctx=canvas.getContext("2d",{willReadFrequently:true});
+      ctx.drawImage(bmp,0,0);
+      bmp.close?.();
+      const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const result=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:"attemptBoth"});
+      if(!result) return null;
+      const segments=extractSegmentsFromJsQr(result,result.data || "");
+      const modes=[...new Set(segments.map(x=>x.mode))];
+      const fmt=extractQrFormatInfo(imageData,result);
+      const matrix=extractQrMatrix(imageData,result);
+      return {
+        text: result.data || "",
+        spec: {
+          symbology:"QR_CODE",
+          version: Number(result.version) || null,
+          errorCorrection: fmt.errorCorrection,
+          maskPattern: fmt.maskPattern,
+          mode: modes.length===1 ? modes[0] : "mixed",
+          segments,
+          characterEncoding: null,
+          source:"image",
+          detected:{ symbology:true, mode:true, version:!!result.version, errorCorrection:!!fmt.errorCorrection, maskPattern:Number.isInteger(fmt.maskPattern) },
+          formatInfoConfidence: fmt.confidence,
+          matrix
+        }
+      };
+    }
+
+    function makeQrSpecFromDecoded(text, decodedResult, source="camera") {
+      const mode=inferQrMode(text || "");
+      const meta=decodedResult?.result?.resultMetadata || decodedResult?.resultMetadata || {};
+      const ec=meta.ERROR_CORRECTION_LEVEL || meta.errorCorrectionLevel || null;
+      return {
+        symbology:"QR_CODE", version:null, errorCorrection:ec || null, maskPattern:null,
+        mode, segments:[{mode,text:text||""}], characterEncoding:null, source,
+        detected:{symbology:true, mode:false, version:false, errorCorrection:!!ec, maskPattern:false}
+      };
+    }
+
+    function mapScanFormat(formatName) {
+      const f = (formatName || "").toUpperCase().replace(/[- ]/g, "_");
+      if (f.includes("QR")) return { type: "qr", barcodeFormat: "CODE128", label: "QR Code" };
+      if (f.includes("CODE_128") || f.includes("CODE128")) return { type: "barcode", barcodeFormat: "CODE128", label: "Code 128" };
+      if (f.includes("CODE_39") || f.includes("CODE39")) return { type: "barcode", barcodeFormat: "CODE39", label: "Code 39" };
+      if (f.includes("EAN_13") || f.includes("EAN13")) return { type: "barcode", barcodeFormat: "EAN13", label: "EAN-13" };
+      if (f.includes("EAN_8") || f.includes("EAN8")) return { type: "barcode", barcodeFormat: "EAN8", label: "EAN-8" };
+      if (f.includes("UPC_A") || f === "UPC") return { type: "barcode", barcodeFormat: "UPC", label: "UPC-A" };
+      if (f.includes("ITF")) return { type: "barcode", barcodeFormat: "ITF14", label: "ITF" };
+      return { type: "barcode", barcodeFormat: "CODE128", label: formatName || "バーコード" };
+    }
+
+    function applyDecoded(decodedText, decodedResult) {
+      const fmtName =
+        decodedResult?.result?.format?.formatName ||
+        decodedResult?.result?.format?.format ||
+        decodedResult?.formatName ||
+        "";
+      const mapped = mapScanFormat(fmtName);
+
+      valueInput.value = decodedText || "";
+      typeInput.value = mapped.type;
+      barcodeFormatInput.value = mapped.barcodeFormat;
+      currentCodeSpec = mapped.type === "qr"
+        ? makeQrSpecFromDecoded(decodedText || "", decodedResult, "camera")
+        : { symbology: mapped.barcodeFormat, source:"camera", detected:{symbology:true} };
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent = "詳細設定を隠す";
+      updateFormFields();
+      setScanStatus(`読み取り成功：${mapped.label} ／ ${decodedText}`);
+    }
+
+    async function ensureScanner() {
+      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
+      return html5Qr;
+    }
+
+    async function scanImageFile(file) {
+      if (!file) return;
+      await stopCamera();
+      reader.classList.remove("hidden");
+      setScanStatus("画像を解析しています…");
+      try {
+        // QRはjsQRで先に解析し、Version / Segment mode / Format information を保存する。
+        const qr = await decodeQrFromImageFile(file).catch(() => null);
+        if (qr) {
+          valueInput.value = qr.text;
+          typeInput.value = "qr";
+          currentCodeSpec = qr.spec;
+          manualFields.classList.remove("hidden");
+          manualToggleBtn.textContent = "詳細設定を隠す";
+          updateFormFields();
+          const ec = qr.spec.errorCorrection || "不明";
+          const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
+          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ 元パターン保存済み" : ""}`);
+        } else {
+          const scanner = await ensureScanner();
+          if (typeof scanner.scanFileV2 === "function") {
+            const result = await scanner.scanFileV2(file, true);
+            const decodedText = result?.decodedText || "";
+            applyDecoded(decodedText, result);
+          } else {
+            const decodedText = await scanner.scanFile(file, true);
+            valueInput.value = decodedText || "";
+            const mode=inferQrMode(decodedText || "");
+            currentCodeSpec={symbology:"UNKNOWN",source:"image",detected:{symbology:false},mode};
+            manualFields.classList.remove("hidden");
+            manualToggleBtn.textContent = "詳細設定を隠す";
+            setScanStatus("読み取り成功。コード形式を自動判定できなかったため、種類を確認してください。");
+          }
+        }
+      } catch (e) {
+        setScanStatus("コードを読み取れませんでした。別の画像を試すか、手入力してください。", true);
+      } finally {
+        reader.classList.add("hidden");
+        imageFileInput.value = "";
+      }
+    }
+
+    async function startCamera() {
+      if (cameraRunning) {
+        await stopCamera();
+        return;
+      }
+      reader.classList.remove("hidden");
+      setScanStatus("カメラを起動しています…");
+      try {
+        const scanner = await ensureScanner();
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 160 } },
+          async (decodedText, decodedResult) => {
+            applyDecoded(decodedText, decodedResult);
+            await stopCamera();
+          },
+          () => {}
+        );
+        cameraRunning = true;
+        cameraScanBtn.textContent = "カメラを停止";
+        setScanStatus("コードを枠内に映してください。");
+      } catch (e) {
+        setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
+        reader.classList.add("hidden");
+      }
+    }
+
+    async function stopCamera() {
+      if (html5Qr && cameraRunning) {
+        try { await html5Qr.stop(); } catch {}
+        cameraRunning = false;
+      }
+      cameraScanBtn.textContent = "カメラで読み取る";
+      reader.classList.add("hidden");
+    }
+
+    function validate(item) {
+      if (!item.name.trim()) return "表示名を入力してください。";
+      if (!item.value.trim()) {
+        if (item.type === "link") return "URLを入力してください。";
+        if (item.type === "shortcut") return "ショートカット名を入力してください。";
+        return "コード内容を入力してください。";
+      }
+      return "";
+    }
+
+    function saveCurrent() {
+      const valueNow = valueInput.value.trim();
+      let spec = currentCodeSpec;
+      if (typeInput.value === "qr") {
+        if (!spec || spec.symbology !== "QR_CODE" || valueNow !== originalEditValue) {
+          const mode=inferQrMode(valueNow);
+          spec={symbology:"QR_CODE",version:null,errorCorrection:null,maskPattern:null,mode,segments:[{mode,text:valueNow}],characterEncoding:null,source:"manual",detected:{symbology:true,mode:false,version:false,errorCorrection:false,maskPattern:false}};
+        }
+      } else if (typeInput.value === "barcode") {
+        spec={symbology:barcodeFormatInput.value,source:spec?.source || "manual",detected:{symbology:true}};
+      } else spec=null;
+      const item = {
+        id: editingId || crypto.randomUUID(),
+        name: nameInput.value.trim(),
+        type: typeInput.value,
+        value: valueNow,
+        barcodeFormat: barcodeFormatInput.value,
+        color: selectedColor,
+        codeSpec: spec
+      };
+      const error = validate(item);
+      if (error) return alert(error);
+
+      if (editingId) {
+        const index = items.findIndex(x => x.id === editingId);
+        items[index] = item;
+      } else {
+        items.push(item);
+      }
+      saveItems();
+      render();
+      closeEdit();
+    }
+
+    function deleteCurrent() {
+      if (!editingId) return;
+      const item = items.find(x => x.id === editingId);
+      if (!confirm(`「${item.name}」を削除しますか？`)) return;
+      items = items.filter(x => x.id !== editingId);
+      saveItems();
+      render();
+      closeEdit();
+    }
+
+    async function activate(item) {
+      if (item.type === "shortcut") {
+        const shortcutUrl = `shortcuts://run-shortcut?name=${encodeURIComponent(item.value)}`;
+        window.location.href = shortcutUrl;
+        return;
+      }
+      if (item.type === "link") {
+        window.location.href = item.value;
+        return;
+      }
+      await showCode(item);
+    }
+
+    async function showCode(item) {
+      codeTitle.textContent = item.name;
+      codeText.textContent = item.value;
+      codeVerify.textContent = "";
+      qrcodeEl.innerHTML = "";
+      barcode.innerHTML = "";
+      qrcodeEl.classList.toggle("hidden", item.type !== "qr");
+      barcode.classList.toggle("hidden", item.type !== "barcode");
+
+      try {
+        if (item.type === "qr") {
+          codeVerify.textContent = "再生成コードを検証しています…";
+          const spec = item.codeSpec || legacySpec(item);
+          if (spec?.matrix) {
+            const rendered = renderStoredMatrix(spec.matrix, qrcodeEl);
+            if (!rendered) throw new Error("invalid-matrix");
+            try {
+              const img = rendered.ctx.getImageData(0, 0, rendered.width, rendered.height);
+              const chk = typeof jsQR === "function" ? jsQR(img.data, rendered.width, rendered.height, {inversionAttempts:"dontInvert"}) : null;
+              codeVerify.textContent = chk?.data === item.value
+                ? `元パターン表示：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`
+                : "元パターン表示：保存パターンを表示（内容検証は確認できませんでした）";
+            } catch {
+              codeVerify.textContent = `元パターン表示 ／ ${spec.matrix.width}×${spec.matrix.height} modules ／ hex保存`;
+            }
+            codeView.classList.add("show");
+            document.body.style.overflow = "hidden";
+            try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+            return;
+          }
+          const ec = spec?.errorCorrection || "M";
+          let version = Number(spec?.version) || 0;
+          let qr;
+          const build = (v) => {
+            const obj = window.qrcode(v, ec);
+            const segs = Array.isArray(spec?.segments) && spec.segments.length ? spec.segments : [{mode:spec?.mode || inferQrMode(item.value), text:item.value}];
+            for (const seg of segs) {
+              const modeMap={numeric:"Numeric",alphanumeric:"Alphanumeric",byte:"Byte",kanji:"Kanji"};
+              const m=modeMap[normalizeModeName(seg.mode)] || "Byte";
+              obj.addData(String(seg.text ?? item.value), m);
+            }
+            obj.make();
+            return obj;
+          };
+          try { qr=build(version); } catch { version=0; qr=build(0); }
+          const modules=qr.getModuleCount(), quiet=4;
+          const maxSize=Math.min(window.innerWidth*0.82,520);
+          const scale=Math.max(2,Math.floor(maxSize/(modules+quiet*2)));
+          const side=(modules+quiet*2)*scale;
+          const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side;
+          const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
+          for(let r=0;r<modules;r++) for(let c=0;c<modules;c++) if(qr.isDark(r,c)) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
+          qrcodeEl.appendChild(canvas);
+          // 自己検証：再生成したQRを再度デコードし、保存データと完全一致することを確認。
+          try {
+            const img=ctx.getImageData(0,0,side,side);
+            const chk=typeof jsQR==="function" ? jsQR(img.data,side,side,{inversionAttempts:"dontInvert"}) : null;
+            if (chk?.data === item.value) {
+              const modeText=spec?.mode || "不明";
+              const vText=spec?.version || chk?.version || "自動";
+              codeVerify.textContent=`再生成検証：OK ／ mode=${modeText} ／ Version=${vText} ／ ECC=${ec}${Number.isInteger(spec?.maskPattern)?` ／ 元Mask=${spec.maskPattern}`:""}`;
+            } else codeVerify.textContent="再生成検証：確認できませんでした";
+          } catch { codeVerify.textContent="再生成検証：未実施"; }
+        } else {
+          codeVerify.textContent = `形式：${item.codeSpec?.symbology || item.barcodeFormat || "CODE128"}`;
+          JsBarcode(barcode, item.value, {
+            format: item.barcodeFormat || "CODE128",
+            displayValue: false,
+            margin: 10,
+            height: 150,
+            width: 2
+          });
+        }
+      } catch (e) {
+        alert("コードを生成できませんでした。形式と内容を確認してください。");
+        return;
+      }
+
+      codeView.classList.add("show");
+      document.body.style.overflow = "hidden";
+      try {
+        if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+      } catch {}
+    }
+
+    async function closeCode() {
+      codeView.classList.remove("show");
+      document.body.style.overflow = "";
+      if (wakeLock) {
+        try { await wakeLock.release(); } catch {}
+        wakeLock = null;
+      }
+    }
+
+    addBtn.addEventListener("click", () => openEdit());
+    dataBtn.addEventListener("click", openDataModal);
+    exportBtn.addEventListener("click", exportData);
+    importBtn.addEventListener("click", () => importFileInput.click());
+    importFileInput.addEventListener("change", () => importData(importFileInput.files?.[0]));
+    closeDataBtn.addEventListener("click", closeDataModal);
+    dataModal.addEventListener("click", e => { if (e.target === dataModal) closeDataModal(); });
+    reorderBtn.addEventListener("click", () => {
+      const enabled = document.body.classList.toggle("reorder-mode");
+      reorderBtn.textContent = enabled ? "完了" : "↓↑";
+    });
+    cancelBtn.addEventListener("click", closeEdit);
+    saveBtn.addEventListener("click", saveCurrent);
+    deleteBtn.addEventListener("click", deleteCurrent);
+    typeInput.addEventListener("change", updateFormFields);
+    nameInput.addEventListener("input", () => {
+      if (typeInput.value === "shortcut" && (!editingId || valueInput.value === "" || valueInput.value.endsWith("を開く"))) {
+        valueInput.value = suggestedShortcutName();
+        updateShortcutPreview();
+      }
+    });
+    valueInput.addEventListener("input", updateShortcutPreview);
+
+    appRegisterBtn.addEventListener("click", async () => {
+      await stopCamera();
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent = "詳細設定を隠す";
+      typeInput.value = "shortcut";
+      valueInput.value = suggestedShortcutName();
+      updateFormFields();
+      setScanStatus("公式アプリはAppleショートカットを経由して起動します。");
+      if (!nameInput.value.trim()) nameInput.focus();
+    });
+
+    copyShortcutNameBtn.addEventListener("click", async () => {
+      updateShortcutPreview();
+      const text = shortcutNamePreview.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        setScanStatus(`「${text}」をコピーしました。`);
+      } catch {
+        valueInput.focus();
+        valueInput.select();
+        setScanStatus("コピーできなかったため、ショートカット名欄を選択しました。");
+      }
+    });
+
+    colorGrid.addEventListener("click", (e) => {
+      const btn = e.target.closest(".color-choice");
+      if (!btn) return;
+      selectedColor = btn.dataset.color || "white";
+      updateColorSelection();
+    });
+
+    testShortcutBtn.addEventListener("click", () => {
+      updateShortcutPreview();
+      const name = shortcutNamePreview.textContent.trim();
+      if (!name) return setScanStatus("ショートカット名を入力してください。", true);
+      setScanStatus(`「${name}」を起動テストします。`);
+      window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(name)}`;
+    });
+
+    createShortcutBtn.addEventListener("click", async () => {
+      updateShortcutPreview();
+      const text = shortcutNamePreview.textContent;
+      try { await navigator.clipboard.writeText(text); } catch {}
+      setScanStatus(`「${text}」をコピーしました。ショートカットで「Appを開く」を追加してください。`);
+      window.location.href = "shortcuts://create-shortcut";
+    });
+    imageScanBtn.addEventListener("click", () => imageFileInput.click());
+    imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
+    cameraScanBtn.addEventListener("click", startCamera);
+    manualToggleBtn.addEventListener("click", () => {
+      const hidden = manualFields.classList.toggle("hidden");
+      manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
+    });
+    closeCodeBtn.addEventListener("click", closeCode);
+    modal.addEventListener("click", e => { if (e.target === modal) closeEdit(); });
+
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible" && codeView.classList.contains("show") && "wakeLock" in navigator) {
+        try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+      }
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+    }
+
+    render();
