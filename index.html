@@ -79,6 +79,7 @@
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
     .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
+    .item.dark-color{color:#fff}.item.dark-color .meta{color:rgba(255,255,255,.78)}.item.dark-color .drag-handle{color:#fff}
     .item-leading { display:flex; align-items:center; gap:1px; }
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .quick-location-toggle { width:32px; height:36px; padding:0; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -122,12 +123,16 @@
     .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .scan-mode { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .scan-mode-btn { min-height:42px; font-weight:800; }
+    .scan-mode-btn.active { background:#111827; border-color:#111827; color:#fff; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
     .frame-decoder { position:fixed; left:-10000px; top:-10000px; width:640px; height:480px; overflow:hidden; pointer-events:none; }
     #reader { width: 100%; background: #111; }
     #reader video { width: 100% !important; display:block; }
-    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; }
+    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; transition:width .15s ease,aspect-ratio .15s ease; }
+    .camera-guide.bar-mode { width:min(92%,620px); aspect-ratio:2.35/1; }
     .camera-guide::before, .camera-guide::after { content:""; position:absolute; inset:0; border:0 solid transparent; }
     .camera-guide .corner { position:absolute; width:54px; height:54px; border-color:#fff; border-style:solid; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
     .camera-guide .tl { left:0; top:0; border-width:7px 0 0 7px; }
@@ -214,7 +219,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.34</div>
+      <div class="app-version">IDポータル v1.35</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -257,6 +262,10 @@
         <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <input id="imageFileInput" type="file" accept="image/*" class="hidden">
         <div id="readerWrap" class="reader-wrap hidden">
+          <div class="scan-mode" id="scanModeSwitch">
+            <button type="button" class="btn scan-mode-btn active" id="scanModeQr">QR</button>
+            <button type="button" class="btn scan-mode-btn" id="scanModeBar">BAR</button>
+          </div>
           <div id="reader"></div>
           <div id="cameraGuide" class="camera-guide hidden" aria-hidden="true">
             <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
@@ -397,7 +406,8 @@
 
     const GROUP_COLOR_HEX = {
       white:"#ffffff", blue:"#cfe0ff", sky:"#bfe7ff", cyan:"#bfeeed", green:"#ccebd5", lime:"#e1efb9", yellow:"#ffe69a", cream:"#fff0c7",
-      orange:"#ffd0ad", coral:"#ffc5b8", pink:"#f6c7d8", rose:"#efb8c6", purple:"#dccaff", lavender:"#e8ddff", gray:"#d7d7d2", slate:"#c7d0d9"
+      orange:"#ffd0ad", coral:"#ffc5b8", pink:"#f6c7d8", rose:"#efb8c6", purple:"#dccaff", lavender:"#e8ddff", gray:"#d7d7d2", slate:"#c7d0d9",
+      red:"#e53935", darkorange:"#d86b00", darkyellow:"#b58a00", darkgreen:"#27864a", teal:"#087f7b", darkcyan:"#087ea4", darkblue:"#3267c8", navy:"#334b78", darkpurple:"#7450b8", darkpink:"#b84778", brown:"#8a6248", darkslate:"#596675"
     };
     const COLOR_NAMES = Object.keys(GROUP_COLOR_HEX);
     const DEFAULT_GROUP_COLORS = ["blue","green","orange","purple","gray"];
@@ -405,6 +415,12 @@
 
     function validColorName(value, fallback="white") {
       return Object.prototype.hasOwnProperty.call(GROUP_COLOR_HEX, value) ? value : fallback;
+    }
+
+    function isDarkColor(name) {
+      const hex=GROUP_COLOR_HEX[validColorName(name,"white")].slice(1);
+      const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+      return (0.299*r + 0.587*g + 0.114*b) < 145;
     }
 
     function updateColorButton(button, color) {
@@ -508,6 +524,8 @@
     const readerWrap = document.getElementById("readerWrap");
     const frameDecoderEl = document.getElementById("frameDecoder");
     const cameraGuide = document.getElementById("cameraGuide");
+    const scanModeQr = document.getElementById("scanModeQr");
+    const scanModeBar = document.getElementById("scanModeBar");
     const detectBox = document.getElementById("detectBox");
     const detectLabel = document.getElementById("detectLabel");
     const scanStatus = document.getElementById("scanStatus");
@@ -541,6 +559,7 @@
     let frameDecodeTimer = null;
     let frameDecodeBusy = false;
     let cameraRunning = false;
+    let cameraMode = "qr";
     let currentCodeSpec = null;
     let originalEditValue = "";
     let activeQrItem = null;
@@ -637,13 +656,15 @@
       settings.groupNames.forEach((fullName,idx)=>{
         const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=String(idx+1);btn.dataset.fullName=fullName;
         btn.setAttribute("aria-label",fullName);btn.textContent=portrait?firstGrapheme(fullName):fullName;
-        btn.style.background=GROUP_COLOR_HEX[validColorName(settings.groupColors[idx],DEFAULT_GROUP_COLORS[idx%DEFAULT_GROUP_COLORS.length])];
+        const tabColor=validColorName(settings.groupColors[idx],DEFAULT_GROUP_COLORS[idx%DEFAULT_GROUP_COLORS.length]);
+        btn.style.background=GROUP_COLOR_HEX[tabColor]; btn.style.color=isDarkColor(tabColor)?"#fff":"var(--text)";
         btn.classList.toggle("active",activeTab===String(idx+1));groupTabScroll.appendChild(btn);
       });
       const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="uncategorized";unc.dataset.fullName="？未分類";unc.setAttribute("aria-label","？未分類");unc.textContent=portrait?"？":"？未分類";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="uncategorized");groupTabScroll.appendChild(unc);
-      tabBar.querySelector('[data-tab="star"]').style.background=GROUP_COLOR_HEX[validColorName(settings.starColor,"white")];
-      tabBar.querySelector('[data-tab="location"]').style.background=GROUP_COLOR_HEX[validColorName(settings.locationColor,"white")];
-      tabBar.querySelector('[data-tab="search"]').style.background=GROUP_COLOR_HEX[validColorName(settings.searchColor,"white")];
+      [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{
+        const c=validColorName(col,"white"), el=tabBar.querySelector(`[data-tab="${key}"]`);
+        el.style.background=GROUP_COLOR_HEX[c]; el.style.color=isDarkColor(c)?"#fff":"var(--text)";
+      });
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");
       tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");
       tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
@@ -799,7 +820,9 @@
 
       shown.forEach((item, index) => {
         const row = document.createElement("div");
-        row.className = `item color-${item.color || "white"}`;
+        const itemColor=validColorName(item.color,"white");
+        row.className = `item color-${itemColor}${isDarkColor(itemColor) ? " dark-color" : ""}`;
+        row.style.background=GROUP_COLOR_HEX[itemColor];
 
         const favorite = document.createElement("button");
         favorite.className = "favorite-toggle";
@@ -1777,7 +1800,7 @@
     }
 
     async function scanHighResolutionCameraFrame() {
-      if (!cameraRunning || frameDecodeBusy) return;
+      if (!cameraRunning || cameraMode !== "bar" || frameDecodeBusy) return;
       frameDecodeBusy=true;
       try {
         const file=await captureCameraFrameFile();
@@ -1810,8 +1833,8 @@
 
     function startHighResolutionFrameScan() {
       if (frameDecodeTimer) clearInterval(frameDecodeTimer);
-      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,650);
-      setTimeout(scanHighResolutionCameraFrame,250);
+      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,250);
+      setTimeout(scanHighResolutionCameraFrame,0);
     }
 
     function stopHighResolutionFrameScan() {
@@ -1914,6 +1937,21 @@
       return true;
     }
 
+    function updateCameraModeUI() {
+      scanModeQr.classList.toggle("active",cameraMode==="qr");
+      scanModeBar.classList.toggle("active",cameraMode==="bar");
+      cameraGuide.classList.toggle("bar-mode",cameraMode==="bar");
+    }
+
+    async function setCameraMode(mode) {
+      if (mode!=="qr" && mode!=="bar") return;
+      if (cameraMode===mode) return;
+      const wasRunning=cameraRunning;
+      if (wasRunning) await stopCamera();
+      cameraMode=mode; updateCameraModeUI();
+      if (wasRunning) await startCamera();
+    }
+
     async function startCamera() {
       if (cameraRunning) {
         await stopCamera();
@@ -1928,8 +1966,9 @@
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10 },
+          { fps: cameraMode === "qr" ? 10 : 1 },
           async (decodedText, decodedResult) => {
+            if (cameraMode !== "qr") return;
             try { html5Qr.pause(true); } catch {}
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
             const mapped = mapScanFormat(fmtName);
@@ -1978,9 +2017,12 @@
           () => {}
         );
         cameraRunning = true;
-        startHighResolutionFrameScan();
+        updateCameraModeUI();
+        if (cameraMode === "bar") startHighResolutionFrameScan();
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。QRのライブ解析に加え、バーコードは高解像度フレームでも解析します。");
+        setScanStatus(cameraMode === "qr"
+          ? "QRモード：正方形の枠を目安にQRコードを映してください。"
+          : "BARモード：横長の枠を目安にバーコードを映してください。高解像度で連続解析します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
         readerWrap.classList.add("hidden");
@@ -2342,6 +2384,8 @@
     });
     mapModal.addEventListener("click",e=>{ if(e.target===mapModal) closeMapPicker(); });
 
+    wireColorButton(itemColorButton, "white", c=>{ selectedColor=c; updateColorSelection(); }, "ボタン色");
+
     groupSelect.addEventListener("change", () => {
       if (editingId) return;
       const g = Number(groupSelect.value);
@@ -2376,7 +2420,12 @@
     });
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
-    cameraScanBtn.addEventListener("click", startCamera);
+    cameraScanBtn.addEventListener("click", async () => {
+      if (!cameraRunning) { cameraMode="qr"; updateCameraModeUI(); }
+      await startCamera();
+    });
+    scanModeQr.addEventListener("click", ()=>setCameraMode("qr"));
+    scanModeBar.addEventListener("click", ()=>setCameraMode("bar"));
     manualToggleBtn.addEventListener("click", () => {
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
