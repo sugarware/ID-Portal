@@ -213,7 +213,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.29</div>
+      <div class="app-version">IDポータル v1.30</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -1749,8 +1749,33 @@
     }
 
     async function ensureScanner() {
-      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
+      if (!html5Qr) {
+        const F = window.Html5QrcodeSupportedFormats;
+        const formats = F ? [
+          F.QR_CODE,
+          F.CODE_128, F.CODE_39,
+          F.EAN_13, F.EAN_8,
+          F.UPC_A, F.UPC_E,
+          F.ITF
+        ].filter(v => v !== undefined) : undefined;
+        html5Qr = new Html5Qrcode("reader", {
+          ...(formats?.length ? { formatsToSupport: formats } : {}),
+          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          verbose: false
+        });
+      }
       return html5Qr;
+    }
+
+    // カメラ映像に対する解析領域。固定pxではなく表示サイズに追従させる。
+    // 横長の1次元バーコードも十分な幅で解析できるよう、ほぼ全幅を使用する。
+    function cameraScanBox(viewfinderWidth, viewfinderHeight) {
+      const width = Math.max(240, Math.floor(viewfinderWidth * 0.94));
+      const height = Math.max(180, Math.floor(viewfinderHeight * 0.72));
+      return {
+        width: Math.min(width, viewfinderWidth),
+        height: Math.min(height, viewfinderHeight)
+      };
     }
 
     async function scanImageFile(file) {
@@ -1861,7 +1886,11 @@
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10 },
+          {
+            fps: 15,
+            qrbox: cameraScanBox,
+            disableFlip: true
+          },
           async (decodedText, decodedResult) => {
             try { html5Qr.pause(true); } catch {}
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
@@ -1912,7 +1941,7 @@
         );
         cameraRunning = true;
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。解析は画面全体で行います。複数ある場合は、実際に認識したコードそのものを緑枠で示します。");
+        setScanStatus("大きな枠を目安にコードを映してください。解析領域は画面サイズに合わせて広く確保しています。複数ある場合は、実際に認識したコードそのものを緑枠で示します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
         readerWrap.classList.add("hidden");
