@@ -43,7 +43,7 @@
     }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     #listRight { display:none; }
-    @media (orientation:landscape) and (min-width:1000px) {
+    @media (orientation:landscape) {
       .app { max-width:1200px; }
       .content-scroll { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; overflow:hidden; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
       .content-scroll > .list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; align-content:start; padding-right:2px; touch-action:pan-y; }
@@ -94,9 +94,10 @@
     .btn.danger { color: var(--danger); }
     .list { display: grid; gap: 3px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
-    .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); color:#171717; border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item { display: grid; grid-template-columns: auto auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); color:#171717; border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
     .item .meta{color:#69717d}.item.dark-color{color:#fff}.item.dark-color .meta{color:rgba(255,255,255,.78)}.item.dark-color .drag-handle{color:#fff}
+    .item-index { width:18px; flex:0 0 18px; text-align:right; font-size:10px; font-weight:650; opacity:.62; font-variant-numeric:tabular-nums; }
     .item-leading { display:flex; align-items:center; gap:1px; }
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .quick-location-toggle { width:32px; height:36px; padding:0; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -225,7 +226,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.54 — 検索欄が空の場合は全🆔項目を表示。
+        v1.55 — 検索欄が空の場合は全🆔項目を表示。
       </div>
     </div>
   </div>
@@ -256,7 +257,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.54</div>
+      <div class="app-version">IDポータル v1.55</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -867,11 +868,16 @@
         return;
       }
 
-      shown.forEach((item) => {
+      shown.forEach((item, itemIndex) => {
         const row = document.createElement("div");
         const itemColor=validColorName(item.color,"white");
         row.className = `item color-${itemColor}${isDarkColor(itemColor) ? " dark-color" : ""}`;
         row.style.background=GROUP_COLOR_HEX[itemColor];
+
+        const indexLabel = document.createElement("div");
+        indexLabel.className = "item-index";
+        indexLabel.textContent = String(itemIndex + 1);
+        indexLabel.setAttribute("aria-hidden", "true");
 
         const favorite = document.createElement("button");
         favorite.className = "favorite-toggle";
@@ -924,7 +930,7 @@
         handle.setAttribute("aria-label", `${item.name}を並び替え。ダブルタップで設定`);
         handle.addEventListener("pointerdown", e => beginDrag(e, item.id));
         buttons.append(handle);
-        row.append(leading, main, meta, buttons);
+        row.append(indexLabel, leading, main, meta, buttons);
         wireItemLongPress(row,item);
         targetList.appendChild(row);
       });
