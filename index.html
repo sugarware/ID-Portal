@@ -29,9 +29,9 @@
     body { position:fixed; inset:0; min-height:0; height:100dvh; overflow:hidden; touch-action:none; }
     .app { max-width:720px; width:100%; height:100%; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-    .tabbar { display:flex; flex:0 0 auto; gap:4px; margin:0 0 8px; min-width:0; overflow:hidden; }
-    .tab-fixed { display:flex; flex:0 0 auto; gap:4px; }
-    .tab-scroll { display:flex; flex:1 1 auto; min-width:0; gap:4px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; scrollbar-width:none; touch-action:pan-x; }
+    .tabbar { display:flex; flex:0 0 auto; gap:0; margin:0 0 8px; min-width:0; overflow:hidden; padding:4px; }
+    .tab-fixed { display:flex; flex:0 0 auto; gap:4px; padding-right:7px; margin-right:7px; border-right:2px solid var(--line); }
+    .tab-scroll { display:flex; flex:1 1 auto; min-width:0; gap:4px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; scrollbar-width:none; touch-action:pan-x; padding:0 4px; }
     .tab-scroll::-webkit-scrollbar { display:none; }
     .tab-fixed .tab { width:42px; flex:0 0 42px; }
     .tab-scroll .tab { flex:0 0 auto; }
@@ -43,7 +43,7 @@
     }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
-    .tab.active { border-color:#fff; box-shadow:0 0 0 2px #111827, 0 0 0 4px #fff; position:relative; z-index:2; }
+    .tab.active { border-color:#111827; box-shadow:inset 0 0 0 2px #fff, inset 0 0 0 4px #111827; position:relative; z-index:2; }
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
     .tab.search-tab { font-size:19px; line-height:1; }
@@ -86,9 +86,9 @@
     .btn.danger { color: var(--danger); }
     .list { display: grid; gap: 6px; }
     .empty { background: var(--card); border: 1px dashed var(--line); border-radius: 16px; padding: 28px 18px; text-align: center; color: var(--muted); }
-    .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+    .item { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); color:#171717; border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
-    .item.dark-color{color:#fff}.item.dark-color .meta{color:rgba(255,255,255,.78)}.item.dark-color .drag-handle{color:#fff}
+    .item .meta{color:#69717d}.item.dark-color{color:#fff}.item.dark-color .meta{color:rgba(255,255,255,.78)}.item.dark-color .drag-handle{color:#fff}
     .item-leading { display:flex; align-items:center; gap:1px; }
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .quick-location-toggle { width:32px; height:36px; padding:0; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -173,7 +173,7 @@
     .layout-choice .btn.selected { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); font-weight:800; }
     body.dark-theme { --bg:#17191d; --card:#24272d; --text:#f2f3f5; --muted:#b2b7c0; --line:#454a53; --accent:#6f9cff; --danger:#ff8a80; --shadow:0 8px 24px rgba(0,0,0,.34); }
     body.dark-theme .tab { border-color:#555b65; }
-    body.dark-theme .tab.active { border-color:#111; box-shadow:0 0 0 2px #fff, 0 0 0 4px #111; }
+    body.dark-theme .tab.active { border-color:#111; box-shadow:inset 0 0 0 2px #fff, inset 0 0 0 4px #111; }
     body.dark-theme input, body.dark-theme select { background:#25282e; color:var(--text); }
     body.dark-theme .tab-setting-handle, body.dark-theme .drag-handle, body.dark-theme .mini { background:#2c3037; color:var(--text); }
     body.dark-theme .notice, body.dark-theme .shortcut-name-preview { background:#202329; }
@@ -226,8 +226,8 @@
     <div class="sheet">
       <h2>設定</h2>
       <div class="field">
-        <label>タブ</label>
-        <button class="btn" id="openTabSettingsBtn" type="button" style="width:100%;">タブ設定</button>
+        <label>タブ(Tag)</label>
+        <button class="btn" id="openTabSettingsBtn" type="button" style="width:100%;">タブ(Tag)設定</button>
       </div>
       <div class="field">
         <label>レイアウト</label>
@@ -246,7 +246,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.51</div>
+      <div class="app-version">IDポータル v1.52</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -255,7 +255,7 @@
 
   <div class="modal" id="tabSettingsModal" aria-hidden="true">
     <div class="sheet">
-      <h2>タブ設定</h2>
+      <h2>タブ(Tag)設定</h2>
       <div class="notice">Tagタブの名称・色・並び順を設定できます。Tagを削除してもID項目は削除されず、そのTagだけが外れます。</div>
       <div class="group-settings" id="fixedTabSettings">
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>⭐️</span><input value="お気に入り" disabled><button type="button" class="color-current" id="tabSettingsStarColor" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
