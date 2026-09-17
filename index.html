@@ -23,11 +23,11 @@
       --shadow: 0 8px 24px rgba(0,0,0,.08);
     }
     * { box-sizing: border-box; }
-    html, body { margin:0; padding:0; width:100%; height:100%; height:100dvh; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
+    html, body { margin:0; padding:0; width:100%; height:100%; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
     button, input, select { font: inherit; }
     button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle, .item, .item *, .meta, .name { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
-    body { position:fixed; inset:0; min-height:0; height:100%; overflow:hidden; }
-    .app { position:fixed; inset:0; max-width:720px; width:100%; height:auto; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
+    body { position:fixed; inset:0; min-height:0; height:var(--app-height, 100dvh); overflow:hidden; }
+    .app { position:fixed; left:0; right:0; top:0; bottom:auto; max-width:720px; width:100%; height:var(--app-height, 100dvh); margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .tabbar { display:flex; flex:0 0 auto; gap:0; margin:0 0 8px; min-width:0; overflow:hidden; padding:4px; }
     .tab-fixed { display:flex; flex:0 0 auto; gap:4px; padding-right:7px; margin-right:7px; border-right:2px solid var(--line); }
@@ -42,10 +42,12 @@
       .tab-scroll .tab { min-width:58px; max-width:none; padding-left:10px; padding-right:10px; overflow:visible; text-overflow:clip; }
     }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
-    /* v1.58: fixed page shell; only the ID list owns vertical scrolling. */
+    /* v1.59: page shell is locked to the measured visual viewport.
+       Only the ID list owns vertical scrolling. A 1px scroll reserve keeps
+       short lists as the active iOS scroll container without moving the page. */
     .content-scroll { position:relative; }
-    @supports (-webkit-touch-callout:none) {
-      html, body, .app { height:100dvh; min-height:100dvh; max-height:100dvh; }
+    @media (orientation:portrait) {
+      .content-scroll > .list { min-height:calc(100% + 1px); align-content:start; }
     }
     #listRight { display:none; }
     @media (orientation:landscape) {
@@ -231,7 +233,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.58 — 検索欄が空の場合は全🆔項目を表示。
+        v1.59 — 検索欄が空の場合は全🆔項目を表示。
       </div>
     </div>
   </div>
@@ -262,7 +264,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.58</div>
+      <div class="app-version">IDポータル v1.59</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -2293,10 +2295,21 @@
       }
     }
 
-    // iOS PWAでも画面全体は固定し、一覧とモーダル内部だけスクロール可能にする。
-    document.addEventListener("touchmove", (e) => {
-      if (!e.target.closest(".content-scroll, .sheet, .tab-scroll, .tag-selector")) e.preventDefault();
-    }, { passive:false });
+    // v1.59: iOSの回転後も、CSSの100vh/100dvhではなく実際の表示領域に
+    // アプリ外枠を合わせる。document全体のtouchmove抑止は行わない。
+    function syncAppViewportHeight() {
+      const h = window.visualViewport?.height || window.innerHeight;
+      if (h > 0) document.documentElement.style.setProperty("--app-height", `${Math.round(h)}px`);
+    }
+    syncAppViewportHeight();
+    window.addEventListener("resize", syncAppViewportHeight, { passive:true });
+    window.addEventListener("orientationchange", () => {
+      syncAppViewportHeight();
+      requestAnimationFrame(syncAppViewportHeight);
+      setTimeout(syncAppViewportHeight, 120);
+      setTimeout(syncAppViewportHeight, 350);
+    }, { passive:true });
+    window.visualViewport?.addEventListener("resize", syncAppViewportHeight, { passive:true });
 
     function showLocationUpdatedNotice() {
       const el=document.createElement("div");
