@@ -26,8 +26,8 @@
     html, body { margin:0; padding:0; width:100%; height:100%; height:100dvh; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
     button, input, select { font: inherit; }
     button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle, .item, .item *, .meta, .name { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
-    body { position:fixed; inset:0; min-height:0; height:100dvh; overflow:hidden; touch-action:none; }
-    .app { max-width:720px; width:100%; height:100%; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
+    body { position:fixed; inset:0; min-height:0; height:100%; overflow:hidden; touch-action:none; }
+    .app { position:fixed; inset:0; max-width:720px; width:100%; height:auto; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .tabbar { display:flex; flex:0 0 auto; gap:0; margin:0 0 8px; min-width:0; overflow:hidden; padding:4px; }
     .tab-fixed { display:flex; flex:0 0 auto; gap:4px; padding-right:7px; margin-right:7px; border-right:2px solid var(--line); }
@@ -97,7 +97,7 @@
     .item { display: grid; grid-template-columns: auto auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; width: 100%; background: var(--card); color:#171717; border: 1px solid var(--line); border-radius: 13px; padding: 8px 10px 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.03); }
     .item.color-white{background:#fff}.item.color-blue{background:#cfe0ff}.item.color-sky{background:#bfe7ff}.item.color-cyan{background:#bfeeed}.item.color-green{background:#ccebd5}.item.color-lime{background:#e1efb9}.item.color-yellow{background:#ffe69a}.item.color-cream{background:#fff0c7}.item.color-orange{background:#ffd0ad}.item.color-coral{background:#ffc5b8}.item.color-pink{background:#f6c7d8}.item.color-rose{background:#efb8c6}.item.color-purple{background:#dccaff}.item.color-lavender{background:#e8ddff}.item.color-gray{background:#d7d7d2}.item.color-slate{background:#c7d0d9}
     .item .meta{color:#69717d}.item.dark-color{color:#fff}.item.dark-color .meta{color:rgba(255,255,255,.78)}.item.dark-color .drag-handle{color:#fff}
-    .item-index { width:18px; flex:0 0 18px; text-align:right; font-size:10px; font-weight:650; opacity:.62; font-variant-numeric:tabular-nums; }
+    .item-index { width:10px; flex:0 0 10px; margin-right:-6px; text-align:right; font-size:10px; font-weight:650; opacity:.62; font-variant-numeric:tabular-nums; }
     .item-leading { display:flex; align-items:center; gap:1px; }
     .favorite-toggle { width:34px; height:36px; padding:0; border:0; background:transparent; font-size:25px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#e4a900; }
     .quick-location-toggle { width:32px; height:36px; padding:0; border:0; background:transparent; font-size:22px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -226,7 +226,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.55 — 検索欄が空の場合は全🆔項目を表示。
+        v1.56 — 検索欄が空の場合は全🆔項目を表示。
       </div>
     </div>
   </div>
@@ -257,7 +257,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.55</div>
+      <div class="app-version">IDポータル v1.56</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -693,7 +693,7 @@
       tagSelector.innerHTML="";
       settings.tags.forEach(tag=>{
         const b=document.createElement("button"); b.type="button"; b.className="tag-choice"; b.dataset.tagId=tag.id; b.textContent=firstGrapheme(tag.name); b.title=tag.name; b.setAttribute("aria-label",tag.name);
-        b.style.background=GROUP_COLOR_HEX[tag.color]; b.style.color=isDarkColor(tag.color)?"#fff":"var(--text)";
+        b.style.background=GROUP_COLOR_HEX[tag.color]; b.style.color=isDarkColor(tag.color)?"#fff":"#171717";
         b.classList.toggle("selected",editTagIds.includes(tag.id));
         b.addEventListener("click",()=>{ editTagIds=editTagIds.includes(tag.id)?editTagIds.filter(id=>id!==tag.id):[...editTagIds,tag.id]; refreshTagSelector(); });
         tagSelector.appendChild(b);
@@ -705,15 +705,24 @@
       groupTabScroll.innerHTML=""; const portrait=window.matchMedia("(orientation: portrait)").matches;
       settings.tags.forEach(tag=>{
         const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tag.name;btn.setAttribute("aria-label",tag.name);btn.textContent=portrait?firstGrapheme(tag.name):tag.name;
-        btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"var(--text)";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
+        btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"#171717";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
       });
-      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent=portrait?"♻️":"♻️タグ無し";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
-      [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"var(--text)";});
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent=portrait?"♻️":"♻️タグ無し";unc.style.background=GROUP_COLOR_HEX.gray;unc.style.color=isDarkColor("gray")?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
+      [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"#171717";});
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");searchBar.hidden=activeTab!=="search";refreshTagSelector();
     }
 
-    window.addEventListener("orientationchange", () => setTimeout(refreshTabs, 80));
-    window.addEventListener("resize", () => refreshTabs());
+    function lockViewportTop() {
+      if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+    }
+    window.addEventListener("orientationchange", () => {
+      lockViewportTop();
+      setTimeout(() => { lockViewportTop(); refreshTabs(); }, 80);
+      setTimeout(lockViewportTop, 300);
+    });
+    window.addEventListener("resize", () => { lockViewportTop(); refreshTabs(); });
+    window.visualViewport?.addEventListener("resize", lockViewportTop);
+    window.visualViewport?.addEventListener("scroll", lockViewportTop);
 
     function normalizeSearchText(text) {
       return String(text || "").normalize("NFKC").toLocaleLowerCase("ja").replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
