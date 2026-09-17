@@ -125,9 +125,6 @@
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
-    .frame-debug { margin-top:8px; padding:8px; border:1px dashed #999; border-radius:10px; background:#f7f7f7; }
-    .frame-debug-label { font-size:11px; color:var(--muted); margin-bottom:5px; }
-    .frame-debug img { display:block; width:100%; height:auto; background:#111; }
     .frame-decoder { position:fixed; left:-10000px; top:-10000px; width:640px; height:480px; overflow:hidden; pointer-events:none; }
     #reader { width: 100%; background: #111; }
     #reader video { width: 100% !important; display:block; }
@@ -218,7 +215,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.42</div>
+      <div class="app-version">IDポータル v1.38</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -266,11 +263,6 @@
             <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
           </div>
           <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
-        </div>
-        <div id="frameDebug" class="frame-debug hidden">
-          <div class="frame-debug-label" id="frameDebugLabel">BAR解析へ渡している高解像度フレーム</div>
-          <img id="frameDebugImage" alt="BAR解析用高解像度フレーム">
-          <button class="btn" id="saveFrameDebugBtn" type="button" style="margin-top:8px;width:100%;">解析フレームを保存</button>
         </div>
         <div id="frameDecoder" class="frame-decoder" aria-hidden="true"></div>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
@@ -525,10 +517,6 @@
     const readerWrap = document.getElementById("readerWrap");
     const frameDecoderEl = document.getElementById("frameDecoder");
     const cameraGuide = document.getElementById("cameraGuide");
-    const frameDebug = document.getElementById("frameDebug");
-    const frameDebugImage = document.getElementById("frameDebugImage");
-    const frameDebugLabel = document.getElementById("frameDebugLabel");
-    const saveFrameDebugBtn = document.getElementById("saveFrameDebugBtn");
     const detectBox = document.getElementById("detectBox");
     const detectLabel = document.getElementById("detectLabel");
     const scanStatus = document.getElementById("scanStatus");
@@ -561,7 +549,6 @@
     let frameDecoder = null;
     let frameDecodeTimer = null;
     let frameDecodeBusy = false;
-    let lastFrameDebugBlob = null;
     let cameraRunning = false;
     let currentCodeSpec = null;
     let originalEditValue = "";
@@ -1797,19 +1784,8 @@
       canvas.width=video.videoWidth; canvas.height=video.videoHeight;
       const ctx=canvas.getContext("2d",{willReadFrequently:true});
       ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      // v1.41診断: BARデコーダへ渡すJPEGそのものを表示・保存できるよう保持する。
       const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
       if (!blob) return null;
-      lastFrameDebugBlob=blob;
-      if (frameDebug && frameDebugImage) {
-        const oldUrl=frameDebugImage.dataset.objectUrl;
-        if (oldUrl) URL.revokeObjectURL(oldUrl);
-        const objectUrl=URL.createObjectURL(blob);
-        frameDebugImage.src=objectUrl;
-        frameDebugImage.dataset.objectUrl=objectUrl;
-        frameDebug.classList.remove("hidden");
-        if (frameDebugLabel) frameDebugLabel.textContent=`BAR解析フレーム ${canvas.width}×${canvas.height}`;
-      }
       return new File([blob],"camera-frame.jpg",{type:"image/jpeg"});
     }
 
@@ -1847,7 +1823,7 @@
 
     function startHighResolutionFrameScan() {
       if (frameDecodeTimer) clearInterval(frameDecodeTimer);
-      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,400);
+      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,650);
       setTimeout(scanHighResolutionCameraFrame,250);
     }
 
@@ -1977,7 +1953,7 @@
         await ensureJsQrMatrixDecoder();
         const scanner = await ensureScanner();
         await scanner.start(
-          { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } },
+          { facingMode: "environment" },
           { fps: 10 },
           async (decodedText, decodedResult) => {
             try { html5Qr.pause(true); } catch {}
@@ -2428,21 +2404,6 @@
     });
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
-    saveFrameDebugBtn.addEventListener("click", () => {
-      if (!lastFrameDebugBlob) {
-        setScanStatus("保存できる解析フレームがまだありません。", true);
-        return;
-      }
-      const url=URL.createObjectURL(lastFrameDebugBlob);
-      const a=document.createElement("a");
-      a.href=url;
-      a.download=`IDPortal_BAR_frame_${Date.now()}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-      setScanStatus("現在のBAR解析フレームをJPEGで保存しました。");
-    });
     cameraScanBtn.addEventListener("click", startCamera);
     manualToggleBtn.addEventListener("click", () => {
       const hidden = manualFields.classList.toggle("hidden");
