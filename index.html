@@ -218,7 +218,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.42</div>
+      <div class="app-version">IDポータル v1.43</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -1977,7 +1977,7 @@
         await ensureJsQrMatrixDecoder();
         const scanner = await ensureScanner();
         await scanner.start(
-          { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 960 } },
+          { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } },
           { fps: 10 },
           async (decodedText, decodedResult) => {
             try { html5Qr.pause(true); } catch {}
