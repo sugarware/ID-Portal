@@ -25,7 +25,7 @@
     * { box-sizing: border-box; }
     html, body { margin:0; padding:0; width:100%; height:100%; height:100dvh; background:var(--bg); color:var(--text); font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow:hidden; overscroll-behavior:none; }
     button, input, select { font: inherit; }
-    button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+    button, .btn, .tab, .favorite-toggle, .quick-location-toggle, .mini, .tab-setting-handle, .item, .item *, .meta, .name { user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
     body { position:fixed; inset:0; min-height:0; height:100dvh; overflow:hidden; touch-action:none; }
     .app { max-width:720px; width:100%; height:100%; height:100dvh; margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
@@ -59,6 +59,15 @@
     .tab-setting-row.drag-target { outline:2px solid var(--accent); border-radius:10px; }
     .tab-delete { width:58px; min-width:58px; padding:6px 4px; white-space:nowrap; }
     .group-setting-row input { min-height:40px; padding:9px 10px; }
+
+    .tag-selector { display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0 5px; touch-action:pan-x; }
+    .tag-selector::-webkit-scrollbar { display:none; }
+    .tag-choice { flex:0 0 42px; width:42px; height:42px; border:1px solid var(--line); border-radius:11px; font-size:18px; font-weight:800; cursor:pointer; }
+    .tag-choice.selected { outline:3px solid #111827; outline-offset:-3px; box-shadow:0 0 0 2px rgba(255,255,255,.72) inset; }
+    .context-menu { position:fixed; z-index:4000; min-width:132px; background:#fff; border:1px solid var(--line); border-radius:13px; padding:5px; box-shadow:0 10px 30px rgba(0,0,0,.24); display:none; }
+    .context-menu.show { display:grid; }
+    .context-menu button { border:0; background:#fff; min-height:42px; padding:8px 14px; text-align:left; border-radius:9px; font-weight:650; }
+    .context-menu button:active { background:#eee; }
     .color-current { width:48px; height:40px; padding:5px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .color-current-swatch { width:30px; height:26px; border-radius:7px; border:1px solid rgba(0,0,0,.18); display:block; }
     .color-picker-modal { z-index:60; align-items:center; padding:18px; }
@@ -175,7 +184,7 @@
       </div>
     </header>
 
-    <nav class="tabbar" id="tabBar" aria-label="IDグループ">
+    <nav class="tabbar" id="tabBar" aria-label="IDタグ">
       <div class="tab-fixed">
         <button class="tab star-tab active" type="button" data-tab="star" aria-label="お気に入り">⭐️</button>
         <button class="tab location-tab" type="button" data-tab="location" aria-label="現在地周辺">📍</button>
@@ -215,7 +224,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.38</div>
+      <div class="app-version">IDポータル v1.50</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -225,14 +234,14 @@
   <div class="modal" id="tabSettingsModal" aria-hidden="true">
     <div class="sheet">
       <h2>タブ設定</h2>
-      <div class="notice">ユーザータブの名称・色・並び順を設定できます。タブを削除しても項目は削除されず「？未分類」へ移動します。</div>
+      <div class="notice">Tagタブの名称・色・並び順を設定できます。Tagを削除してもID項目は削除されず、そのTagだけが外れます。</div>
       <div class="group-settings" id="fixedTabSettings">
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>⭐️</span><input value="お気に入り" disabled><button type="button" class="color-current" id="tabSettingsStarColor" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>📍</span><input value="現在地" disabled><button type="button" class="color-current" id="tabSettingsLocationColor" aria-label="📍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>🔍</span><input value="検索" disabled><button type="button" class="color-current" id="tabSettingsSearchColor" aria-label="🔍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
       </div>
       <div class="group-settings" id="tabSettingsList"></div>
-      <button class="btn" id="addGroupBtn" type="button" style="width:100%;margin-top:9px;">＋ タブ追加</button>
+      <button class="btn" id="addGroupBtn" type="button" style="width:100%;margin-top:9px;">＋ Tag追加</button>
       <div class="actions">
         <button class="btn primary" id="saveTabSettingsBtn" type="button">保存</button>
         <button class="btn" id="closeTabSettingsBtn" type="button">閉じる</button>
@@ -319,8 +328,8 @@
       </div>
 
       <div class="field">
-        <label for="groupSelect">グループ</label>
-        <select id="groupSelect"></select>
+        <label>Tag（複数選択可）</label>
+        <div class="tag-selector" id="tagSelector" aria-label="Tag選択"></div>
       </div>
 
       <div class="field">
@@ -330,7 +339,7 @@
           <button class="btn" id="addMapLocationBtn" type="button">地図</button>
         </div>
         <div class="location-list" id="locationList"></div>
-        <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
+        <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、Tagが1つ以上あり、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
       </div>
 
       <div class="field">
@@ -462,8 +471,8 @@
     let activeTab = "star";
     let searchQuery = "";
     let items = loadItems();
-    // 旧版/不整合データで存在しないGrpを参照する項目は「？未分類」へ救済する。
-    items = items.map(x => (x.group === 0 || (x.group >= 1 && x.group <= settings.groupNames.length)) ? x : ({...x, group:0}));
+    // v1.39以前のGroupはnormalizeItem/normalizeSettingsでTagへ自動移行する。
+    { const valid=new Set(settings.tags.map(t=>t.id)); items=items.map(x=>({...x,tagIds:x.tagIds.filter(id=>valid.has(id))})); }
     let editingId = null;
     let wakeLock = null;
     const LOCATION_RADIUS_M = 200;
@@ -543,7 +552,8 @@
     const colorPickerTitle = document.getElementById("colorPickerTitle");
     const largeColorGrid = document.getElementById("largeColorGrid");
     const closeColorPickerBtn = document.getElementById("closeColorPickerBtn");
-    const groupSelect = document.getElementById("groupSelect");
+    const tagSelector = document.getElementById("tagSelector");
+    let editTagIds = [];
     let selectedColor = "white";
     let html5Qr = null;
     let frameDecoder = null;
@@ -590,31 +600,30 @@
     }
 
     function normalizeItem(x) {
-      const rawGroup = Number(x.group);
+      let tagIds = Array.isArray(x.tagIds) ? x.tagIds.map(String) : [];
+      if (!tagIds.length && Number.isInteger(Number(x.group)) && Number(x.group) > 0) tagIds=[`tag-${Number(x.group)}`];
       const item = {
-        id: x.id || crypto.randomUUID(),
-        name: String(x.name || ""),
+        id: x.id || crypto.randomUUID(), name: String(x.name || ""),
         type: ["qr","barcode","shortcut","link","app1"].includes(x.type) ? x.type : "qr",
-        value: String(x.value || ""),
-        barcodeFormat: x.barcodeFormat || "CODE128",
-        color: x.color || "white",
-        favorite: x.favorite !== false,
-        group: Number.isInteger(rawGroup) && rawGroup >= 0 ? rawGroup : 0,
+        value: String(x.value || ""), barcodeFormat: x.barcodeFormat || "CODE128",
+        color: x.color || "white", favorite: x.favorite !== false, tagIds:[...new Set(tagIds)],
         codeSpec: x.codeSpec || null,
-        locations: Array.isArray(x.locations) ? x.locations.map((p,i) => ({
-          lat:Number(p.lat), lng:Number(p.lng), label:String(p.label || `地点${i+1}`)
-        })).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat)<=90 && Math.abs(p.lng)<=180) : []
+        locations: Array.isArray(x.locations) ? x.locations.map((p,i) => ({lat:Number(p.lat), lng:Number(p.lng), label:String(p.label || `地点${i+1}`)})).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat)<=90 && Math.abs(p.lng)<=180) : []
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
       return item;
     }
 
     function normalizeSettings(raw) {
-      const srcNames = Array.isArray(raw?.groupNames) ? raw.groupNames : ["Grp1","Grp2","Grp3","Grp4","Grp5"];
-      const names = srcNames.map((x,i)=>String(x || `Grp${i+1}`).slice(0,12));
-      const srcColors = Array.isArray(raw?.groupColors) ? raw.groupColors : [];
-      const colors = names.map((_,i)=>validColorName(srcColors[i], DEFAULT_GROUP_COLORS[i % DEFAULT_GROUP_COLORS.length]));
-      return { groupNames:names, groupColors:colors, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white") };
+      let tags;
+      if (Array.isArray(raw?.tags)) {
+        tags=raw.tags.map((t,i)=>({id:String(t.id||`tag-${i+1}`),name:String(t.name||`Tag${i+1}`).slice(0,12),color:validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
+      } else {
+        const names=Array.isArray(raw?.groupNames)?raw.groupNames:["Grp1","Grp2","Grp3","Grp4","Grp5"];
+        const colors=Array.isArray(raw?.groupColors)?raw.groupColors:[];
+        tags=names.map((name,i)=>({id:`tag-${i+1}`,name:String(name||`Tag${i+1}`).slice(0,12),color:validColorName(colors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
+      }
+      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white") };
     }
 
     function loadSettings() {
@@ -632,34 +641,27 @@
       return Array.from(text)[0] || text;
     }
 
-    function refreshGroupSelect() {
-      const current=Number(groupSelect.value);
-      groupSelect.innerHTML="";
-      settings.groupNames.forEach((name,i)=>{ const o=document.createElement("option");o.value=String(i+1);o.textContent=name||`Grp${i+1}`;groupSelect.appendChild(o); });
-      const u=document.createElement("option");u.value="0";u.textContent="？未分類";groupSelect.appendChild(u);
-      if ([0,...settings.groupNames.map((_,i)=>i+1)].includes(current)) groupSelect.value=String(current);
+    function refreshTagSelector() {
+      tagSelector.innerHTML="";
+      settings.tags.forEach(tag=>{
+        const b=document.createElement("button"); b.type="button"; b.className="tag-choice"; b.dataset.tagId=tag.id; b.textContent=firstGrapheme(tag.name); b.title=tag.name; b.setAttribute("aria-label",tag.name);
+        b.style.background=GROUP_COLOR_HEX[tag.color]; b.style.color=isDarkColor(tag.color)?"#fff":"var(--text)";
+        b.classList.toggle("selected",editTagIds.includes(tag.id));
+        b.addEventListener("click",()=>{ editTagIds=editTagIds.includes(tag.id)?editTagIds.filter(id=>id!==tag.id):[...editTagIds,tag.id]; refreshTagSelector(); });
+        tagSelector.appendChild(b);
+      });
+      if (!settings.tags.length) { const n=document.createElement("div"); n.className="notice"; n.textContent="Tagがありません。タブ設定から追加できます。"; tagSelector.appendChild(n); }
     }
 
     function refreshTabs() {
-      groupTabScroll.innerHTML="";
-      const portrait=window.matchMedia("(orientation: portrait)").matches;
-      settings.groupNames.forEach((fullName,idx)=>{
-        const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=String(idx+1);btn.dataset.fullName=fullName;
-        btn.setAttribute("aria-label",fullName);btn.textContent=portrait?firstGrapheme(fullName):fullName;
-        const tabColor=validColorName(settings.groupColors[idx],DEFAULT_GROUP_COLORS[idx%DEFAULT_GROUP_COLORS.length]);
-        btn.style.background=GROUP_COLOR_HEX[tabColor]; btn.style.color=isDarkColor(tabColor)?"#fff":"var(--text)";
-        btn.classList.toggle("active",activeTab===String(idx+1));groupTabScroll.appendChild(btn);
+      groupTabScroll.innerHTML=""; const portrait=window.matchMedia("(orientation: portrait)").matches;
+      settings.tags.forEach(tag=>{
+        const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tag.name;btn.setAttribute("aria-label",tag.name);btn.textContent=portrait?firstGrapheme(tag.name):tag.name;
+        btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"var(--text)";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
       });
-      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="uncategorized";unc.dataset.fullName="？未分類";unc.setAttribute("aria-label","？未分類");unc.textContent=portrait?"？":"？未分類";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="uncategorized");groupTabScroll.appendChild(unc);
-      [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{
-        const c=validColorName(col,"white"), el=tabBar.querySelector(`[data-tab="${key}"]`);
-        el.style.background=GROUP_COLOR_HEX[c]; el.style.color=isDarkColor(c)?"#fff":"var(--text)";
-      });
-      tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");
-      tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");
-      tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
-      searchBar.hidden = activeTab !== "search";
-      refreshGroupSelect();
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent=portrait?"♻️":"♻️タグ無し";unc.style.background=GROUP_COLOR_HEX.gray;unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
+      [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"var(--text)";});
+      tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");searchBar.hidden=activeTab!=="search";refreshTagSelector();
     }
 
     window.addEventListener("orientationchange", () => setTimeout(refreshTabs, 80));
@@ -681,9 +683,9 @@
         return items.filter(x => locationState.distances.has(x.id))
           .slice().sort((a,b) => locationState.distances.get(a.id) - locationState.distances.get(b.id));
       }
-      if (activeTab === "uncategorized") return items.filter(x => x.group === UNCATEGORIZED);
-      const g = Number(activeTab);
-      return items.filter(x => x.group === g);
+      if (activeTab === "untagged") return items.filter(x => !x.tagIds.length);
+      if (activeTab.startsWith("tag:")) { const id=activeTab.slice(4); return items.filter(x => x.tagIds.includes(id)); }
+      return items.slice();
     }
 
     function distanceMeters(aLat,aLng,bLat,bLng) {
@@ -716,6 +718,7 @@
         const current={lat:pos.coords.latitude,lng:pos.coords.longitude,accuracy:pos.coords.accuracy};
         const distances=new Map();
         for (const item of items) {
+          if (!item.tagIds.length) continue;
           let min=Infinity;
           for (const p of (item.locations || [])) min=Math.min(min,distanceMeters(current.lat,current.lng,p.lat,p.lng));
           if (min <= LOCATION_RADIUS_M) distances.set(item.id,min);
@@ -786,6 +789,16 @@
       return "";
     }
 
+    let suppressItemClickUntil=0; let longPressTimer=null; let longPressStart=null;
+    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="duplicate">複製</button><button type="button" data-action="settings">設定</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
+    let contextItemId=null;
+    function closeContextMenu(){contextMenu.classList.remove("show");contextItemId=null;}
+    function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=136;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
+    function duplicateItem(id){const src=items.find(x=>x.id===id);if(!src)return;const base=src.name.replace(/-\d+$/,"");let max=0;for(const x of items){const m=x.name.match(new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}-(\\d+)$`));if(m)max=Math.max(max,Number(m[1]));}const n=max+1;const copy=structuredClone(src);copy.id=crypto.randomUUID();copy.name=`${base}-${n}`;const pos=items.findIndex(x=>x.id===id);items.splice(pos+1,0,copy);saveItems();render();}
+    contextMenu.addEventListener("click",e=>{const a=e.target.closest("button")?.dataset.action;if(!a)return;const id=contextItemId;closeContextMenu();if(a==="duplicate")duplicateItem(id);else if(a==="settings")openEdit(id);});
+    document.addEventListener("pointerdown",e=>{if(contextMenu.classList.contains("show")&&!e.target.closest(".context-menu"))closeContextMenu();});
+    function wireItemLongPress(row,item){row.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;longPressStart={x:e.clientX,y:e.clientY,id:item.id};clearTimeout(longPressTimer);longPressTimer=setTimeout(()=>showContextMenu(item,e.clientX,e.clientY),550);});row.addEventListener("pointermove",e=>{if(longPressStart&&Math.hypot(e.clientX-longPressStart.x,e.clientY-longPressStart.y)>8){clearTimeout(longPressTimer);longPressStart=null;}});["pointerup","pointercancel","pointerleave"].forEach(ev=>row.addEventListener(ev,()=>{clearTimeout(longPressTimer);longPressStart=null;}));row.addEventListener("contextmenu",e=>e.preventDefault());}
+
     function render() {
       list.innerHTML = "";
       const shown = visibleItems();
@@ -802,7 +815,7 @@
           else if (locationState.status === "ok") empty.textContent = "現在地から200m以内に登録されたIDはありません。";
           else empty.textContent = "📍をタップすると、現在地から200m以内のIDを表示します。";
         } else {
-          empty.textContent = activeTab === "uncategorized" ? "？未分類には🆔項目がありません。" : `${settings.groupNames[Number(activeTab)-1]}には🆔項目がありません。`;
+          empty.textContent = activeTab === "untagged" ? "♻️タグ無しには🆔項目がありません。" : `${settings.tags.find(t=>`tag:${t.id}`===activeTab)?.name || "Tag"}には🆔項目がありません。`;
         }
         list.appendChild(empty);
         return;
@@ -848,14 +861,13 @@
         main.className = "item-main";
         main.innerHTML = `<div class="name"></div>`;
         main.querySelector(".name").textContent = item.name;
-        main.addEventListener("click", () => activate(item));
+        main.addEventListener("click", () => { if(Date.now()>=suppressItemClickUntil) activate(item); });
 
         const meta = document.createElement("div");
         meta.className = "meta";
-        const groupName = item.group === 0 ? "？未分類" : (settings.groupNames[item.group-1] || "？未分類");
-        const groupMark = item.group === 0 ? "？" : firstGrapheme(groupName);
-        meta.textContent = activeTab === "search" ? `${typeLabel(item)}・${groupMark}` : typeLabel(item);
-        meta.addEventListener("click", () => activate(item));
+        const tagMarks=item.tagIds.map(id=>settings.tags.find(t=>t.id===id)).filter(Boolean).map(t=>firstGrapheme(t.name)).join("");
+        meta.textContent = activeTab === "search" ? `${typeLabel(item)}${tagMarks ? `・${tagMarks}` : "・♻️"}` : typeLabel(item);
+        meta.addEventListener("click", () => { if(Date.now()>=suppressItemClickUntil) activate(item); });
 
         const buttons = document.createElement("div");
         buttons.className = "drag";
@@ -869,6 +881,7 @@
 
         buttons.append(handle);
         row.append(leading, main, meta, buttons);
+        wireItemLongPress(row,item);
         list.appendChild(row);
       });
     }
@@ -965,7 +978,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 126,
+        version: 150,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -991,20 +1004,14 @@
         const buffer=await file.arrayBuffer(); let text=new TextDecoder("utf-8",{fatal:false}).decode(buffer); if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
         const data=JSON.parse(text); if(!data || data.format!=="IDPortal" || !Array.isArray(data.items)) throw new Error("invalid-format");
         const legacySettings = data.settings ? structuredClone(data.settings) : null;
-        if ((Number(data.version)||0) < 124 && legacySettings && Array.isArray(legacySettings.groupNames) && legacySettings.groupNames.length === 4) {
-          legacySettings.groupNames = legacySettings.groupNames.concat(["Grp5"]);
-          legacySettings.groupColors = (Array.isArray(legacySettings.groupColors) ? legacySettings.groupColors : []).concat(["gray"]).slice(0,5);
-        }
+
         const nextSettings=normalizeSettings(legacySettings);
-        let rescued=0;
-        const nextItems=data.items.map(x=>normalizeItem(x)).map(item=>{
-          if (!(Number.isInteger(item.group) && item.group>=1 && item.group<=nextSettings.groupNames.length) && item.group!==0) { item.group=0; rescued++; }
-          return item;
-        });
+        const validTagIds=new Set(nextSettings.tags.map(t=>t.id)); let rescued=0;
+        const nextItems=data.items.map(x=>normalizeItem(x)).map(item=>{const before=item.tagIds.length;item.tagIds=item.tagIds.filter(id=>validTagIds.has(id));if(before!==item.tagIds.length)rescued++;return item;});
         if (!confirm(`現在の${items.length}件を、読み込んだ${nextItems.length}件で置き換えますか？`)) return;
         // 検証・変換完了後にだけ現在データを書き換える。
         items=nextItems; settings=nextSettings; activeTab="star"; saveSettings(); saveItems(); refreshTabs(); render(); closeDataModal();
-        alert(`${items.length}件を読み込みました。${rescued ? `\n${rescued}項目を「？未分類」へ移しました。` : ""}`);
+        alert(`${items.length}件を読み込みました。${rescued ? `\n${rescued}項目で存在しないTagを外しました。` : ""}`);
       } catch(e) {
         alert("このデータは読み込めませんでした。\n現在のデータは変更されていません。");
       } finally { importFileInput.value=""; }
@@ -1025,9 +1032,10 @@
       valueInput.value = item?.value || "";
       originalEditValue = item?.value || "";
       currentCodeSpec = item?.codeSpec ? structuredClone(item.codeSpec) : (item ? legacySpec(item) : null);
-      const initialGroup = item ? item.group : (/^\d+$/.test(activeTab) ? Number(activeTab) : (activeTab === "uncategorized" ? 0 : (settings.groupNames.length ? 1 : 0)));
-      groupSelect.value = String(initialGroup);
-      selectedColor = item?.color || (initialGroup > 0 ? validColorName(settings.groupColors?.[initialGroup-1], DEFAULT_GROUP_COLORS[(initialGroup-1)%DEFAULT_GROUP_COLORS.length]) : "gray");
+      editTagIds = item ? [...item.tagIds] : (activeTab.startsWith("tag:") ? [activeTab.slice(4)] : []);
+      refreshTagSelector();
+      const initialTag = editTagIds.length ? settings.tags.find(t=>t.id===editTagIds[0]) : null;
+      selectedColor = item?.color || (initialTag ? initialTag.color : "gray");
       updateColorSelection();
       editLocations = item?.locations ? structuredClone(item.locations) : [];
       renderLocationList();
@@ -1823,7 +1831,7 @@
 
     function startHighResolutionFrameScan() {
       if (frameDecodeTimer) clearInterval(frameDecodeTimer);
-      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,650);
+      frameDecodeTimer=setInterval(scanHighResolutionCameraFrame,400);
       setTimeout(scanHighResolutionCameraFrame,250);
     }
 
@@ -2061,7 +2069,7 @@
         barcodeFormat: barcodeFormatInput.value,
         color: selectedColor,
         favorite: existing ? existing.favorite : false,
-        group: Number(groupSelect.value),
+        tagIds: [...editTagIds],
         codeSpec: spec,
         locations: structuredClone(editLocations)
       };
@@ -2216,7 +2224,7 @@
 
     // iOS PWAでも画面全体は固定し、一覧とモーダル内部だけスクロール可能にする。
     document.addEventListener("touchmove", (e) => {
-      if (!e.target.closest(".content-scroll, .sheet, .tab-scroll")) e.preventDefault();
+      if (!e.target.closest(".content-scroll, .sheet, .tab-scroll, .tag-selector")) e.preventDefault();
     }, { passive:false });
 
     function showLocationUpdatedNotice() {
@@ -2268,40 +2276,16 @@
       if (locationState.status === "ok") showLocationUpdatedNotice();
     });
 
-    let tabDraft=[];
-    let tabDraftDrag=null;
-    function openTabSettings() {
-      tabDraft=settings.groupNames.map((name,i)=>({name,color:validColorName(settings.groupColors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]),oldIndex:i+1}));
-      updateColorButton(tabSettingsStarColor, settings.starColor); updateColorButton(tabSettingsLocationColor, settings.locationColor); updateColorButton(tabSettingsSearchColor, settings.searchColor);
-      renderTabSettings(); tabSettingsModal.classList.add("show"); tabSettingsModal.setAttribute("aria-hidden","false");
-    }
-    function closeTabSettings(){ releaseFormFocus(); tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true"); }
-    function renderTabSettings(){
-      tabSettingsList.innerHTML="";
-      tabDraft.forEach((t,i)=>{
-        const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);
-        const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));
-        const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);
-        const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Grp${i+1}`}の色`);
-        const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));
-        row.append(h,inp,col,del);tabSettingsList.appendChild(row);
-      });
-    }
-    function addTabDraft(){ const n=tabDraft.length+1;tabDraft.push({name:`Grp${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length],oldIndex:null});renderTabSettings(); }
-    function deleteTabDraft(i){ const t=tabDraft[i];const count=t.oldIndex?items.filter(x=>x.group===t.oldIndex).length:0;if(!confirm(`「${t.name||`Grp${i+1}`}」を削除します。${count}項目は「？未分類」へ移動します。`))return;tabDraft.splice(i,1);renderTabSettings(); }
+    let tabDraft=[]; let tabDraftDrag=null;
+    function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);renderTabSettings();tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");}
+    function closeTabSettings(){releaseFormFocus();tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true");}
+    function renderTabSettings(){tabSettingsList.innerHTML="";tabDraft.forEach((t,i)=>{const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Tag${i+1}`}の色`);const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));row.append(h,inp,col,del);tabSettingsList.appendChild(row);});}
+    function addTabDraft(){const n=tabDraft.length+1;tabDraft.push({id:crypto.randomUUID(),name:`Tag${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length]});renderTabSettings();}
+    function deleteTabDraft(i){const t=tabDraft[i];const count=items.filter(x=>x.tagIds.includes(t.id)).length;if(!confirm(`Tag「${t.name||`Tag${i+1}`}」を削除します。${count}項目からこのTagだけを外します。ID項目自体は削除されません。`))return;tabDraft.splice(i,1);renderTabSettings();}
     function beginTabDraftDrag(e,index){e.preventDefault();const row=e.currentTarget.closest(".tab-setting-row");e.currentTarget.setPointerCapture?.(e.pointerId);tabDraftDrag={pointerId:e.pointerId,row,from:index,to:index,startY:e.clientY};row.style.willChange="transform";row.classList.add("dragging");document.addEventListener("pointermove",moveTabDraftDrag,{passive:false});document.addEventListener("pointerup",endTabDraftDrag,{once:true});document.addEventListener("pointercancel",endTabDraftDrag,{once:true});}
     function moveTabDraftDrag(e){if(!tabDraftDrag||e.pointerId!==tabDraftDrag.pointerId)return;e.preventDefault();const dy=e.clientY-tabDraftDrag.startY;tabDraftDrag.row.style.transform=`translateY(${dy}px)`;const rows=[...tabSettingsList.querySelectorAll(".tab-setting-row")];let target=rows.length-1;for(let i=0;i<rows.length;i++){const r=rows[i].getBoundingClientRect();if(e.clientY<r.top+r.height/2){target=i;break;}}tabDraftDrag.to=Math.max(0,Math.min(target,rows.length-1));rows.forEach((r,i)=>r.classList.toggle("drag-target",i===tabDraftDrag.to&&r!==tabDraftDrag.row));}
-    function endTabDraftDrag(){if(!tabDraftDrag)return;const {from,to,row}=tabDraftDrag;row.style.transform="";row.style.willChange="";if(from!==to){const [m]=tabDraft.splice(from,1);tabDraft.splice(to,0,m);}tabDraftDrag=null;renderTabSettings();}
-    function saveTabSettings(){
-      releaseFormFocus();
-      const oldToNew=new Map();tabDraft.forEach((t,i)=>{if(t.oldIndex)oldToNew.set(t.oldIndex,i+1);});
-      items=items.map(x=>({...x,group:x.group===0?0:(oldToNew.get(x.group)||0)}));
-      settings.groupNames=tabDraft.map((t,i)=>String(t.name||`Grp${i+1}`).trim().slice(0,12)||`Grp${i+1}`);
-      settings.groupColors=tabDraft.map((t,i)=>validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length]));
-      settings.starColor=paletteValue(tabSettingsStarColor,"white"); settings.locationColor=paletteValue(tabSettingsLocationColor,"white"); settings.searchColor=paletteValue(tabSettingsSearchColor,"white");
-      if (/^\d+$/.test(activeTab)) activeTab=oldToNew.get(Number(activeTab))?String(oldToNew.get(Number(activeTab))):"uncategorized";
-      saveSettings();saveItems();refreshTabs();render();closeTabSettings();
-    }
+    function endTabDraftDrag(){if(!tabDraftDrag)return;const{from,to,row}=tabDraftDrag;row.style.transform="";row.style.willChange="";if(from!==to){const[m]=tabDraft.splice(from,1);tabDraft.splice(to,0,m);}tabDraftDrag=null;renderTabSettings();}
+    function saveTabSettings(){releaseFormFocus();const valid=new Set(tabDraft.map(t=>t.id));items=items.map(x=>({...x,tagIds:x.tagIds.filter(id=>valid.has(id))}));settings.tags=tabDraft.map((t,i)=>({id:t.id,name:String(t.name||`Tag${i+1}`).trim().slice(0,12)||`Tag${i+1}`,color:validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));settings.starColor=paletteValue(tabSettingsStarColor,"white");settings.locationColor=paletteValue(tabSettingsLocationColor,"white");settings.searchColor=paletteValue(tabSettingsSearchColor,"white");if(activeTab.startsWith("tag:")&&!valid.has(activeTab.slice(4)))activeTab="untagged";saveSettings();saveItems();refreshTabs();render();closeTabSettings();}
 
     wireColorButton(tabSettingsStarColor, settings.starColor, c=>tabSettingsStarColor.dataset.selectedColor=c, "⭐️タブの色");
     wireColorButton(tabSettingsLocationColor, settings.locationColor, c=>tabSettingsLocationColor.dataset.selectedColor=c, "📍タブの色");
@@ -2369,13 +2353,6 @@
     mapModal.addEventListener("click",e=>{ if(e.target===mapModal) closeMapPicker(); });
 
     wireColorButton(itemColorButton, "white", c=>{ selectedColor=c; updateColorSelection(); }, "ボタン色");
-
-    groupSelect.addEventListener("change", () => {
-      if (editingId) return;
-      const g = Number(groupSelect.value);
-      selectedColor = g > 0 ? validColorName(settings.groupColors?.[g-1], DEFAULT_GROUP_COLORS[(g-1)%DEFAULT_GROUP_COLORS.length]) : "gray";
-      updateColorSelection();
-    });
 
     largeColorGrid.addEventListener("click", (e) => {
       const btn=e.target.closest(".large-color-choice"); if(!btn) return;
