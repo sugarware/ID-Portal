@@ -43,7 +43,7 @@
     }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     .tab { min-width:0; height:42px; padding:5px 4px; border:1px solid var(--line); border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
-    .tab.active { border-color:#111827; box-shadow:0 0 0 2px rgba(17,24,39,.16); }
+    .tab.active { border-color:#fff; box-shadow:0 0 0 2px #111827, 0 0 0 4px #fff; position:relative; z-index:2; }
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
     .tab.search-tab { font-size:19px; line-height:1; }
@@ -64,10 +64,10 @@
     .tag-selector::-webkit-scrollbar { display:none; }
     .tag-choice { flex:0 0 42px; width:42px; height:42px; border:1px solid var(--line); border-radius:11px; font-size:18px; font-weight:800; cursor:pointer; }
     .tag-choice.selected { outline:3px solid #111827; outline-offset:-3px; box-shadow:0 0 0 2px rgba(255,255,255,.72) inset; }
-    .context-menu { position:fixed; z-index:4000; min-width:132px; background:#fff; border:1px solid var(--line); border-radius:13px; padding:5px; box-shadow:0 10px 30px rgba(0,0,0,.24); display:none; }
-    .context-menu.show { display:grid; }
-    .context-menu button { border:0; background:#fff; min-height:42px; padding:8px 14px; text-align:left; border-radius:9px; font-weight:650; }
-    .context-menu button:active { background:#eee; }
+    .context-menu { position:fixed; z-index:4000; min-width:150px; background:var(--bg); border:1px solid var(--line); border-radius:16px; padding:7px; box-shadow:var(--shadow),0 12px 34px rgba(0,0,0,.18); display:none; overflow:hidden; }
+    .context-menu.show { display:grid; gap:4px; }
+    .context-menu button { border:1px solid var(--line); background:var(--card); color:var(--text); min-height:42px; padding:8px 14px; text-align:left; border-radius:10px; font-weight:650; }
+    .context-menu button:active { filter:brightness(.94); }
     .color-current { width:48px; height:40px; padding:5px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .color-current-swatch { width:30px; height:26px; border-radius:7px; border:1px solid rgba(0,0,0,.18); display:block; }
     .color-picker-modal { z-index:60; align-items:center; padding:18px; }
@@ -169,6 +169,21 @@
       -webkit-user-select: none;
       user-select: none;
     }
+    .layout-choice { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .layout-choice .btn.selected { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); font-weight:800; }
+    body.dark-theme { --bg:#17191d; --card:#24272d; --text:#f2f3f5; --muted:#b2b7c0; --line:#454a53; --accent:#6f9cff; --danger:#ff8a80; --shadow:0 8px 24px rgba(0,0,0,.34); }
+    body.dark-theme .tab { border-color:#555b65; }
+    body.dark-theme .tab.active { border-color:#111; box-shadow:0 0 0 2px #fff, 0 0 0 4px #111; }
+    body.dark-theme input, body.dark-theme select { background:#25282e; color:var(--text); }
+    body.dark-theme .tab-setting-handle, body.dark-theme .drag-handle, body.dark-theme .mini { background:#2c3037; color:var(--text); }
+    body.dark-theme .notice, body.dark-theme .shortcut-name-preview { background:#202329; }
+    body.dark-theme .shortcut-box, body.dark-theme .location-row, body.dark-theme .color-current, body.dark-theme .large-color-choice { background:#24272d; color:var(--text); }
+    body.dark-theme .color-picker-card { background:var(--bg); }
+    body.dark-theme .modal { background:rgba(0,0,0,.62); }
+    body.dark-theme .context-menu button:active { filter:brightness(1.15); }
+    /* コード表示は読取性能を優先してライト固定 */
+    body.dark-theme .codeview { background:#fff; color:#171717; }
+    body.dark-theme .codeview .btn { background:#eef5ff; color:#171717; border-color:#c8dafd; }
   </style>
 </head>
 <body>
@@ -215,6 +230,13 @@
         <button class="btn" id="openTabSettingsBtn" type="button" style="width:100%;">タブ設定</button>
       </div>
       <div class="field">
+        <label>レイアウト</label>
+        <div class="layout-choice" id="layoutChoice">
+          <button class="btn" id="layoutLightBtn" type="button">ライト</button>
+          <button class="btn" id="layoutDarkBtn" type="button">ダーク</button>
+        </div>
+      </div>
+      <div class="field">
         <label>データ保存・読み込み</label>
         <div class="notice">登録データをJSONファイルとして保存できます。アプリ更新前のバックアップとして利用してください。</div>
         <div class="actions data-file-actions">
@@ -224,7 +246,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.50</div>
+      <div class="app-version">IDポータル v1.51</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -468,6 +490,14 @@
     }
 
     let settings = loadSettings();
+    function applyLayoutTheme() {
+      const dark=settings.layout === "dark";
+      document.body.classList.toggle("dark-theme",dark);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#17191d" : "#f5f5f2");
+      const light=document.getElementById("layoutLightBtn"), darkBtn=document.getElementById("layoutDarkBtn");
+      light?.classList.toggle("selected",!dark); darkBtn?.classList.toggle("selected",dark);
+    }
+    applyLayoutTheme();
     let activeTab = "star";
     let searchQuery = "";
     let items = loadItems();
@@ -623,7 +653,7 @@
         const colors=Array.isArray(raw?.groupColors)?raw.groupColors:[];
         tags=names.map((name,i)=>({id:`tag-${i+1}`,name:String(name||`Tag${i+1}`).slice(0,12),color:validColorName(colors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
       }
-      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white") };
+      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), layout:raw?.layout === "dark" ? "dark" : "light" };
     }
 
     function loadSettings() {
@@ -978,7 +1008,7 @@
     function exportData() {
       const backup = {
         format: "IDPortal",
-        version: 150,
+        version: 151,
         exportedAt: new Date().toISOString(),
         settings,
         items
@@ -1010,7 +1040,7 @@
         const nextItems=data.items.map(x=>normalizeItem(x)).map(item=>{const before=item.tagIds.length;item.tagIds=item.tagIds.filter(id=>validTagIds.has(id));if(before!==item.tagIds.length)rescued++;return item;});
         if (!confirm(`現在の${items.length}件を、読み込んだ${nextItems.length}件で置き換えますか？`)) return;
         // 検証・変換完了後にだけ現在データを書き換える。
-        items=nextItems; settings=nextSettings; activeTab="star"; saveSettings(); saveItems(); refreshTabs(); render(); closeDataModal();
+        items=nextItems; settings=nextSettings; activeTab="star"; saveSettings(); saveItems(); applyLayoutTheme(); refreshTabs(); render(); closeDataModal();
         alert(`${items.length}件を読み込みました。${rescued ? `\n${rescued}項目で存在しないTagを外しました。` : ""}`);
       } catch(e) {
         alert("このデータは読み込めませんでした。\n現在のデータは変更されていません。");
@@ -2293,6 +2323,8 @@
 
     addBtn.addEventListener("click", () => openEdit());
     dataBtn.addEventListener("click", openDataModal);
+    layoutLightBtn.addEventListener("click",()=>{settings.layout="light";saveSettings();applyLayoutTheme();});
+    layoutDarkBtn.addEventListener("click",()=>{settings.layout="dark";saveSettings();applyLayoutTheme();});
     openTabSettingsBtn.addEventListener("click", () => { closeDataModal(); openTabSettings(); });
     addGroupBtn.addEventListener("click", addTabDraft);
     saveTabSettingsBtn.addEventListener("click", saveTabSettings);
