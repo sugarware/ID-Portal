@@ -42,6 +42,11 @@
       .tab-scroll .tab { min-width:58px; max-width:none; padding-left:10px; padding-right:10px; overflow:visible; text-overflow:clip; }
     }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:none; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
+    /* v1.57: keep the page shell fixed even when the ID list is too short to scroll. */
+    .content-scroll { position:relative; }
+    @supports (-webkit-touch-callout:none) {
+      html, body, .app { height:100dvh; min-height:100dvh; max-height:100dvh; }
+    }
     #listRight { display:none; }
     @media (orientation:landscape) {
       .app { max-width:1200px; }
@@ -226,7 +231,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.56 — 検索欄が空の場合は全🆔項目を表示。
+        v1.57 — 検索欄が空の場合は全🆔項目を表示。
       </div>
     </div>
   </div>
@@ -257,7 +262,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.56</div>
+      <div class="app-version">IDポータル v1.57</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -2524,5 +2529,19 @@
     refreshTabs();
     render();
   </script>
+<script>
+/* v1.57 iOS: when the active ID view is shorter than its viewport, consume drag
+   gestures there so WebKit cannot hand them to the fixed page shell. */
+(function(){
+  document.addEventListener("touchmove", function(e){
+    const t=e.target;
+    if(!(t instanceof Element)) return;
+    if(t.closest(".modal,.sheet,.tab-scroll,.reader-wrap,#mapPicker,.map-search-results")) return;
+    const pane=t.closest(".content-scroll > .list") || t.closest(".content-scroll");
+    if(!pane) return;
+    if(pane.scrollHeight <= pane.clientHeight + 1) e.preventDefault();
+  }, {passive:false});
+})();
+</script>
 </body>
 </html>
