@@ -233,7 +233,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.61 — Linkの既存タブ復帰時は再読み込みせず、現在のページ状態を維持。
+        v1.62 — Linkの既存タブ復帰時にwindow.open('', tabName)で再取得する実験版。
       </div>
     </div>
   </div>
@@ -264,7 +264,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.61</div>
+      <div class="app-version">IDポータル v1.62</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -952,7 +952,7 @@
       });
     }
 
-    // v1.61: Linkは名前付きタブを再利用し、既存Window参照がある場合はURLを再指定せずfocus()する。
+    // v1.62: Linkは名前付きタブを再利用し、既存Window参照がある場合はwindow.open("", tabName)で再取得してfocus()する実験。
     // SHA-256は非同期のため、ユーザー操作より前に計算してメモリだけに保持する。
     const linkTabNameCache = new Map();
     const linkTabNamePending = new Map();
@@ -2235,7 +2235,11 @@
         }
         const existingWindow = linkWindowCache.get(tabName);
         if (existingWindow && !existingWindow.closed) {
-          existingWindow.focus();
+          const reacquiredWindow = window.open("", tabName);
+          if (reacquiredWindow) {
+            reacquiredWindow.focus();
+            linkWindowCache.set(tabName, reacquiredWindow);
+          }
           return;
         }
         const openedWindow = window.open(item.value, tabName);

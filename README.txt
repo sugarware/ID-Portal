@@ -1,4 +1,11 @@
-IDポータル PWA v1.61
+IDポータル PWA v1.62
+
+v1.62 変更点
+- v1.61の名前付きタブ／Window参照保持方式を維持。
+- 同じLinkの2回目以降は、保存済みWindowを直接focus()する代わりに window.open("", tabName) で名前付きBrowsing Contextを再取得し、focus()する実験方式へ変更。
+- 再取得したWindow参照は実行時メモリへ更新。
+- 初回起動、URL正規化、SHA-256タブ名、保存データ／バックアップ形式、App1、App2、QR、BAR、その他既存機能は変更なし。
+
 
 v1.61 変更点
 - v1.60の名前付きタブ方式を維持。
