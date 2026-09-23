@@ -35,12 +35,7 @@
     .tab-scroll::-webkit-scrollbar { display:none; }
     .tab-fixed .tab { width:42px; flex:0 0 42px; }
     .tab-scroll .tab { flex:0 0 auto; }
-    @media (orientation:portrait) {
-      .tab-scroll .tab { width:42px; min-width:42px; padding-left:2px; padding-right:2px; font-size:18px; }
-    }
-    @media (orientation:landscape) {
-      .tab-scroll .tab { min-width:58px; max-width:none; padding-left:10px; padding-right:10px; overflow:visible; text-overflow:clip; }
-    }
+    .tab-scroll .tab { width:42px; min-width:42px; padding-left:2px; padding-right:2px; font-size:18px; }
     .content-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding-bottom:calc(16px + env(safe-area-inset-bottom)); touch-action:pan-y; }
     /* v1.59: page shell is locked to the measured visual viewport.
        Only the ID list owns vertical scrolling. A 1px scroll reserve keeps
@@ -62,6 +57,8 @@
     .tab.star-tab { font-size:21px; line-height:1; }
     .tab.location-tab { font-size:20px; line-height:1; }
     .tab.search-tab { font-size:19px; line-height:1; }
+    .selected-tag-name { display:none; flex:0 0 auto; margin:-3px 4px 5px; font-size:12px; font-weight:600; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .selected-tag-name.visible { display:block; }
     .search-bar { flex:0 0 auto; margin:0 0 8px; }
     .search-bar[hidden] { display:none; }
     .search-bar input { min-height:42px; padding:8px 12px; border-radius:11px; }
@@ -224,6 +221,8 @@
       <div class="tab-scroll" id="groupTabScroll"></div>
     </nav>
 
+    <div class="selected-tag-name" id="selectedTagName" aria-live="polite"></div>
+
     <div class="search-bar" id="searchBar" hidden>
       <input id="searchInput" type="search" placeholder="ID項目名を検索" aria-label="ID項目名を検索" autocomplete="off">
     </div>
@@ -233,7 +232,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.62 — Linkの既存タブ復帰時にwindow.open('', tabName)で再取得する実験版。
+        v1.64 — 🔍以外の選択中タブ名をタブバー下に全文表示。横画面のタブ表示を縦画面と共通化。
       </div>
     </div>
   </div>
@@ -264,7 +263,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.62</div>
+      <div class="app-version">IDポータル v1.64</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -554,6 +553,7 @@
     const groupTabScroll = document.getElementById("groupTabScroll");
     const searchBar = document.getElementById("searchBar");
     const searchInput = document.getElementById("searchInput");
+    const selectedTagName = document.getElementById("selectedTagName");
     const tabSettingsModal = document.getElementById("tabSettingsModal");
     const tabSettingsList = document.getElementById("tabSettingsList");
     const openTabSettingsBtn = document.getElementById("openTabSettingsBtn");
@@ -709,14 +709,23 @@
     }
 
     function refreshTabs() {
-      groupTabScroll.innerHTML=""; const portrait=window.matchMedia("(orientation: portrait)").matches;
+      groupTabScroll.innerHTML="";
       settings.tags.forEach(tag=>{
-        const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tag.name;btn.setAttribute("aria-label",tag.name);btn.textContent=portrait?firstGrapheme(tag.name):tag.name;
+        const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tag.name;btn.setAttribute("aria-label",tag.name);btn.textContent=firstGrapheme(tag.name);
         btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"#171717";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
       });
-      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent=portrait?"♻️":"♻️タグ無し";unc.style.background=GROUP_COLOR_HEX.gray;unc.style.color=isDarkColor("gray")?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX.gray;unc.style.color=isDarkColor("gray")?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
       [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"#171717";});
-      tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");searchBar.hidden=activeTab!=="search";refreshTagSelector();
+      tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
+      const selectedTag = activeTab.startsWith("tag:") ? settings.tags.find(t=>t.id===activeTab.slice(4)) : null;
+      let selectedLabel = "";
+      if (selectedTag) selectedLabel = selectedTag.name;
+      else if (activeTab === "star") selectedLabel = "お気に入り";
+      else if (activeTab === "location") selectedLabel = "現在地向け";
+      else if (activeTab === "untagged") selectedLabel = "タグ無し";
+      selectedTagName.textContent = selectedLabel;
+      selectedTagName.classList.toggle("visible", !!selectedLabel);
+      searchBar.hidden=activeTab!=="search";refreshTagSelector();
     }
 
     function lockViewportTop() {
@@ -952,7 +961,7 @@
       });
     }
 
-    // v1.62: Linkは名前付きタブを再利用し、既存Window参照がある場合はwindow.open("", tabName)で再取得してfocus()する実験。
+    // v1.61: Linkは名前付きタブを再利用し、既存Window参照がある場合はURLを再指定せずfocus()する。
     // SHA-256は非同期のため、ユーザー操作より前に計算してメモリだけに保持する。
     const linkTabNameCache = new Map();
     const linkTabNamePending = new Map();
@@ -2235,11 +2244,7 @@
         }
         const existingWindow = linkWindowCache.get(tabName);
         if (existingWindow && !existingWindow.closed) {
-          const reacquiredWindow = window.open("", tabName);
-          if (reacquiredWindow) {
-            reacquiredWindow.focus();
-            linkWindowCache.set(tabName, reacquiredWindow);
-          }
+          existingWindow.focus();
           return;
         }
         const openedWindow = window.open(item.value, tabName);
