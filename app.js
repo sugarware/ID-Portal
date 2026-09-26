@@ -228,7 +228,7 @@
       const d = new Date();
       const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       a.href = url;
-      a.download = `IDPortal_backup_${stamp}.json`;
+      a.download = `ここコード_backup_${stamp}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
