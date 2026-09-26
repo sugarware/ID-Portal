@@ -121,6 +121,9 @@
     .modal.show { display: flex; }
     .settings-modal { align-items:flex-start; padding-top:calc(64px + env(safe-area-inset-top)); }
     .sheet { background: var(--bg); width: min(720px, 100%); max-height: 92vh; overflow: auto; border-radius: 22px 22px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); }
+    /* Keep the Tag editor inside the visible area above the software keyboard. */
+    #tabSettingsModal { top:var(--tab-editor-top, 0px); bottom:auto; height:var(--tab-editor-height, 100dvh); }
+    #tabSettingsModal > .sheet { max-height:min(92vh, calc(100% - 12px)); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scroll-padding:12px; }
     .sheet h2 { margin: 0 0 16px; font-size: 22px; }
     .field { margin: 14px 0; }
     label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
@@ -234,7 +237,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.66 — タブ下の項目件数・検索ヒット件数を表示し、現在地の案内を修正。
+        v1.67 — タグ無しタブの色設定と、キーボード表示時のTag編集を改善。
       </div>
     </div>
   </div>
@@ -265,7 +268,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.66</div>
+      <div class="app-version">IDポータル v1.67</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -280,6 +283,7 @@
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>⭐️</span><input value="お気に入り" disabled><button type="button" class="color-current" id="tabSettingsStarColor" aria-label="⭐️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>📍</span><input value="現在地" disabled><button type="button" class="color-current" id="tabSettingsLocationColor" aria-label="📍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
         <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>🔍</span><input value="検索" disabled><button type="button" class="color-current" id="tabSettingsSearchColor" aria-label="🔍タブの色"><span class="color-current-swatch"></span></button><span></span></div>
+        <div class="group-setting-row" style="grid-template-columns:36px minmax(0,1fr) 48px 58px;"><span>♻️</span><input value="タグ無し" disabled><button type="button" class="color-current" id="tabSettingsUntaggedColor" aria-label="♻️タブの色"><span class="color-current-swatch"></span></button><span></span></div>
       </div>
       <div class="group-settings" id="tabSettingsList"></div>
       <button class="btn" id="addGroupBtn" type="button" style="width:100%;margin-top:9px;">＋ Tag追加</button>
@@ -680,7 +684,7 @@
         tags=names.map((name,i)=>({id:`tag-${i+1}`,name:String(name||`Tag${i+1}`).slice(0,12),color:validColorName(colors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
       }
       const layout = raw?.layout === "dark" ? "dark" : raw?.layout === "light" ? "light" : "auto";
-      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), layout };
+      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), untaggedColor:validColorName(raw?.untaggedColor,"gray"), layout };
     }
 
     function loadSettings() {
@@ -728,7 +732,7 @@
         const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tag.name;btn.setAttribute("aria-label",tag.name);btn.textContent=firstGrapheme(tag.name);
         btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"#171717";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
       });
-      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX.gray;unc.style.color=isDarkColor("gray")?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX[settings.untaggedColor];unc.style.color=isDarkColor(settings.untaggedColor)?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
       [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"#171717";});
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
       refreshSelectedTabName(visibleItems().length);
@@ -2435,8 +2439,36 @@
       if (locationState.status === "ok") showLocationUpdatedNotice();
     });
 
+    function syncTabSettingsViewport() {
+      if (!tabSettingsModal.classList.contains("show")) return;
+      const viewport = window.visualViewport;
+      tabSettingsModal.style.setProperty("--tab-editor-top", `${viewport?.offsetTop || 0}px`);
+      tabSettingsModal.style.setProperty("--tab-editor-height", `${viewport?.height || window.innerHeight}px`);
+      requestAnimationFrame(() => {
+        if (!tabSettingsModal.classList.contains("show")) return;
+        const input = document.activeElement;
+        if (!input || !tabSettingsList.contains(input) || input.tagName !== "INPUT") return;
+        const sheet = tabSettingsModal.querySelector(".sheet");
+        const row = input.closest(".tab-setting-row");
+        const bounds = sheet.getBoundingClientRect();
+        const field = row.getBoundingClientRect();
+        const top = bounds.top + 12;
+        const bottom = bounds.bottom - 12;
+        if (field.bottom > bottom) sheet.scrollTop += field.bottom - bottom;
+        else if (field.top < top) sheet.scrollTop -= top - field.top;
+      });
+    }
+    tabSettingsList.addEventListener("focusin", () => {
+      syncTabSettingsViewport();
+      // Recheck after the keyboard opening animation, including iOS focus panning.
+      setTimeout(syncTabSettingsViewport, 350);
+    });
+    window.visualViewport?.addEventListener("resize", syncTabSettingsViewport, { passive:true });
+    window.visualViewport?.addEventListener("scroll", syncTabSettingsViewport, { passive:true });
+    window.addEventListener("resize", syncTabSettingsViewport, { passive:true });
+
     let tabDraft=[]; let tabDraftDrag=null;
-    function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);renderTabSettings();tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");}
+    function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);updateColorButton(tabSettingsUntaggedColor,settings.untaggedColor);renderTabSettings();tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");syncTabSettingsViewport();}
     function closeTabSettings(){releaseFormFocus();tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true");}
     function renderTabSettings(){tabSettingsList.innerHTML="";tabDraft.forEach((t,i)=>{const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Tag${i+1}`}の色`);const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));row.append(h,inp,col,del);tabSettingsList.appendChild(row);});}
     function addTabDraft(){const n=tabDraft.length+1;tabDraft.push({id:crypto.randomUUID(),name:`Tag${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length]});renderTabSettings();}
@@ -2444,11 +2476,12 @@
     function beginTabDraftDrag(e,index){e.preventDefault();const row=e.currentTarget.closest(".tab-setting-row");e.currentTarget.setPointerCapture?.(e.pointerId);tabDraftDrag={pointerId:e.pointerId,row,from:index,to:index,startY:e.clientY};row.style.willChange="transform";row.classList.add("dragging");document.addEventListener("pointermove",moveTabDraftDrag,{passive:false});document.addEventListener("pointerup",endTabDraftDrag,{once:true});document.addEventListener("pointercancel",endTabDraftDrag,{once:true});}
     function moveTabDraftDrag(e){if(!tabDraftDrag||e.pointerId!==tabDraftDrag.pointerId)return;e.preventDefault();const dy=e.clientY-tabDraftDrag.startY;tabDraftDrag.row.style.transform=`translateY(${dy}px)`;const rows=[...tabSettingsList.querySelectorAll(".tab-setting-row")];let target=rows.length-1;for(let i=0;i<rows.length;i++){const r=rows[i].getBoundingClientRect();if(e.clientY<r.top+r.height/2){target=i;break;}}tabDraftDrag.to=Math.max(0,Math.min(target,rows.length-1));rows.forEach((r,i)=>r.classList.toggle("drag-target",i===tabDraftDrag.to&&r!==tabDraftDrag.row));}
     function endTabDraftDrag(){if(!tabDraftDrag)return;const{from,to,row}=tabDraftDrag;row.style.transform="";row.style.willChange="";if(from!==to){const[m]=tabDraft.splice(from,1);tabDraft.splice(to,0,m);}tabDraftDrag=null;renderTabSettings();}
-    function saveTabSettings(){releaseFormFocus();const valid=new Set(tabDraft.map(t=>t.id));items=items.map(x=>({...x,tagIds:x.tagIds.filter(id=>valid.has(id))}));settings.tags=tabDraft.map((t,i)=>({id:t.id,name:String(t.name||`Tag${i+1}`).trim().slice(0,12)||`Tag${i+1}`,color:validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));settings.starColor=paletteValue(tabSettingsStarColor,"white");settings.locationColor=paletteValue(tabSettingsLocationColor,"white");settings.searchColor=paletteValue(tabSettingsSearchColor,"white");if(activeTab.startsWith("tag:")&&!valid.has(activeTab.slice(4)))activeTab="untagged";saveSettings();saveItems();refreshTabs();render();closeTabSettings();}
+    function saveTabSettings(){releaseFormFocus();const valid=new Set(tabDraft.map(t=>t.id));items=items.map(x=>({...x,tagIds:x.tagIds.filter(id=>valid.has(id))}));settings.tags=tabDraft.map((t,i)=>({id:t.id,name:String(t.name||`Tag${i+1}`).trim().slice(0,12)||`Tag${i+1}`,color:validColorName(t.color,DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));settings.starColor=paletteValue(tabSettingsStarColor,"white");settings.locationColor=paletteValue(tabSettingsLocationColor,"white");settings.searchColor=paletteValue(tabSettingsSearchColor,"white");settings.untaggedColor=paletteValue(tabSettingsUntaggedColor,"gray");if(activeTab.startsWith("tag:")&&!valid.has(activeTab.slice(4)))activeTab="untagged";saveSettings();saveItems();refreshTabs();render();closeTabSettings();}
 
     wireColorButton(tabSettingsStarColor, settings.starColor, c=>tabSettingsStarColor.dataset.selectedColor=c, "⭐️タブの色");
     wireColorButton(tabSettingsLocationColor, settings.locationColor, c=>tabSettingsLocationColor.dataset.selectedColor=c, "📍タブの色");
     wireColorButton(tabSettingsSearchColor, settings.searchColor, c=>tabSettingsSearchColor.dataset.selectedColor=c, "🔍タブの色");
+    wireColorButton(tabSettingsUntaggedColor, settings.untaggedColor, c=>tabSettingsUntaggedColor.dataset.selectedColor=c, "♻️タブの色");
 
     addBtn.addEventListener("click", () => openEdit());
     dataBtn.addEventListener("click", openDataModal);
