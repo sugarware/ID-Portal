@@ -8,9 +8,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="ここコード">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2.05">
-  <link rel="shortcut icon" type="image/png" href="icon-192.png?v=2.05">
-  <link rel="apple-touch-icon" href="icon-192.png?v=2.05">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2.06">
+  <link rel="shortcut icon" type="image/png" href="icon-192.png?v=2.06">
+  <link rel="apple-touch-icon" href="icon-192.png?v=2.06">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <title>ここコード</title>
   <style>
@@ -192,6 +192,7 @@
     body.dark-theme { --bg:#2b2d31; --card:#36393f; --text:#f2f3f5; --muted:#c0c4cc; --line:#555a63; --accent:#7aa2ff; --danger:#ff9188; --shadow:0 8px 24px rgba(0,0,0,.28); }
     body.dark-theme .tab { border-color:#555b65; }
     body.dark-theme .tab.active { border-color:#111; box-shadow:inset 0 0 0 2px #fff, inset 0 0 0 4px #111; }
+    body.dark-theme .tag-choice.selected { outline:none; border-color:#fff; box-shadow:inset 0 0 0 3px #fff, inset 0 0 0 5px #111827; }
     body.dark-theme input, body.dark-theme select { background:#383b41; color:var(--text); }
     body.dark-theme .tab-setting-handle, body.dark-theme .drag-handle, body.dark-theme .mini { background:#41444b; color:var(--text); }
     body.dark-theme .notice, body.dark-theme .shortcut-name-preview { background:#33363b; }
@@ -237,7 +238,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.05 — バックアップ保存名とタイトル下の説明文を変更。
+        v2.06 — ダーク画面でのタグ選択枠を改善。
       </div>
     </div>
   </div>
@@ -268,7 +269,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">ここコード v2.05</div>
+      <div class="app-version">ここコード v2.06</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
