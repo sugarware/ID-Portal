@@ -234,7 +234,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.65 — ブラウザ表示用アイコンをPWAアイコンと共通化。
+        v1.66 — タブ下の項目件数・検索ヒット件数を表示し、現在地の案内を修正。
       </div>
     </div>
   </div>
@@ -265,7 +265,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.65</div>
+      <div class="app-version">IDポータル v1.66</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -710,6 +710,18 @@
       if (!settings.tags.length) { const n=document.createElement("div"); n.className="notice"; n.textContent="Tagがありません。タブ設定から追加できます。"; tagSelector.appendChild(n); }
     }
 
+    function refreshSelectedTabName(count) {
+      const selectedTag = activeTab.startsWith("tag:") ? settings.tags.find(t=>t.id===activeTab.slice(4)) : null;
+      let selectedLabel = "";
+      if (selectedTag) selectedLabel = selectedTag.name;
+      else if (activeTab === "star") selectedLabel = "お気に入り";
+      else if (activeTab === "location") selectedLabel = "現在地向け";
+      else if (activeTab === "search") selectedLabel = "検索";
+      else if (activeTab === "untagged") selectedLabel = "タグ無し";
+      selectedTagName.textContent = selectedLabel ? `${selectedLabel} (${count})` : "";
+      selectedTagName.classList.toggle("visible", !!selectedLabel);
+    }
+
     function refreshTabs() {
       groupTabScroll.innerHTML="";
       settings.tags.forEach(tag=>{
@@ -719,14 +731,7 @@
       const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX.gray;unc.style.color=isDarkColor("gray")?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
       [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"#171717";});
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
-      const selectedTag = activeTab.startsWith("tag:") ? settings.tags.find(t=>t.id===activeTab.slice(4)) : null;
-      let selectedLabel = "";
-      if (selectedTag) selectedLabel = selectedTag.name;
-      else if (activeTab === "star") selectedLabel = "お気に入り";
-      else if (activeTab === "location") selectedLabel = "現在地向け";
-      else if (activeTab === "untagged") selectedLabel = "タグ無し";
-      selectedTagName.textContent = selectedLabel;
-      selectedTagName.classList.toggle("visible", !!selectedLabel);
+      refreshSelectedTabName(visibleItems().length);
       searchBar.hidden=activeTab!=="search";refreshTagSelector();
     }
 
@@ -887,7 +892,7 @@
           if (locationState.status === "loading") empty.textContent = "現在地を取得しています…";
           else if (locationState.status === "error") { empty.classList.add("location-error"); empty.textContent = locationState.errorMessage; }
           else if (locationState.status === "ok") empty.textContent = "現在地から200m以内に登録されたIDはありません。";
-          else empty.textContent = "📍をタップすると、現在地から200m以内のIDを表示します。";
+          else empty.textContent = "📍をダブルタップすると、現在地から200m以内のIDを表示します。";
         } else {
           empty.textContent = activeTab === "untagged" ? "♻️タグ無しには🆔項目がありません。" : `${settings.tags.find(t=>`tag:${t.id}`===activeTab)?.name || "Tag"}には🆔項目がありません。`;
         }
@@ -1011,6 +1016,7 @@
     function render() {
       prepareAllLinkTabNames();
       const shown = visibleItems();
+      refreshSelectedTabName(shown.length);
       renderList(list, shown);
       renderList(listRight, shown);
     }
