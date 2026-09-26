@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#f5f5f2">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="IDポータル">
+  <meta name="apple-mobile-web-app-title" content="ここコード">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="shortcut icon" type="image/png" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2.00">
+  <link rel="shortcut icon" type="image/png" href="icon-192.png?v=2.00">
+  <link rel="apple-touch-icon" href="icon-192.png?v=2.00">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <title>IDポータル</title>
+  <title>ここコード</title>
   <style>
     :root {
       --bg: #f5f5f2;
@@ -208,7 +208,7 @@
   <div class="app">
     <header>
       <div>
-        <h1>IDポータル</h1>
+        <h1>ここコード</h1>
         <div class="sub">IDを探さなくてよくする入口</div>
       </div>
       <div class="toolbar">
@@ -237,7 +237,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v1.67 — タグ無しタブの色設定と、キーボード表示時のTag編集を改善。
+        v2.00 — 名称を「ここコード」に変更し、新しいアイコンを採用。
       </div>
     </div>
   </div>
@@ -268,7 +268,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは現在の登録データをすべて置き換えます。読み込み前に現在データの保存を推奨します。</div>
       </div>
-      <div class="app-version">IDポータル v1.67</div>
+      <div class="app-version">ここコード v2.00</div>
       <div class="actions">
         <button class="btn" id="closeDataBtn" type="button" style="grid-column:1 / -1;">閉じる</button>
       </div>
@@ -1722,7 +1722,7 @@
       if (!w || !h || w !== h || !data || data.length !== w * h) return null;
       if (expected && w !== expected) return null;
 
-      // jsQR の BitMatrix は decode 用には正しいが、IDポータルの描画座標として
+      // jsQR の BitMatrix は decode 用には正しいが、ここコードの描画座標として
       // そのまま row/column 解釈すると「90°回転＋鏡像」に見えるケースがある。
       // これは正方行列の転置に相当するため、セル値を変更せず x/y 軸だけ入れ替える。
       const rawBits = new Array(data.length);
