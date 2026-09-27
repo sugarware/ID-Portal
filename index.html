@@ -216,8 +216,14 @@
     .color-picker-card .panel-body { padding:12px 14px; }
     .tab-scroll .tab { width:auto; min-width:42px; padding-left:8px; padding-right:8px; }
     .tag-choice { flex:0 0 auto; width:auto; min-width:42px; padding:0 8px; white-space:nowrap; }
-    .panel-content { display:flow-root; }
-    .panel-body.panel-pulling { overflow-y:hidden; }
+    /* v2.10: reserve a native scroll range without changing panel height.
+       The absolute spacer extends the scrollable area, not normal layout.
+       No touch interception or transforms on the input-containing body. */
+    .panel-body { position:relative; }
+    .panel-body::after {
+      content:""; position:absolute; top:100%; left:0;
+      width:1px; height:2px; pointer-events:none;
+    }
   </style>
 </head>
 <body>
@@ -253,7 +259,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.09 — 短いパネルにもスワイプへの反応を追加。
+        v2.10 — 短いパネルのスクロール反応を標準方式に変更。
       </div>
     </div>
   </div>
@@ -284,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.09</div>
+      <div class="app-version">ここコード v2.10</div>
       
     </div></div>
   </div>
@@ -2659,60 +2665,6 @@
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
     }
-
-    // Short panels still acknowledge a vertical swipe without moving the header.
-    document.querySelectorAll('.panel-body').forEach(body => {
-      const content = document.createElement('div');
-      content.className = 'panel-content';
-      content.append(...body.childNodes);
-      body.append(content);
-      let gesture = null, resetTimer = 0, suppressClickUntil = 0;
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-      function settle() {
-        const moved = gesture?.dragging;
-        gesture = null;
-        if (moved) suppressClickUntil = Date.now() + 400;
-        content.style.transition = reducedMotion.matches ? 'none' : 'transform 280ms cubic-bezier(.2,.8,.25,1)';
-        content.style.transform = 'translateY(0)';
-        clearTimeout(resetTimer);
-        resetTimer = setTimeout(() => {
-          body.classList.remove('panel-pulling');
-          content.style.transform = '';
-          content.style.transition = '';
-        }, reducedMotion.matches ? 0 : 300);
-      }
-      body.addEventListener('touchstart', e => {
-        if (e.touches.length !== 1) { settle(); return; }
-        // Leave text editing, map gestures, horizontal selectors and drag handles native.
-        if (e.target.closest('input,textarea,select,#mapPicker,.tag-selector,.tab-setting-handle') ||
-            body.scrollHeight > body.clientHeight + 1 || reducedMotion.matches) return;
-        clearTimeout(resetTimer);
-        content.style.transition = 'none';
-        content.style.transform = '';
-        body.classList.remove('panel-pulling');
-        gesture = { x:e.touches[0].clientX, y:e.touches[0].clientY, dragging:false };
-      }, { passive:true });
-      body.addEventListener('touchmove', e => {
-        if (!gesture) return;
-        if (e.touches.length !== 1) { settle(); return; }
-        const dx = e.touches[0].clientX - gesture.x;
-        const dy = e.touches[0].clientY - gesture.y;
-        if (!gesture.dragging) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) < 7) return;
-          if (Math.abs(dx) >= Math.abs(dy)) { settle(); return; }
-          gesture.dragging = true;
-          body.classList.add('panel-pulling');
-        }
-        if (e.cancelable) e.preventDefault();
-        const offset = Math.sign(dy) * 44 * (1 - Math.exp(-Math.abs(dy) / 130));
-        content.style.transform = `translateY(${offset}px)`;
-      }, { passive:false });
-      body.addEventListener('touchend', settle, { passive:true });
-      body.addEventListener('touchcancel', settle, { passive:true });
-      body.addEventListener('click', e => {
-        if (Date.now() < suppressClickUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
-      }, true);
-    });
 
     refreshTabs();
     render();
