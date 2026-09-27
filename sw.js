@@ -1,4 +1,4 @@
-const CACHE="id-portal-v2.08";
+const CACHE="id-portal-v2.09";
 const APP=["./","./index.html","./manifest.webmanifest","./icon-192.png?v=2.07","./icon-512.png?v=2.07",
 "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
 "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
