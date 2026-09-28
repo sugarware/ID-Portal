@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRカメラ解像度比較</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif; background:#f5f5f7; color:#111; }
+  main { max-width:720px; margin:0 auto; padding:16px; }
+  h1 { font-size:21px; margin:4px 0 12px; }
+  .controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  button { min-height:48px; border:1px solid #bbb; border-radius:12px; background:white; font-size:16px; font-weight:600; padding:8px; }
+  button.active { border:3px solid #111; }
+  #readerWrap { position:relative; overflow:hidden; border-radius:14px; background:#111; min-height:240px; }
+  #reader video { width:100% !important; height:auto !important; display:block; }
+  #guide { pointer-events:none; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; border:2px solid rgba(255,255,255,.85); border-radius:12px; z-index:5; }
+  .panel { margin-top:12px; padding:12px; background:white; border-radius:12px; }
+  .label { font-size:13px; color:#666; margin-bottom:4px; }
+  .value { font-size:16px; word-break:break-all; }
+  #result { min-height:48px; }
+  .ok { font-weight:700; }
+  .note { font-size:13px; color:#555; line-height:1.5; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>QRカメラ解像度比較</h1>
+  <div class="controls">
+    <button id="currentBtn">現行指定</button>
+    <button id="highBtn">2560×1440 ideal</button>
+  </div>
+
+  <div id="readerWrap">
+    <div id="reader"></div>
+    <div id="guide"></div>
+  </div>
+
+  <div class="panel">
+    <div class="label">指定</div>
+    <div id="constraint" class="value">未起動</div>
+  </div>
+  <div class="panel">
+    <div class="label">実際のカメラ映像解像度</div>
+    <div id="actual" class="value">—</div>
+  </div>
+  <div class="panel">
+    <div class="label">QR読取結果</div>
+    <div id="result" class="value">—</div>
+  </div>
+
+  <div class="note">
+    同じQRコード・同じ距離・同じ照明で「現行指定」と「2560×1440 ideal」を切り替えて比較してください。<br>
+    読取成功後もカメラは停止しないので、繰り返し試せます。
+  </div>
+</main>
+<script>
+const currentBtn = document.getElementById('currentBtn');
+const highBtn = document.getElementById('highBtn');
+const constraintEl = document.getElementById('constraint');
+const actualEl = document.getElementById('actual');
+const resultEl = document.getElementById('result');
+
+let scanner = null;
+let running = false;
+let resolutionTimer = null;
+let lastText = '';
+
+async function stopCamera() {
+  if (resolutionTimer) {
+    clearInterval(resolutionTimer);
+    resolutionTimer = null;
+  }
+  if (scanner && running) {
+    try { await scanner.stop(); } catch (_) {}
+    try { scanner.clear(); } catch (_) {}
+  }
+  scanner = null;
+  running = false;
+  currentBtn.classList.remove('active');
+  highBtn.classList.remove('active');
+}
+
+function updateActualResolution() {
+  const video = document.querySelector('#reader video');
+  if (video && video.videoWidth && video.videoHeight) {
+    actualEl.textContent = `${video.videoWidth} × ${video.videoHeight}`;
+  }
+}
+
+async function startCamera(mode) {
+  await stopCamera();
+  actualEl.textContent = '取得中…';
+  resultEl.textContent = '読取待ち…';
+  resultEl.classList.remove('ok');
+  lastText = '';
+
+  const cameraConstraint = mode === 'high'
+    ? {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 2560 },
+        height: { ideal: 1440 }
+      }
+    : { facingMode: 'environment' };
+
+  constraintEl.textContent = mode === 'high'
+    ? 'facingMode: environment / width: ideal 2560 / height: ideal 1440'
+    : 'facingMode: environment（現行ここコードと同じ）';
+
+  (mode === 'high' ? highBtn : currentBtn).classList.add('active');
+
+  scanner = new Html5Qrcode('reader');
+  try {
+    await scanner.start(
+      cameraConstraint,
+      { fps: 10 },
+      (decodedText) => {
+        if (decodedText !== lastText) {
+          lastText = decodedText;
+          resultEl.textContent = decodedText;
+          resultEl.classList.add('ok');
+        }
+      },
+      () => {}
+    );
+    running = true;
+    updateActualResolution();
+    resolutionTimer = setInterval(updateActualResolution, 500);
+  } catch (e) {
+    actualEl.textContent = '起動失敗';
+    resultEl.textContent = String(e && e.message ? e.message : e);
+    running = false;
+  }
+}
+
+currentBtn.addEventListener('click', () => startCamera('current'));
+highBtn.addEventListener('click', () => startCamera('high'));
+window.addEventListener('pagehide', () => { stopCamera(); });
+</script>
+</body>
+</html>
