@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRデコーダ比較 1920</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f4f5f7;color:#222}
+main{max-width:760px;margin:auto;padding:16px}
+h1{font-size:20px;margin:0 0 8px}.note{font-size:13px;color:#555;margin-bottom:12px}
+button{font-size:16px;padding:10px 14px;margin:4px;border:1px solid #888;border-radius:9px;background:white}
+#wrap{position:relative;background:#111;margin-top:12px;border-radius:10px;overflow:hidden}
+video{display:block;width:100%;height:auto}
+.info,.result{background:white;border-radius:9px;padding:10px;margin-top:10px;font-size:14px;word-break:break-all}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ok{font-weight:700}.small{font-size:12px;color:#666}
+canvas{display:none}
+</style>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body><main>
+<h1>QRデコーダ比較（1920×1080 ideal）</h1>
+<div class="note">同じカメラ映像を、①フルフレーム jsQR と ② html5-qrcode 内部デコーダの2方式で比較します。</div>
+<button id="start">カメラ開始</button><button id="stop">停止</button>
+<div id="wrap"><video id="video" playsinline muted></video></div>
+<div class="info">実取得解像度: <b id="res">—</b><br>
+<span class="small">QRを遠方から徐々に近づけ、どちらが先に「認識」に変わるか比較してください。</span></div>
+<div class="row">
+ <div class="result">フルフレーム jsQR<br><span id="jr">待機中</span></div>
+ <div class="result">html5-qrcode decoder<br><span id="hr">待機中</span></div>
+</div>
+<canvas id="canvas"></canvas>
+</main>
+<script>
+const video=document.getElementById('video'), canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d',{willReadFrequently:true});
+const jr=document.getElementById('jr'), hr=document.getElementById('hr'), res=document.getElementById('res');
+let stream=null, running=false, busy=false, lastHtml=0;
+let detector=null;
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+async function stop(){
+ running=false;
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ video.srcObject=null; res.textContent="—";
+}
+async function start(){
+ await stop(); jr.textContent="待機中";hr.textContent="待機中";
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+   facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}
+  }});
+  video.srcObject=stream; await video.play();
+  await new Promise(r=>setTimeout(r,250));
+  res.textContent=video.videoWidth+" × "+video.videoHeight;
+  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  running=true; loop();
+ }catch(e){jr.textContent="起動失敗: "+e.message;hr.textContent="—";}
+}
+async function loop(){
+ if(!running)return;
+ if(!busy && video.readyState>=2){
+  busy=true;
+  try{
+   ctx.drawImage(video,0,0,canvas.width,canvas.height);
+   const img=ctx.getImageData(0,0,canvas.width,canvas.height);
+   const q=jsQR(img.data,img.width,img.height,{inversionAttempts:"attemptBoth"});
+   jr.innerHTML=q?'<span class="ok">認識</span><br>'+esc(q.data):'未認識';
+
+   // html5-qrcode's decoder, fed the exact same full-resolution frame as an image file.
+   // Throttle this path to avoid overwhelming iOS.
+   if(performance.now()-lastHtml>500){
+    lastHtml=performance.now();
+    const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.95));
+    if(blob){
+     const file=new File([blob],"frame.jpg",{type:"image/jpeg"});
+     try{
+      if(!detector) detector=new Html5Qrcode("dummy-reader",false);
+      const text=await detector.scanFile(file,false);
+      hr.innerHTML='<span class="ok">認識</span><br>'+esc(text);
+     }catch(e){hr.textContent="未認識";}
+    }
+   }
+  }catch(e){}
+  busy=false;
+ }
+ requestAnimationFrame(loop);
+}
+document.getElementById('start').onclick=start;
+document.getElementById('stop').onclick=stop;
+window.addEventListener('pagehide',stop);
+</script>
+<div id="dummy-reader" style="display:none"></div>
+</body></html>
