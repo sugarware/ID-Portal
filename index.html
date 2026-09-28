@@ -259,7 +259,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.10 — 短いパネルのスクロール反応を標準方式に変更。
+        v2.11 — カメラ入力を1920×1080 idealに固定。
       </div>
     </div>
   </div>
@@ -290,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.10</div>
+      <div class="app-version">ここコード v2.11</div>
       
     </div></div>
   </div>
@@ -2121,7 +2121,14 @@
         const scanner = await ensureScanner();
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10 },
+          {
+            fps: 10,
+            videoConstraints: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 }
+            }
+          },
           async (decodedText, decodedResult) => {
             try { html5Qr.pause(true); } catch {}
             const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
