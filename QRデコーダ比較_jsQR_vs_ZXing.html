@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRデコーダ比較 jsQR vs ZXing</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f4f5f7;color:#222}
+main{max-width:760px;margin:auto;padding:16px}
+h1{font-size:20px;margin:0 0 8px}.note{font-size:13px;color:#555;line-height:1.5;margin-bottom:10px}
+button{font-size:16px;padding:10px 14px;margin:4px;border:1px solid #888;border-radius:9px;background:white}
+#wrap{background:#111;margin-top:10px;border-radius:10px;overflow:hidden}
+video{display:block;width:100%;height:auto}
+.info,.result{background:white;border-radius:9px;padding:10px;margin-top:9px;font-size:14px;word-break:break-all}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ok{font-weight:700}.small{font-size:12px;color:#666}.err{color:#a00}
+.metric{font-variant-numeric:tabular-nums}
+canvas{display:none}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js"></script>
+</head>
+<body><main>
+<h1>QR比較：jsQR vs zxing-wasm</h1>
+<div class="note">
+同じ1920×1080 idealのライブフレームを両方へ渡します。<br>
+ZXing側は <b>QR＋1次元BAR</b> を探索します。認識距離・反応速度と、各処理時間を比較してください。
+</div>
+<button id="start">カメラ開始</button><button id="stop">停止</button>
+<div id="wrap"><video id="video" playsinline muted></video></div>
+<div class="info">
+実取得解像度：<b id="res">—</b><br>
+<span class="small">QRを遠方から徐々に近づけ、どちらが先に安定して認識するか確認してください。</span>
+</div>
+<div class="grid">
+ <div class="result"><b>jsQR（QR専用）</b><br>
+   <span id="jr">待機中</span><br>
+   <span class="small metric" id="jt">処理時間：—</span>
+ </div>
+ <div class="result"><b>zxing-wasm（QR＋BAR）</b><br>
+   <span id="zr">待機中</span><br>
+   <span class="small metric" id="zt">処理時間：—</span>
+ </div>
+</div>
+<div class="info small">
+直近10回平均： jsQR <b id="ja">—</b> ／ ZXing <b id="za">—</b><br>
+参考：両方を毎回実行した場合の単純合計 <b id="sum">—</b>
+</div>
+<div class="info small" id="wasm">zxing-wasm：読み込み待ち</div>
+<canvas id="canvas"></canvas>
+</main>
+<script>
+const video=document.getElementById("video"),canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d",{willReadFrequently:true});
+const res=document.getElementById("res"),jr=document.getElementById("jr"),zr=document.getElementById("zr");
+const jt=document.getElementById("jt"),zt=document.getElementById("zt");
+const ja=document.getElementById("ja"),za=document.getElementById("za"),sum=document.getElementById("sum"),wasm=document.getElementById("wasm");
+let stream=null,running=false,busy=false,last=0,jTimes=[],zTimes=[];
+
+const formats=[
+ "QRCode",
+ "Codabar","Code39","Code93","Code128",
+ "DataBar","DataBarExpanded","DataBarLimited",
+ "DXFilmEdge","EAN8","EAN13","ITF","UPCA","UPCE"
+];
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function add(a,v){a.push(v);if(a.length>10)a.shift()}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:NaN}
+function showStats(){
+ const j=avg(jTimes),z=avg(zTimes);
+ ja.textContent=isNaN(j)?"—":j.toFixed(1)+" ms";
+ za.textContent=isNaN(z)?"—":z.toFixed(1)+" ms";
+ sum.textContent=(isNaN(j)||isNaN(z))?"—":(j+z).toFixed(1)+" ms";
+}
+async function stop(){
+ running=false;
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ video.srcObject=null;res.textContent="—";
+}
+async function start(){
+ await stop();jTimes=[];zTimes=[];showStats();
+ jr.textContent="待機中";zr.textContent="待機中";
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+   facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}
+  }});
+  video.srcObject=stream;await video.play();await new Promise(r=>setTimeout(r,250));
+  res.textContent=video.videoWidth+" × "+video.videoHeight;
+  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  if(window.ZXingWASM?.prepareZXingModule){
+   wasm.textContent="zxing-wasm：WASM準備中…";
+   await window.ZXingWASM.prepareZXingModule({fireImmediately:true});
+   wasm.textContent="zxing-wasm：準備完了";
+  }else wasm.innerHTML='<span class="err">zxing-wasmを読み込めませんでした</span>';
+  running=true;requestAnimationFrame(loop);
+ }catch(e){
+  jr.textContent="カメラ起動失敗";zr.textContent="—";
+  wasm.innerHTML='<span class="err">'+esc(e.message||e)+'</span>';
+ }
+}
+async function testFrame(){
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+
+ // jsQR: QR only
+ let t0=performance.now(),q=null;
+ try{q=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:"dontInvert"});}
+ catch(e){}
+ let tj=performance.now()-t0;add(jTimes,tj);
+ jt.textContent="処理時間："+tj.toFixed(1)+" ms";
+ jr.innerHTML=q?.data?'<span class="ok">QR認識</span><br>'+esc(q.data):"未認識";
+
+ // zxing-wasm: QR + common 1D barcodes
+ t0=performance.now();
+ try{
+  const rs=await window.ZXingWASM.readBarcodes(imageData,{tryHarder:true,formats,maxNumberOfSymbols:1});
+  const tz=performance.now()-t0;add(zTimes,tz);
+  zt.textContent="処理時間："+tz.toFixed(1)+" ms";
+  if(rs?.length && rs[0].text){
+   zr.innerHTML='<span class="ok">'+esc(rs[0].format||"認識")+'</span><br>'+esc(rs[0].text);
+  }else zr.textContent="未認識";
+ }catch(e){
+  const tz=performance.now()-t0;add(zTimes,tz);
+  zt.textContent="処理時間："+tz.toFixed(1)+" ms";
+  zr.innerHTML='<span class="err">エラー：'+esc(e.message||e)+'</span>';
+ }
+ showStats();
+}
+async function loop(t){
+ if(!running)return;
+ if(!busy && video.readyState>=2 && t-last>=500){
+  busy=true;last=t;
+  try{await testFrame()}finally{busy=false}
+ }
+ requestAnimationFrame(loop);
+}
+document.getElementById("start").onclick=start;
+document.getElementById("stop").onclick=stop;
+window.addEventListener("pagehide",stop);
+</script>
+</body></html>
