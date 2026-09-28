@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ZXing JAN/EAN フォーマット比較</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;background:#f4f5f7;color:#222}
+main{max-width:780px;margin:auto;padding:16px}
+h1{font-size:20px;margin:0 0 8px}.note{font-size:13px;color:#555;margin-bottom:12px;line-height:1.45}
+button{font-size:16px;padding:10px 14px;margin:4px;border:1px solid #888;border-radius:9px;background:white}
+#wrap{position:relative;background:#111;margin-top:12px;border-radius:10px;overflow:hidden}
+video{display:block;width:100%;height:auto}
+.info,.result{background:white;border-radius:9px;padding:10px;margin-top:10px;font-size:14px;word-break:break-all}
+.grid{display:grid;grid-template-columns:1fr;gap:7px;margin-top:10px}
+.result{margin-top:0}
+.ok{font-weight:700}.small{font-size:12px;color:#666}.err{color:#a00}
+.ms{float:right;color:#666;font-size:12px}
+canvas{display:none}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js"></script>
+</head>
+<body><main>
+<h1>ZXing JAN/EAN フォーマット比較</h1>
+<div class="note">
+同じ1920×1080 idealのカメラフレームを、画像処理を変えずに
+<b>EAN13 / EANUPC / AllRetail / AllLinear / AllReadable</b> の5条件で順番に試します。
+JAN-13商品コードを映し、どの条件で認識するか確認してください。
+</div>
+<button id="start">カメラ開始</button><button id="stop">停止</button>
+<div id="wrap"><video id="video" playsinline muted></video></div>
+<div class="info">実取得解像度: <b id="res">—</b><br>
+<span class="small">各条件は同一フレームに対して順番に実行します。右端は直近1回の処理時間です。</span></div>
+<div class="grid" id="results"></div>
+<div class="info small" id="wasm">zxing-wasm: 読み込み待ち</div>
+<canvas id="canvas"></canvas>
+</main>
+<script>
+const tests=[
+ ["EAN13",["EAN13"]],
+ ["EANUPC",["EANUPC"]],
+ ["AllRetail",["AllRetail"]],
+ ["AllLinear",["AllLinear"]],
+ ["AllReadable",["AllReadable"]]
+];
+const video=document.getElementById("video"),canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d",{willReadFrequently:true});
+const res=document.getElementById("res"),wasm=document.getElementById("wasm"),results=document.getElementById("results");
+let stream=null,running=false,busy=false,lastRun=0;
+
+for(const [name] of tests){
+ const d=document.createElement("div");
+ d.className="result";
+ d.innerHTML="<b>"+name+"</b><span class='ms' id='ms-"+name+"'>—</span><br><span id='r-"+name+"'>待機中</span>";
+ results.appendChild(d);
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+async function stop(){
+ running=false;
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ video.srcObject=null;res.textContent="—";
+}
+async function start(){
+ await stop();
+ for(const [name] of tests){document.getElementById("r-"+name).textContent="待機中";document.getElementById("ms-"+name).textContent="—";}
+ try{
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+   facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}
+  }});
+  video.srcObject=stream;await video.play();await new Promise(r=>setTimeout(r,250));
+  res.textContent=video.videoWidth+" × "+video.videoHeight;
+  canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+  if(window.ZXingWASM?.prepareZXingModule){
+   wasm.textContent="zxing-wasm: WASM準備中…";
+   await window.ZXingWASM.prepareZXingModule({fireImmediately:true});
+   wasm.textContent="zxing-wasm 2.2.4: 準備完了";
+  }else throw new Error("zxing-wasmスクリプトを読み込めませんでした");
+  running=true;requestAnimationFrame(loop);
+ }catch(e){wasm.innerHTML="<span class='err'>起動失敗: "+esc(e.message||e)+"</span>";}
+}
+async function compareFrame(){
+ ctx.drawImage(video,0,0,canvas.width,canvas.height);
+ const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+ for(const [name,formats] of tests){
+  const el=document.getElementById("r-"+name),ms=document.getElementById("ms-"+name);
+  const t0=performance.now();
+  try{
+   const rs=await window.ZXingWASM.readBarcodes(imageData,{
+    tryHarder:true,formats,maxNumberOfSymbols:1
+   });
+   ms.textContent=(performance.now()-t0).toFixed(1)+" ms";
+   if(rs?.length && rs[0].text){
+    el.innerHTML="<span class='ok'>認識 "+esc(rs[0].format||"")+"</span><br>"+esc(rs[0].text);
+   }else el.textContent="未認識";
+  }catch(e){
+   ms.textContent=(performance.now()-t0).toFixed(1)+" ms";
+   el.innerHTML="<span class='err'>エラー: "+esc(e.message||e)+"</span>";
+  }
+ }
+}
+async function loop(t){
+ if(!running)return;
+ if(!busy && video.readyState>=2 && t-lastRun>=700){
+  busy=true;lastRun=t;
+  try{await compareFrame()}finally{busy=false}
+ }
+ requestAnimationFrame(loop);
+}
+document.getElementById("start").onclick=start;
+document.getElementById("stop").onclick=stop;
+window.addEventListener("pagehide",stop);
+</script>
+</body></html>
