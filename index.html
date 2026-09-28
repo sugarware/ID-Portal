@@ -259,7 +259,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.11 — カメラ入力を1920×1080 idealに固定。
+        v2.12 — QRの1920×1080フルフレームjsQR解析を追加。
       </div>
     </div>
   </div>
@@ -290,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.11</div>
+      <div class="app-version">ここコード v2.12</div>
       
     </div></div>
   </div>
@@ -1960,6 +1960,37 @@
       if (!cameraRunning || frameDecodeBusy) return;
       frameDecodeBusy=true;
       try {
+        // QRは1920×1080のカメラフレーム全体をjsQRで直接解析する。
+        // html5-qrcodeのライブ認識を待たないため、小型・高密度QRもフル解像度を活かせる。
+        const qr=captureQrFromCameraFrame();
+        if (qr && qr.text && cameraRunning) {
+          try { html5Qr.pause(true); } catch {}
+          const locationShown=showDetectedCode(
+            qr.text,
+            null,
+            qrLocationPoints(qr),
+            { width:qr.imageWidth, height:qr.imageHeight }
+          );
+          setScanStatus(locationShown
+            ? "1920フルフレームで認識したQRコードを緑枠で示しています。"
+            : `1920フルフレームでQR認識：${qr.text.slice(0,48)}${qr.text.length>48?"…":""}`);
+          await new Promise(resolve => setTimeout(resolve, 850));
+          if (!cameraRunning) return;
+
+          valueInput.value = qr.text;
+          typeInput.value = "qr";
+          barcodeFormatInput.value = "CODE128";
+          currentCodeSpec = qr.spec;
+          manualFields.classList.remove("hidden");
+          manualToggleBtn.textContent = "詳細設定を隠す";
+          updateFormFields();
+          const ec = qr.spec.errorCorrection || "不明";
+          const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
+          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
+          await stopCamera();
+          return;
+        }
+
         const file=await captureCameraFrameFile();
         if (!file || !cameraRunning) return;
         const decoder=ensureFrameDecoder();
@@ -2180,7 +2211,7 @@
         cameraRunning = true;
         startHighResolutionFrameScan();
         cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。QRのライブ解析に加え、バーコードは高解像度フレームでも解析します。");
+        setScanStatus("大きな枠を目安にコードを映してください。QRは1920フルフレームjsQR解析を併用し、バーコードは高解像度フレームでも解析します。");
       } catch (e) {
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
         readerWrap.classList.add("hidden");
