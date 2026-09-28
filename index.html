@@ -259,7 +259,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.12 — QRの1920×1080フルフレームjsQR解析を追加。
+        v2.13 — QR／BARの一次認識をzxing-wasmへ統一。QR詳細解析のみjsQRを使用。
       </div>
     </div>
   </div>
@@ -290,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.12</div>
+      <div class="app-version">ここコード v2.13</div>
       
     </div></div>
   </div>
@@ -335,7 +335,6 @@
           </div>
           <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
         </div>
-        <div id="frameDecoder" class="frame-decoder" aria-hidden="true"></div>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
         <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
       </div>
@@ -448,6 +447,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js"></script>
   <div class="modal color-picker-modal" id="colorPickerModal" aria-hidden="true">
     <div class="color-picker-card" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
       <div class="panel-header"><h3 id="colorPickerTitle">色を選択</h3><div class="panel-actions"><button class="btn" id="closeColorPickerBtn" type="button">閉じる</button></div></div><div class="panel-body">
@@ -456,7 +456,6 @@
     </div></div>
   </div>
 
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
@@ -599,7 +598,6 @@
     const imageFileInput = document.getElementById("imageFileInput");
     const reader = document.getElementById("reader");
     const readerWrap = document.getElementById("readerWrap");
-    const frameDecoderEl = document.getElementById("frameDecoder");
     const cameraGuide = document.getElementById("cameraGuide");
     const detectBox = document.getElementById("detectBox");
     const detectLabel = document.getElementById("detectLabel");
@@ -630,8 +628,8 @@
     const tagSelector = document.getElementById("tagSelector");
     let editTagIds = [];
     let selectedColor = "white";
-    let html5Qr = null;
-    let frameDecoder = null;
+    let cameraStream = null;
+    let zxingReadyPromise = null;
     let frameDecodeTimer = null;
     let frameDecodeBusy = false;
     let cameraRunning = false;
@@ -1870,36 +1868,25 @@
       };
     }
 
-    async function decodeQrFromImageFile(file) {
-      if (typeof jsQR !== "function") return null;
-      const bmp = await createImageBitmap(file);
-      const canvas=document.createElement("canvas");
-      canvas.width=bmp.width; canvas.height=bmp.height;
-      const ctx=canvas.getContext("2d",{willReadFrequently:true});
-      ctx.drawImage(bmp,0,0);
-      bmp.close?.();
-      return decodeQrFromImageData(ctx.getImageData(0,0,canvas.width,canvas.height), "image");
-    }
+    const ZXING_FORMATS=["QRCode","Codabar","Code39","Code93","Code128","DataBar","DataBarExpanded","DataBarLimited","EAN8","EAN13","ITF","UPCA","UPCE"];
 
-    function captureQrFromCameraFrame() {
-      const video=reader.querySelector("video");
-      if (!video || !video.videoWidth || !video.videoHeight) return null;
-      const canvas=document.createElement("canvas");
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-      const ctx=canvas.getContext("2d",{willReadFrequently:true});
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      return decodeQrFromImageData(ctx.getImageData(0,0,canvas.width,canvas.height), "camera");
-    }
-
-    function makeQrSpecFromDecoded(text, decodedResult, source="camera") {
-      const mode=inferQrMode(text || "");
-      const meta=decodedResult?.result?.resultMetadata || decodedResult?.resultMetadata || {};
-      const ec=meta.ERROR_CORRECTION_LEVEL || meta.errorCorrectionLevel || null;
-      return {
-        symbology:"QR_CODE", version:null, errorCorrection:ec || null, maskPattern:null,
-        mode, segments:[{mode,text:text||""}], characterEncoding:null, source,
-        detected:{symbology:true, mode:false, version:false, errorCorrection:!!ec, maskPattern:false}
-      };
+    async function ensureZxing() {
+      if (zxingReadyPromise) return zxingReadyPromise;
+      zxingReadyPromise=(async()=>{
+        if (!window.ZXingWASM?.readBarcodes) throw new Error("zxing-wasm unavailable");
+        if (window.ZXingWASM.prepareZXingModule) {
+          await window.ZXingWASM.prepareZXingModule({
+            overrides:{
+              locateFile:(path,prefix)=>path.endsWith(".wasm")
+                ? "https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/reader/zxing_reader.wasm"
+                : prefix+path
+            },
+            fireImmediately:true
+          });
+        }
+        return window.ZXingWASM;
+      })();
+      return zxingReadyPromise;
     }
 
     function mapScanFormat(formatName) {
@@ -1909,114 +1896,120 @@
       if (f.includes("CODE_39") || f.includes("CODE39")) return { type: "barcode", barcodeFormat: "CODE39", label: "Code 39" };
       if (f.includes("EAN_13") || f.includes("EAN13")) return { type: "barcode", barcodeFormat: "EAN13", label: "EAN-13" };
       if (f.includes("EAN_8") || f.includes("EAN8")) return { type: "barcode", barcodeFormat: "EAN8", label: "EAN-8" };
-      if (f.includes("UPC_A") || f === "UPC") return { type: "barcode", barcodeFormat: "UPC", label: "UPC-A" };
+      if (f.includes("UPC_A") || f.includes("UPCA") || f === "UPC") return { type: "barcode", barcodeFormat: "UPC", label: "UPC-A" };
       if (f.includes("ITF")) return { type: "barcode", barcodeFormat: "ITF14", label: "ITF" };
       return { type: "barcode", barcodeFormat: "CODE128", label: formatName || "バーコード" };
     }
 
-    function applyDecoded(decodedText, decodedResult) {
-      const fmtName =
-        decodedResult?.result?.format?.formatName ||
-        decodedResult?.result?.format?.format ||
-        decodedResult?.formatName ||
-        "";
-      const mapped = mapScanFormat(fmtName);
-
-      valueInput.value = decodedText || "";
-      typeInput.value = mapped.type;
-      barcodeFormatInput.value = mapped.barcodeFormat;
-      currentCodeSpec = mapped.type === "qr"
-        ? makeQrSpecFromDecoded(decodedText || "", decodedResult, "camera")
-        : { symbology: mapped.barcodeFormat, source:"camera", detected:{symbology:true} };
-      manualFields.classList.remove("hidden");
-      manualToggleBtn.textContent = "詳細設定を隠す";
-      updateFormFields();
-      setScanStatus(`読み取り成功：${mapped.label} ／ ${decodedText}`);
+    function zxingPoints(result) {
+      const p=result?.position;
+      if(!p) return [];
+      return [p.topLeft,p.topRight,p.bottomRight,p.bottomLeft]
+        .filter(Boolean).map(q=>({x:Number(q.x),y:Number(q.y)}))
+        .filter(q=>Number.isFinite(q.x)&&Number.isFinite(q.y));
     }
 
-    async function ensureScanner() {
-      if (!html5Qr) html5Qr = new Html5Qrcode("reader");
-      return html5Qr;
+    function cropImageDataAroundPosition(imageData, position) {
+      const pts=[position?.topLeft,position?.topRight,position?.bottomRight,position?.bottomLeft]
+        .filter(Boolean).map(p=>({x:Number(p.x),y:Number(p.y)}))
+        .filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+      if(pts.length<4) return {imageData,x:0,y:0};
+      const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+      const bw=Math.max(...xs)-Math.min(...xs), bh=Math.max(...ys)-Math.min(...ys);
+      const margin=Math.max(16,Math.ceil(Math.max(bw,bh)*0.20));
+      const x0=Math.max(0,Math.floor(Math.min(...xs)-margin));
+      const y0=Math.max(0,Math.floor(Math.min(...ys)-margin));
+      const x1=Math.min(imageData.width,Math.ceil(Math.max(...xs)+margin));
+      const y1=Math.min(imageData.height,Math.ceil(Math.max(...ys)+margin));
+      const w=Math.max(1,x1-x0), h=Math.max(1,y1-y0);
+      const out=new ImageData(w,h);
+      for(let y=0;y<h;y++){
+        const a=((y0+y)*imageData.width+x0)*4;
+        const b=a+w*4;
+        out.data.set(imageData.data.subarray(a,b),y*w*4);
+      }
+      return {imageData:out,x:x0,y:y0};
     }
 
-    function ensureFrameDecoder() {
-      if (!frameDecoder) frameDecoder = new Html5Qrcode("frameDecoder");
-      return frameDecoder;
+    function decodeQrDetailFromZxing(imageData, zxingResult, source) {
+      const crop=cropImageDataAroundPosition(imageData,zxingResult?.position);
+      const qr=decodeQrFromImageData(crop.imageData,source);
+      if(!qr) return null;
+      if(qr.location){
+        for(const key of ["topLeftCorner","topRightCorner","bottomRightCorner","bottomLeftCorner","topLeftFinderPattern","topRightFinderPattern","bottomLeftFinderPattern"]){
+          const p=qr.location[key];
+          if(p){ p.x+=crop.x; p.y+=crop.y; }
+        }
+      }
+      qr.imageWidth=imageData.width;
+      qr.imageHeight=imageData.height;
+      return qr;
     }
 
-    async function captureCameraFrameFile() {
-      const video=reader.querySelector("video");
-      if (!video || !video.videoWidth || !video.videoHeight) return null;
+    async function imageDataFromFile(file) {
+      const bmp=await createImageBitmap(file);
       const canvas=document.createElement("canvas");
-      canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+      canvas.width=bmp.width; canvas.height=bmp.height;
       const ctx=canvas.getContext("2d",{willReadFrequently:true});
-      ctx.drawImage(video,0,0,canvas.width,canvas.height);
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.95));
-      if (!blob) return null;
-      return new File([blob],"camera-frame.jpg",{type:"image/jpeg"});
+      ctx.drawImage(bmp,0,0); bmp.close?.();
+      return ctx.getImageData(0,0,canvas.width,canvas.height);
+    }
+
+    function applyBarcodeResult(result, source="camera") {
+      const mapped=mapScanFormat(result?.format || result?.symbology || "");
+      const text=result?.text || "";
+      valueInput.value=text;
+      typeInput.value="barcode";
+      barcodeFormatInput.value=mapped.barcodeFormat;
+      currentCodeSpec={symbology:mapped.barcodeFormat,source,detected:{symbology:true}};
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent="詳細設定を隠す";
+      updateFormFields();
+      setScanStatus(`読み取り成功：${mapped.label} ／ ${text}`);
     }
 
     async function scanHighResolutionCameraFrame() {
       if (!cameraRunning || frameDecodeBusy) return;
+      const video=reader.querySelector("video");
+      if(!video || !video.videoWidth || !video.videoHeight) return;
       frameDecodeBusy=true;
-      try {
-        // QRは1920×1080のカメラフレーム全体をjsQRで直接解析する。
-        // html5-qrcodeのライブ認識を待たないため、小型・高密度QRもフル解像度を活かせる。
-        const qr=captureQrFromCameraFrame();
-        if (qr && qr.text && cameraRunning) {
-          try { html5Qr.pause(true); } catch {}
-          const locationShown=showDetectedCode(
-            qr.text,
-            null,
-            qrLocationPoints(qr),
-            { width:qr.imageWidth, height:qr.imageHeight }
-          );
-          setScanStatus(locationShown
-            ? "1920フルフレームで認識したQRコードを緑枠で示しています。"
-            : `1920フルフレームでQR認識：${qr.text.slice(0,48)}${qr.text.length>48?"…":""}`);
-          await new Promise(resolve => setTimeout(resolve, 850));
-          if (!cameraRunning) return;
-
-          valueInput.value = qr.text;
-          typeInput.value = "qr";
-          barcodeFormatInput.value = "CODE128";
-          currentCodeSpec = qr.spec;
-          manualFields.classList.remove("hidden");
-          manualToggleBtn.textContent = "詳細設定を隠す";
-          updateFormFields();
-          const ec = qr.spec.errorCorrection || "不明";
-          const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
-          await stopCamera();
-          return;
+      try{
+        const canvas=document.createElement("canvas");
+        canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+        const ctx=canvas.getContext("2d",{willReadFrequently:true});
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        const imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+        const zxing=await ensureZxing();
+        const results=await zxing.readBarcodes(imageData,{tryHarder:true,formats:ZXING_FORMATS,maxNumberOfSymbols:1});
+        const result=results?.find(r=>r?.text);
+        if(!result || !cameraRunning) return;
+        const mapped=mapScanFormat(result.format || result.symbology || "");
+        const pts=zxingPoints(result);
+        const locationShown=showDetectedCode(result.text,null,pts,{width:imageData.width,height:imageData.height});
+        setScanStatus(locationShown ? "認識したコードを緑枠で示しています。" : `認識成功：${result.text.slice(0,48)}${result.text.length>48?"…":""}`);
+        await new Promise(resolve=>setTimeout(resolve,850));
+        if(!cameraRunning) return;
+        if(mapped.type==="qr"){
+          const qr=decodeQrDetailFromZxing(imageData,result,"camera");
+          if(qr && qr.text===result.text){
+            valueInput.value=qr.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128"; currentCodeSpec=qr.spec;
+            manualFields.classList.remove("hidden"); manualToggleBtn.textContent="詳細設定を隠す"; updateFormFields();
+            const ec=qr.spec.errorCorrection||"不明";
+            const mask=Number.isInteger(qr.spec.maskPattern)?qr.spec.maskPattern:"不明";
+            setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version||"不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix?" ／ デコーダ抽出Matrix保存済み":""}`);
+          }else{
+            valueInput.value=result.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128";
+            currentCodeSpec={symbology:"QR_CODE",source:"camera",detected:{symbology:true,mode:false,version:false,errorCorrection:false,maskPattern:false},mode:inferQrMode(result.text),segments:[{mode:inferQrMode(result.text),text:result.text}]};
+            manualFields.classList.remove("hidden"); manualToggleBtn.textContent="詳細設定を隠す"; updateFormFields();
+            setScanStatus("QRは認識しましたが、詳細情報の取得に失敗しました。",true);
+          }
+        }else{
+          applyBarcodeResult(result,"camera");
         }
-
-        const file=await captureCameraFrameFile();
-        if (!file || !cameraRunning) return;
-        const decoder=ensureFrameDecoder();
-        let result=null;
-        if (typeof decoder.scanFileV2 === "function") {
-          result=await decoder.scanFileV2(file,false);
-        } else {
-          const decodedText=await decoder.scanFile(file,false);
-          result={decodedText,formatName:""};
-        }
-        if (!cameraRunning) return;
-        const decodedText=result?.decodedText || "";
-        const fmtName=result?.result?.format?.formatName || result?.result?.format?.format || result?.formatName || "";
-        const mapped=mapScanFormat(fmtName);
-        // QRは従来のライブ経路に任せ、静止フレーム補助は1次元バーコードだけに使う。
-        if (decodedText && mapped.type === "barcode") {
-          try { html5Qr.pause(true); } catch {}
-          setScanStatus(`高解像度フレームで認識：${mapped.label} ／ ${decodedText}`);
-          applyDecoded(decodedText,result);
-          await stopCamera();
-        }
-      } catch (_) {
-        // 未認識は正常。次の高解像度フレームで再試行する。
-      } finally {
-        frameDecodeBusy=false;
-      }
+        await stopCamera();
+      }catch(_){
+        // 未認識は正常。次のフレームで再試行する。
+      }finally{frameDecodeBusy=false;}
     }
 
     function startHighResolutionFrameScan() {
@@ -2032,45 +2025,34 @@
     }
 
     async function scanImageFile(file) {
-      if (!file) return;
+      if(!file) return;
       await stopCamera();
-      await ensureJsQrMatrixDecoder();
       readerWrap.classList.remove("hidden");
       setScanStatus("画像を解析しています…");
-      try {
-        // QRはjsQRで先に解析し、Version / Segment mode / Format information を保存する。
-        const qr = await decodeQrFromImageFile(file).catch(() => null);
-        if (qr) {
-          valueInput.value = qr.text;
-          typeInput.value = "qr";
-          currentCodeSpec = qr.spec;
-          manualFields.classList.remove("hidden");
-          manualToggleBtn.textContent = "詳細設定を隠す";
-          updateFormFields();
-          const ec = qr.spec.errorCorrection || "不明";
-          const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-          setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
-        } else {
-          const scanner = await ensureScanner();
-          if (typeof scanner.scanFileV2 === "function") {
-            const result = await scanner.scanFileV2(file, true);
-            const decodedText = result?.decodedText || "";
-            applyDecoded(decodedText, result);
-          } else {
-            const decodedText = await scanner.scanFile(file, true);
-            valueInput.value = decodedText || "";
-            const mode=inferQrMode(decodedText || "");
-            currentCodeSpec={symbology:"UNKNOWN",source:"image",detected:{symbology:false},mode};
-            manualFields.classList.remove("hidden");
-            manualToggleBtn.textContent = "詳細設定を隠す";
-            setScanStatus("読み取り成功。コード形式を自動判定できなかったため、種類を確認してください。");
-          }
+      try{
+        const zxing=await ensureZxing();
+        const results=await zxing.readBarcodes(file,{tryHarder:true,formats:ZXING_FORMATS,maxNumberOfSymbols:1});
+        const result=results?.find(r=>r?.text);
+        if(!result) throw new Error("not found");
+        const mapped=mapScanFormat(result.format || result.symbology || "");
+        if(mapped.type==="qr"){
+          await ensureJsQrMatrixDecoder();
+          const imageData=await imageDataFromFile(file);
+          const qr=decodeQrDetailFromZxing(imageData,result,"image");
+          if(qr && qr.text===result.text){
+            valueInput.value=qr.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128"; currentCodeSpec=qr.spec;
+            manualFields.classList.remove("hidden"); manualToggleBtn.textContent="詳細設定を隠す"; updateFormFields();
+            const ec=qr.spec.errorCorrection||"不明";
+            const mask=Number.isInteger(qr.spec.maskPattern)?qr.spec.maskPattern:"不明";
+            setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version||"不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix?" ／ デコーダ抽出Matrix保存済み":""}`);
+          }else throw new Error("QR detail failed");
+        }else{
+          applyBarcodeResult(result,"image");
         }
-      } catch (e) {
-        setScanStatus("コードを読み取れませんでした。別の画像を試すか、手入力してください。", true);
-      } finally {
-        readerWrap.classList.add("hidden");
-        imageFileInput.value = "";
+      }catch(e){
+        setScanStatus("コードを読み取れませんでした。別の画像を試すか、手入力してください。",true);
+      }finally{
+        readerWrap.classList.add("hidden"); imageFileInput.value="";
       }
     }
 
@@ -2139,95 +2121,40 @@
     }
 
     async function startCamera() {
-      if (cameraRunning) {
-        await stopCamera();
-        return;
-      }
-      readerWrap.classList.remove("hidden");
-      cameraGuide.classList.remove("hidden");
-      hideDetectionBox();
+      if(cameraRunning){ await stopCamera(); return; }
+      readerWrap.classList.remove("hidden"); cameraGuide.classList.remove("hidden"); hideDetectionBox();
       setScanStatus("カメラを起動しています…");
-      try {
-        await ensureJsQrMatrixDecoder();
-        const scanner = await ensureScanner();
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            videoConstraints: {
-              facingMode: { ideal: "environment" },
-              width: { ideal: 1920 },
-              height: { ideal: 1080 }
-            }
-          },
-          async (decodedText, decodedResult) => {
-            try { html5Qr.pause(true); } catch {}
-            const fmtName = decodedResult?.result?.format?.formatName || decodedResult?.result?.format?.format || decodedResult?.formatName || "";
-            const mapped = mapScanFormat(fmtName);
-            let usedFrameSpec = false;
-            let qr = null;
-
-            // QRは認識した瞬間のフレームをjsQRでも解析する。
-            // jsQRの4隅座標を使って「実際に認識したQRそのもの」を緑枠で示す。
-            if (mapped.type === "qr") {
-              qr = captureQrFromCameraFrame();
-            }
-            let locationShown = false;
-            if (qr && qr.text === (decodedText || "")) {
-              locationShown = showDetectedCode(
-                decodedText,
-                decodedResult,
-                qrLocationPoints(qr),
-                { width:qr.imageWidth, height:qr.imageHeight }
-              );
-            }
-            if (!locationShown) locationShown = showDetectedCode(decodedText, decodedResult);
-            setScanStatus(locationShown
-              ? "認識したコードを緑枠で示しています。"
-              : `認識成功：${(decodedText||"").slice(0,48)}${(decodedText||"").length>48?"…":""}（位置情報を取得できませんでした）`);
-            await new Promise(resolve => setTimeout(resolve, 850));
-
-            if (mapped.type === "qr") {
-              // 画像読み取りと同じVersion/ECC/Mask/Segment/matrixを保存する。
-              if (qr && qr.text === (decodedText || "")) {
-                valueInput.value = qr.text;
-                typeInput.value = "qr";
-                barcodeFormatInput.value = "CODE128";
-                currentCodeSpec = qr.spec;
-                manualFields.classList.remove("hidden");
-                manualToggleBtn.textContent = "詳細設定を隠す";
-                updateFormFields();
-                const ec = qr.spec.errorCorrection || "不明";
-                const mask = Number.isInteger(qr.spec.maskPattern) ? qr.spec.maskPattern : "不明";
-                setScanStatus(`読み取り成功：QR Code ／ mode=${qr.spec.mode} ／ Version=${qr.spec.version || "不明"} ／ ECC=${ec} ／ Mask=${mask}${qr.spec.matrix ? " ／ デコーダ抽出Matrix保存済み" : ""}`);
-                usedFrameSpec = true;
-              }
-            }
-            if (!usedFrameSpec) applyDecoded(decodedText, decodedResult);
-            await stopCamera();
-          },
-          () => {}
-        );
-        cameraRunning = true;
+      try{
+        await ensureZxing();
+        cameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{
+          facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}
+        }});
+        reader.innerHTML="";
+        const video=document.createElement("video");
+        video.playsInline=true; video.muted=true; video.autoplay=true; video.srcObject=cameraStream;
+        reader.appendChild(video);
+        await video.play();
+        cameraRunning=true;
         startHighResolutionFrameScan();
-        cameraScanBtn.textContent = "カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。QRは1920フルフレームjsQR解析を併用し、バーコードは高解像度フレームでも解析します。");
-      } catch (e) {
-        setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。", true);
+        cameraScanBtn.textContent="カメラを停止";
+        setScanStatus("大きな枠を目安にコードを映してください。QR／バーコードを1920フルフレームでZXing認識します。");
+      }catch(e){
+        if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+        reader.innerHTML="";
+        setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。",true);
         readerWrap.classList.add("hidden");
       }
     }
 
     async function stopCamera() {
       stopHighResolutionFrameScan();
-      if (html5Qr && cameraRunning) {
-        try { await html5Qr.stop(); } catch {}
-        cameraRunning = false;
-      }
-      cameraScanBtn.textContent = "カメラで読み取る";
-      cameraGuide.classList.add("hidden");
-      hideDetectionBox();
-      readerWrap.classList.add("hidden");
+      cameraRunning=false;
+      if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+      const video=reader.querySelector("video");
+      if(video) video.srcObject=null;
+      reader.innerHTML="";
+      cameraScanBtn.textContent="カメラで読み取る";
+      cameraGuide.classList.add("hidden"); hideDetectionBox(); readerWrap.classList.add("hidden");
     }
 
     function validate(item) {
