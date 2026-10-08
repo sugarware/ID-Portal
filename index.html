@@ -127,7 +127,7 @@
     .sheet h2 { margin: 0 0 16px; font-size: 22px; }
     .field { margin: 14px 0; }
     label { display: block; font-weight: 650; margin-bottom: 7px; font-size: 14px; }
-    input, select { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; font-size:16px; }
+    input, select, textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: white; min-height: 46px; font-size:16px; }
     .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
     .codeview { position: fixed; inset: 0; background: white; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; padding: calc(54px + env(safe-area-inset-top)) 18px 18px; }
     .codeview.show { display: flex; }
@@ -193,7 +193,7 @@
     body.dark-theme .tab { border-color:#555b65; }
     body.dark-theme .tab.active { border-color:#111; box-shadow:inset 0 0 0 2px #fff, inset 0 0 0 4px #111; }
     body.dark-theme .tag-choice.selected { outline:none; border-color:#fff; box-shadow:inset 0 0 0 3px #fff, inset 0 0 0 5px #111827; }
-    body.dark-theme input, body.dark-theme select { background:#383b41; color:var(--text); }
+    body.dark-theme input, body.dark-theme select, body.dark-theme textarea { background:#383b41; color:var(--text); }
     body.dark-theme .tab-setting-handle, body.dark-theme .drag-handle, body.dark-theme .mini { background:#41444b; color:var(--text); }
     body.dark-theme .notice, body.dark-theme .shortcut-name-preview { background:#33363b; }
     body.dark-theme .shortcut-box, body.dark-theme .location-row, body.dark-theme .color-current, body.dark-theme .large-color-choice { background:#36393f; color:var(--text); }
@@ -206,9 +206,9 @@
 
     /* v2.08: persistent panel actions; only the body scrolls. */
     .sheet, .color-picker-card { display:flex; flex-direction:column; overflow:hidden; padding:0; min-height:0; max-height:min(92dvh,100%); }
-    .panel-header { flex:0 0 auto; padding:12px 16px 10px; border-bottom:1px solid var(--line); }
-    .panel-header h2, .panel-header h3 { margin:0 0 8px; font-size:20px; }
-    .panel-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .panel-header { flex:0 0 auto; padding:12px 16px 10px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .panel-header h2, .panel-header h3 { margin:0; font-size:20px; min-width:0; }
+    .panel-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-left:auto; }
     .panel-actions .btn { margin:0; min-height:44px; padding:9px 14px; }
     .panel-body { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:0 16px calc(14px + env(safe-area-inset-bottom)); scroll-padding:12px; }
     .panel-body .field { margin:10px 0; }
@@ -290,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.13</div>
+      <div class="app-version">ここコード v2.14</div>
       
     </div></div>
   </div>
@@ -389,6 +389,21 @@
       </div>
 
       <div class="field">
+        <label for="memo">メモ</label>
+        <textarea id="memo" rows="3" placeholder="検索にも使うメモを入力"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="validityType">有効期間</label>
+        <select id="validityType">
+          <option value="daily">毎日</option>
+          <option value="date">特定の日付</option>
+        </select>
+        <input id="validDate" type="date" class="hidden" style="margin-top:8px;">
+        <div class="notice">📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。</div>
+      </div>
+
+      <div class="field">
         <label>Tag（複数選択可）</label>
         <div class="tag-selector" id="tagSelector" aria-label="Tag選択"></div>
       </div>
@@ -400,7 +415,7 @@
           <button class="btn" id="addMapLocationBtn" type="button">地図</button>
         </div>
         <div class="location-list" id="locationList"></div>
-        <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、Tagが1つ以上あり、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
+        <div class="notice">1つの項目に複数地点を登録できます。📍タブでは、Tagが1つ以上あり、有効期間が「毎日」または今日で、現在地から200m以内に登録地点が1つでもあれば表示されます。</div>
       </div>
 
       <div class="field">
@@ -588,6 +603,9 @@
     const editPrimaryActions = document.getElementById("editPrimaryActions");
     const formTitle = document.getElementById("formTitle");
     const nameInput = document.getElementById("name");
+    const memoInput = document.getElementById("memo");
+    const validityTypeInput = document.getElementById("validityType");
+    const validDateInput = document.getElementById("validDate");
     const typeInput = document.getElementById("type");
     const barcodeFormatInput = document.getElementById("barcodeFormat");
     const barcodeFormatField = document.getElementById("barcodeFormatField");
@@ -681,6 +699,9 @@
         value: String(x.value || ""), barcodeFormat: x.barcodeFormat || "CODE128",
         color: x.color || "white", favorite: x.favorite !== false, tagIds:[...new Set(tagIds)],
         codeSpec: x.codeSpec || null,
+        memo: String(x.memo || ""),
+        validityType: x.validityType === "date" ? "date" : "daily",
+        validDate: /^\d{4}-\d{2}-\d{2}$/.test(String(x.validDate || "")) ? String(x.validDate) : "",
         locations: Array.isArray(x.locations) ? x.locations.map((p,i) => ({lat:Number(p.lat), lng:Number(p.lng), label:String(p.label || `地点${i+1}`)})).filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat)<=90 && Math.abs(p.lng)<=180) : []
       };
       if ((item.type === "qr" || item.type === "barcode") && !item.codeSpec) item.codeSpec = legacySpec(item);
@@ -781,7 +802,7 @@
       if (activeTab === "search") {
         const q=normalizeSearchText(searchQuery.trim());
         if (!q) return items.slice();
-        return items.filter(x => normalizeSearchText(x.name).includes(q));
+        return items.filter(x => normalizeSearchText(`${x.name} ${x.memo || ""}`).includes(q));
       }
       if (activeTab === "star") return items.filter(x => x.favorite);
       if (activeTab === "location") {
@@ -808,6 +829,15 @@
       });
     }
 
+    function localDateYmd(date = new Date()) {
+      const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,"0"), d=String(date.getDate()).padStart(2,"0");
+      return `${y}-${m}-${d}`;
+    }
+
+    function isItemValidToday(item) {
+      return item.validityType !== "date" || item.validDate === localDateYmd();
+    }
+
     async function refreshNearbyItems() {
       locationState={status:"loading",current:null,currentAt:0,distances:new Map(),errorMessage:""};
       render();
@@ -817,6 +847,7 @@
         const distances=new Map();
         for (const item of items) {
           if (!item.tagIds.length) continue;
+          if (!isItemValidToday(item)) continue;
           let min=Infinity;
           for (const p of (item.locations || [])) min=Math.min(min,distanceMeters(current.lat,current.lng,p.lat,p.lng));
           if (min <= LOCATION_RADIUS_M) distances.set(item.id,min);
@@ -841,7 +872,7 @@
     }
 
     function canQuickAddLocation(item) {
-      return hasRecentNearbyLocation() && !locationState.distances.has(item.id);
+      return hasRecentNearbyLocation() && isItemValidToday(item) && !locationState.distances.has(item.id);
     }
 
     function quickAddCurrentLocation(item) {
@@ -1183,6 +1214,10 @@
 
       formTitle.textContent = item ? "IDを編集" : "IDを追加";
       nameInput.value = item?.name || "";
+      memoInput.value = item?.memo || "";
+      validityTypeInput.value = item?.validityType === "date" ? "date" : "daily";
+      validDateInput.value = item?.validDate || localDateYmd();
+      validDateInput.classList.toggle("hidden", validityTypeInput.value !== "date");
       typeInput.value = item?.type || "qr";
       barcodeFormatInput.value = item?.barcodeFormat || "CODE128";
       valueInput.value = item?.value || "";
@@ -2195,8 +2230,12 @@
         favorite: existing ? existing.favorite : false,
         tagIds: [...editTagIds],
         codeSpec: spec,
+        memo: memoInput.value.trim(),
+        validityType: validityTypeInput.value === "date" ? "date" : "daily",
+        validDate: validityTypeInput.value === "date" ? validDateInput.value : "",
         locations: structuredClone(editLocations)
       };
+      if (item.validityType === "date" && !item.validDate) return alert("有効期間の日付を選択してください。");
       const error = validate(item);
       if (error) return alert(error);
 
@@ -2391,6 +2430,7 @@
       render();
     }
 
+    validityTypeInput.addEventListener("change", () => { validDateInput.classList.toggle("hidden", validityTypeInput.value !== "date"); });
     searchInput.addEventListener("input", () => { searchQuery=searchInput.value; render(); });
 
     tabBar.addEventListener("click", async (e) => {
