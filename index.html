@@ -292,11 +292,12 @@
         <div class="actions data-file-actions">
           <button class="btn primary" id="exportBtn" type="button">ファイルに保存</button>
           <button class="btn" id="importBtn" type="button">ファイルから読み込み</button>
+          <button class="btn" id="resetDataBtn" type="button">データを初期化</button>
         </div>
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.17</div>
+      <div class="app-version">ここコード v2.18</div>
       
     </div></div>
   </div>
@@ -481,6 +482,21 @@
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
     const SETTINGS_KEY = "idPortalSettings.v10";
+    const INITIALIZED_KEY = "idPortalInitialized.v218";
+    const INITIAL_SETTINGS = {"tags":[{"id":"tag-shopping","name":"🛒：買い物","color":"lavender"},{"id":"tag-event","name":"🎫：イベント","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark"};
+    const INITIAL_ITEMS = [{"id":"sample-cocomart","name":"ココマート会員証","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"東京駅"},{"lat":34.702485,"lng":135.495951,"label":"大阪駅"}]},{"id":"sample-rakutenpay","name":"楽天ペイ","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-cocogolf","name":"ココゴルフ会員証","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"オーガスタ・ナショナル・ゴルフクラブ"}]},{"id":"sample-cocofes-2027","name":"ココフェス2027 入場券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-cocofes-2026","name":"ココフェス2026 入場券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-emojidas","name":"絵文字ダス","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"タグ表示に使える絵文字を探す為のWebアプリを起動します","validityType":"daily","validDate":"","locations":[]}];
+
+    function cloneInitial(value) { return JSON.parse(JSON.stringify(value)); }
+    function ensureInitialData() {
+      if (localStorage.getItem(INITIALIZED_KEY) === "1") return;
+      const hasExisting = localStorage.getItem(STORAGE_KEY) !== null || localStorage.getItem(SETTINGS_KEY) !== null;
+      if (!hasExisting) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(INITIAL_SETTINGS));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_ITEMS));
+      }
+      localStorage.setItem(INITIALIZED_KEY, "1");
+    }
+    ensureInitialData();
 
     const GROUP_COLOR_HEX = {
       white:"#ffffff", blue:"#cfe0ff", sky:"#bfe7ff", cyan:"#bfeeed", green:"#ccebd5", lime:"#e1efb9", yellow:"#ffe69a", cream:"#fff0c7",
@@ -589,6 +605,7 @@
     const dataModal = document.getElementById("dataModal");
     const exportBtn = document.getElementById("exportBtn");
     const importBtn = document.getElementById("importBtn");
+    const resetDataBtn = document.getElementById("resetDataBtn");
     const importFileInput = document.getElementById("importFileInput");
     const closeDataBtn = document.getElementById("closeDataBtn");
     const groupTabScroll = document.getElementById("groupTabScroll");
@@ -1235,6 +1252,17 @@
       } catch(e) {
         alert("このデータは読み込めませんでした。\n現在のデータは変更されていません。");
       } finally { importFileInput.value=""; }
+    }
+
+    function resetToInitialData() {
+      if (!confirm("現在のデータと設定を削除し、初期状態に戻します。\nこの操作は元に戻せません。")) return;
+      settings=normalizeSettings(cloneInitial(INITIAL_SETTINGS));
+      const validTagIds=new Set(settings.tags.map(t=>t.id));
+      items=cloneInitial(INITIAL_ITEMS).map(x=>normalizeItem(x)).map(item=>({...item,tagIds:item.tagIds.filter(id=>validTagIds.has(id))}));
+      activeTab="star"; searchQuery=""; searchInput.value="";
+      saveSettings(); saveItems(); localStorage.setItem(INITIALIZED_KEY,"1");
+      applyLayoutTheme(); refreshTabs(); render(); closeDataModal();
+      alert("データと設定を初期状態に戻しました。");
     }
 
     function updateColorSelection() {
@@ -2479,6 +2507,7 @@
     wireHelpLongPress(layoutDarkBtn,"ダーク","ここコードを常に暗い配色で表示します。");
     wireHelpLongPress(exportBtn,"ファイルに保存","登録したID項目やTag、設定などをバックアップファイルとして保存します。");
     wireHelpLongPress(importBtn,"ファイルから読み込み","保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。");
+    wireHelpLongPress(resetDataBtn,"データを初期化","登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。");
     wireHelpLongPress(addGroupBtn,"Tag追加","新しいTagを追加します。1つのID項目には複数のTagを付けられます。");
     wireHelpLongPress(imageScanBtn,"画像から読み取る","写真や保存画像に含まれるQRコード／バーコードを読み取って登録します。");
     wireHelpLongPress(cameraScanBtn,"カメラで読み取る","カメラでQRコード／バーコードを読み取って登録します。");
@@ -2585,6 +2614,7 @@
     tabSettingsModal.addEventListener("click", e => { if(e.target===tabSettingsModal) closeTabSettings(); });
     exportBtn.addEventListener("click", exportData);
     importBtn.addEventListener("click", () => importFileInput.click());
+    resetDataBtn.addEventListener("click", resetToInitialData);
     importFileInput.addEventListener("change", () => importData(importFileInput.files?.[0]));
     closeDataBtn.addEventListener("click", closeDataModal);
     dataModal.addEventListener("click", e => { if (e.target === dataModal) closeDataModal(); });
