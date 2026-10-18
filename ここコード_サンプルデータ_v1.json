@@ -1,0 +1,176 @@
+﻿{
+  "format": "IDPortal",
+  "version": 154,
+  "exportedAt": "2026-10-18T19:44:39.221032+09:00",
+  "settings": {
+    "tags": [
+      {
+        "id": "tag-shopping",
+        "name": "🛒：買い物",
+        "color": "green"
+      },
+      {
+        "id": "tag-event",
+        "name": "🎫：イベント",
+        "color": "blue"
+      }
+    ],
+    "starColor": "yellow",
+    "locationColor": "sky",
+    "searchColor": "white",
+    "untaggedColor": "gray",
+    "layout": "auto"
+  },
+  "items": [
+    {
+      "id": "sample-cocomart",
+      "name": "ココマート会員証",
+      "type": "barcode",
+      "value": "COCOMART-SAMPLE-001",
+      "barcodeFormat": "CODE128",
+      "color": "green",
+      "favorite": true,
+      "tagIds": [
+        "tag-shopping"
+      ],
+      "codeSpec": {
+        "symbology": "CODE128",
+        "source": "sample",
+        "detected": {
+          "symbology": true
+        }
+      },
+      "memo": "これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。",
+      "validityType": "daily",
+      "validDate": "",
+      "locations": [
+        {
+          "lat": 35.681236,
+          "lng": 139.767125,
+          "label": "東京駅"
+        },
+        {
+          "lat": 34.702485,
+          "lng": 135.495951,
+          "label": "大阪駅"
+        }
+      ]
+    },
+    {
+      "id": "sample-rakutenpay",
+      "name": "楽天ペイ",
+      "type": "app1",
+      "value": "rakutenpay://",
+      "barcodeFormat": "CODE128",
+      "color": "white",
+      "favorite": true,
+      "tagIds": [
+        "tag-shopping"
+      ],
+      "codeSpec": null,
+      "memo": "楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。",
+      "validityType": "daily",
+      "validDate": "",
+      "locations": []
+    },
+    {
+      "id": "sample-paypay",
+      "name": "PayPay",
+      "type": "app1",
+      "value": "PayPay://",
+      "barcodeFormat": "CODE128",
+      "color": "white",
+      "favorite": true,
+      "tagIds": [
+        "tag-shopping"
+      ],
+      "codeSpec": null,
+      "memo": "PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。",
+      "validityType": "daily",
+      "validDate": "",
+      "locations": []
+    },
+    {
+      "id": "sample-cocogolf",
+      "name": "ココゴルフ会員証",
+      "type": "qr",
+      "value": "COCOGOLF-SAMPLE-001",
+      "barcodeFormat": "CODE128",
+      "color": "blue",
+      "favorite": true,
+      "tagIds": [
+        "tag-event"
+      ],
+      "codeSpec": null,
+      "memo": "これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。",
+      "validityType": "daily",
+      "validDate": "",
+      "locations": [
+        {
+          "lat": 33.503,
+          "lng": -82.0205,
+          "label": "オーガスタ・ナショナル・ゴルフクラブ"
+        }
+      ]
+    },
+    {
+      "id": "sample-cocofes-2027",
+      "name": "ココフェス2027 入場券",
+      "type": "qr",
+      "value": "COCOFES-2027-SAMPLE-001",
+      "barcodeFormat": "CODE128",
+      "color": "blue",
+      "favorite": false,
+      "tagIds": [
+        "tag-event"
+      ],
+      "codeSpec": null,
+      "memo": "2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。",
+      "validityType": "date",
+      "validDate": "2027-10-17",
+      "locations": [
+        {
+          "lat": 35.6298,
+          "lng": 139.7942,
+          "label": "東京ビッグサイト"
+        }
+      ]
+    },
+    {
+      "id": "sample-cocofes-2026",
+      "name": "ココフェス2026 入場券",
+      "type": "qr",
+      "value": "COCOFES-2026-SAMPLE-001",
+      "barcodeFormat": "CODE128",
+      "color": "gray",
+      "favorite": false,
+      "tagIds": [],
+      "codeSpec": null,
+      "memo": "有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。",
+      "validityType": "date",
+      "validDate": "2026-10-17",
+      "locations": [
+        {
+          "lat": 35.6298,
+          "lng": 139.7942,
+          "label": "東京ビッグサイト"
+        }
+      ]
+    },
+    {
+      "id": "sample-emojidas",
+      "name": "絵文字ダス",
+      "type": "link",
+      "value": "https://sugarware.github.io/EmojiDas/",
+      "barcodeFormat": "CODE128",
+      "color": "white",
+      "favorite": false,
+      "tagIds": [],
+      "codeSpec": null,
+      "memo": "タグ表示に使える絵文字を探す為のWebアプリ",
+      "validityType": "daily",
+      "validDate": "",
+      "locations": []
+    }
+  ]
+}
