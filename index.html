@@ -180,6 +180,12 @@
     .map-search-result { text-align:left; min-height:38px; padding:7px 9px; font-size:12px; line-height:1.35; }
     .current-location-dot { width:18px; height:18px; border-radius:50%; background:#1f5eff; border:4px solid #fff; box-shadow:0 0 0 2px #1f5eff,0 2px 7px rgba(0,0,0,.35); }
     .location-error { text-align:left; }
+    .help-overlay { position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.42); display:none; align-items:center; justify-content:center; padding:24px; }
+    .help-overlay.show { display:flex; }
+    .help-panel { width:min(520px,100%); max-height:min(78vh,620px); overflow:auto; background:var(--bg); color:var(--text); border-radius:18px; padding:18px; box-shadow:var(--shadow); }
+    .help-panel h2 { margin:0 0 10px; font-size:20px; }
+    .help-panel p { margin:0; font-size:15px; line-height:1.65; white-space:pre-line; }
+    .help-panel .btn { width:100%; margin-top:16px; }
     .hidden { display: none !important; }
   
     .location-tab {
@@ -290,7 +296,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.15</div>
+      <div class="app-version">ここコード v2.16</div>
       
     </div></div>
   </div>
@@ -773,9 +779,9 @@
       groupTabScroll.innerHTML="";
       settings.tags.forEach(tag=>{
         const btn=document.createElement("button");btn.className="tab";btn.type="button";btn.dataset.tab=`tag:${tag.id}`;btn.dataset.fullName=tagFullLabel(tag.name);btn.setAttribute("aria-label",tagFullLabel(tag.name));btn.textContent=tagShortLabel(tag.name);
-        btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"#171717";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);groupTabScroll.appendChild(btn);
+        btn.style.background=GROUP_COLOR_HEX[tag.color];btn.style.color=isDarkColor(tag.color)?"#fff":"#171717";btn.classList.toggle("active",activeTab===`tag:${tag.id}`);wireHelpLongPress(btn,"タグ",`「${tagFullLabel(tag.name)}」が付いている項目だけを表示します。1つの項目に複数のタグを付けることもできます。`);groupTabScroll.appendChild(btn);
       });
-      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX[settings.untaggedColor];unc.style.color=isDarkColor(settings.untaggedColor)?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");groupTabScroll.appendChild(unc);
+      const unc=document.createElement("button");unc.className="tab";unc.type="button";unc.dataset.tab="untagged";unc.dataset.fullName="♻️タグ無し";unc.setAttribute("aria-label","♻️タグ無し");unc.textContent="♻️";unc.style.background=GROUP_COLOR_HEX[settings.untaggedColor];unc.style.color=isDarkColor(settings.untaggedColor)?"#fff":"#171717";unc.classList.toggle("active",activeTab==="untagged");wireHelpLongPress(unc,"タグ無し","まだタグが付いていない項目を表示します。");groupTabScroll.appendChild(unc);
       [["star",settings.starColor],["location",settings.locationColor],["search",settings.searchColor]].forEach(([key,col])=>{const c=validColorName(col,"white"),el=tabBar.querySelector(`[data-tab="${key}"]`);el.style.background=GROUP_COLOR_HEX[c];el.style.color=isDarkColor(c)?"#fff":"#171717";});
       tabBar.querySelector('[data-tab="star"]').classList.toggle("active",activeTab==="star");tabBar.querySelector('[data-tab="location"]').classList.toggle("active",activeTab==="location");tabBar.querySelector('[data-tab="search"]').classList.toggle("active",activeTab==="search");
       refreshSelectedTabName(visibleItems().length);
@@ -918,7 +924,7 @@
       return "";
     }
 
-    let suppressItemClickUntil=0; let longPressTimer=null; let longPressStart=null;
+    let suppressItemClickUntil=0;
     const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="duplicate">複製</button><button type="button" data-action="settings">設定</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
     let contextItemId=null;
     function closeContextMenu(){contextMenu.classList.remove("show");contextItemId=null;}
@@ -926,7 +932,44 @@
     function duplicateItem(id){const src=items.find(x=>x.id===id);if(!src)return;const base=src.name.replace(/-\d+$/,"");let max=0;for(const x of items){const m=x.name.match(new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}-(\\d+)$`));if(m)max=Math.max(max,Number(m[1]));}const n=max+1;const copy=structuredClone(src);copy.id=crypto.randomUUID();copy.name=`${base}-${n}`;const pos=items.findIndex(x=>x.id===id);items.splice(pos+1,0,copy);saveItems();render();}
     contextMenu.addEventListener("click",e=>{const a=e.target.closest("button")?.dataset.action;if(!a)return;const id=contextItemId;closeContextMenu();if(a==="duplicate")duplicateItem(id);else if(a==="settings")openEdit(id);});
     document.addEventListener("pointerdown",e=>{if(contextMenu.classList.contains("show")&&!e.target.closest(".context-menu"))closeContextMenu();});
-    function wireItemLongPress(row,item){row.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;longPressStart={x:e.clientX,y:e.clientY,id:item.id};clearTimeout(longPressTimer);longPressTimer=setTimeout(()=>showContextMenu(item,e.clientX,e.clientY),550);});row.addEventListener("pointermove",e=>{if(longPressStart&&Math.hypot(e.clientX-longPressStart.x,e.clientY-longPressStart.y)>8){clearTimeout(longPressTimer);longPressStart=null;}});["pointerup","pointercancel","pointerleave"].forEach(ev=>row.addEventListener(ev,()=>{clearTimeout(longPressTimer);longPressStart=null;}));row.addEventListener("contextmenu",e=>e.preventDefault());}
+
+    const helpOverlay=document.createElement("div");
+    helpOverlay.className="help-overlay";
+    helpOverlay.setAttribute("aria-hidden","true");
+    helpOverlay.innerHTML='<div class="help-panel" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><h2 id="helpTitle"></h2><p id="helpText"></p><button class="btn primary" type="button" data-help-close>閉じる</button></div>';
+    document.body.appendChild(helpOverlay);
+    const helpTitle=helpOverlay.querySelector("#helpTitle");
+    const helpText=helpOverlay.querySelector("#helpText");
+    function closeHelp(){helpOverlay.classList.remove("show");helpOverlay.setAttribute("aria-hidden","true");}
+    function showHelp(title,text){closeContextMenu();helpTitle.textContent=title;helpText.textContent=text;helpOverlay.classList.add("show");helpOverlay.setAttribute("aria-hidden","false");}
+    helpOverlay.addEventListener("pointerdown",e=>{if(e.target===helpOverlay)closeHelp();});
+    helpOverlay.querySelector("[data-help-close]").addEventListener("click",closeHelp);
+
+    function wireHelpLongPress(el,title,text){
+      let timer=null,start=null,longPressed=false;
+      el.addEventListener("pointerdown",e=>{if(e.button!=null&&e.button!==0)return;longPressed=false;start={x:e.clientX,y:e.clientY};clearTimeout(timer);timer=setTimeout(()=>{longPressed=true;suppressItemClickUntil=Date.now()+700;showHelp(typeof title==="function"?title():title,typeof text==="function"?text():text);},550);});
+      el.addEventListener("pointermove",e=>{if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>8){clearTimeout(timer);start=null;}});
+      ["pointerup","pointercancel","pointerleave"].forEach(ev=>el.addEventListener(ev,()=>{clearTimeout(timer);start=null;}));
+      el.addEventListener("contextmenu",e=>e.preventDefault());
+      el.addEventListener("click",e=>{if(longPressed||Date.now()<suppressItemClickUntil){e.preventDefault();e.stopImmediatePropagation();longPressed=false;}},true);
+    }
+
+    let itemTapTimer=null;
+    let lastItemTap={id:null,time:0};
+    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコードなどを開きます。\n\nダブルタップすると「複製」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
+      el.addEventListener("click",e=>{
+        if(Date.now()<suppressItemClickUntil)return;
+        const now=Date.now();
+        if(lastItemTap.id===item.id && now-lastItemTap.time<=420){
+          clearTimeout(itemTapTimer); itemTapTimer=null; lastItemTap={id:null,time:0};
+          const r=el.getBoundingClientRect(); showContextMenu(item,r.left+r.width/2,r.bottom);
+          return;
+        }
+        clearTimeout(itemTapTimer); lastItemTap={id:item.id,time:now};
+        itemTapTimer=setTimeout(()=>{if(lastItemTap.id===item.id){lastItemTap={id:null,time:0};activate(item);}},430);
+      });
+      wireHelpLongPress(el,helpTitleText,helpBodyText);
+    }
 
     function renderList(targetList, shown) {
       targetList.innerHTML = "";
@@ -972,6 +1015,7 @@
           saveItems();
           render();
         });
+        wireHelpLongPress(favorite,"お気に入り登録","タップすると、この項目のお気に入り登録／解除を切り替えます。");
 
         const leading = document.createElement("div");
         leading.className = "item-leading";
@@ -987,6 +1031,7 @@
             e.stopPropagation();
             quickAddCurrentLocation(item);
           });
+          wireHelpLongPress(quickLocation,"利用場所の登録","現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。");
           leading.appendChild(quickLocation);
         }
 
@@ -994,25 +1039,24 @@
         main.className = "item-main";
         main.innerHTML = `<div class="name"></div>`;
         main.querySelector(".name").textContent = item.name;
-        main.addEventListener("click", () => { if(Date.now()>=suppressItemClickUntil) activate(item); });
+        wireItemAction(main,item);
 
         const meta = document.createElement("div");
         meta.className = "meta";
         const tagMarks=item.tagIds.map(id=>settings.tags.find(t=>t.id===id)).filter(Boolean).map(t=>firstGrapheme(t.name)).join("");
         meta.textContent = activeTab === "search" ? `${typeLabel(item)}${tagMarks ? `・${tagMarks}` : "・♻️"}` : typeLabel(item);
-        meta.addEventListener("click", () => { if(Date.now()>=suppressItemClickUntil) activate(item); });
+        wireItemAction(meta,item,()=>typeLabel(item),()=>({App1:"URLスキームを使って、対応するアプリを直接起動します。",App2:"ショートカットを使って、対応するアプリを起動します。",Link:"登録したWebページをブラウザで開きます。",QR:"登録してあるQRコードを画面に表示します。",BAR:"登録してあるバーコードを画面に表示します。"}[typeLabel(item)]||"この項目の種類を表示します。"));
 
         const buttons = document.createElement("div");
         buttons.className = "drag";
         const handle = document.createElement("button");
         handle.className = "drag-handle";
         handle.textContent = "≡";
-        handle.title = "ドラッグして並び替え／ダブルタップで設定";
-        handle.setAttribute("aria-label", `${item.name}を並び替え。ダブルタップで設定`);
+        handle.title = "ドラッグして並び替え";
+        handle.setAttribute("aria-label", `${item.name}をドラッグして並び替え`);
         handle.addEventListener("pointerdown", e => beginDrag(e, item.id));
         buttons.append(handle);
         row.append(indexLabel, leading, main, meta, buttons);
-        wireItemLongPress(row,item);
         targetList.appendChild(row);
       });
     }
@@ -1072,7 +1116,6 @@
 
     let dragState = null;
 
-    let lastHandleTap = { id:null, time:0 };
 
     function beginDrag(e, id) {
       e.preventDefault();
@@ -1130,16 +1173,6 @@
         saveItems();
       }
       dragState = null;
-      if (!wasMoved) {
-        const now = Date.now();
-        if (lastHandleTap.id === tappedId && now - lastHandleTap.time < 420) {
-          lastHandleTap = { id:null, time:0 };
-          render();
-          openEdit(tappedId);
-          return;
-        }
-        lastHandleTap = { id:tappedId, time:now };
-      }
       render();
     }
 
@@ -2432,6 +2465,12 @@
 
     validityTypeInput.addEventListener("change", () => { validDateInput.classList.toggle("hidden", validityTypeInput.value !== "date"); });
     searchInput.addEventListener("input", () => { searchQuery=searchInput.value; render(); });
+
+    wireHelpLongPress(dataBtn,"設定","表示やタブ、データの保存・読込など、ここコード全体の設定を行います。");
+    wireHelpLongPress(addBtn,"ID追加","新しいQRコード、バーコード、アプリ、Webページなどを登録します。");
+    wireHelpLongPress(tabBar.querySelector('[data-tab="star"]'),"お気に入り","⭐️を付けた項目だけを表示します。よく使う項目や、今日使う予定の項目をまとめておくと便利です。");
+    wireHelpLongPress(tabBar.querySelector('[data-tab="location"]'),"現在地向け","現在地の近くに利用場所を登録してある項目を表示します。現在地を更新したいときは📍をダブルタップします。");
+    wireHelpLongPress(tabBar.querySelector('[data-tab="search"]'),"検索","登録した項目を名前やメモから検索します。");
 
     tabBar.addEventListener("click", async (e) => {
       const btn = e.target.closest(".tab");
