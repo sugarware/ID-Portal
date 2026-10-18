@@ -290,7 +290,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.14</div>
+      <div class="app-version">ここコード v2.15</div>
       
     </div></div>
   </div>
@@ -1903,7 +1903,7 @@
       };
     }
 
-    const ZXING_FORMATS=["QRCode","Codabar","Code39","Code93","Code128","DataBar","DataBarExpanded","DataBarLimited","EAN8","EAN13","ITF","UPCA","UPCE"];
+    const ZXING_FORMATS=["QRCode","Codabar","Code39","Code93","Code128","DataBar","DataBarExpanded","DataBarLimited","EAN-8","EAN-13","ITF","UPC-A","UPC-E"];
 
     async function ensureZxing() {
       if (zxingReadyPromise) return zxingReadyPromise;
