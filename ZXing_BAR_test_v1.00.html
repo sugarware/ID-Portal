@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ZXing-WASM BAR評価 v1.00</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;color-scheme:light dark}
+body{margin:0;padding:16px;max-width:900px;margin-inline:auto}h1{font-size:1.25rem;margin:.2rem 0 1rem}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:.6rem 0}button,select{font:inherit;padding:.55rem .75rem}video{display:block;width:100%;max-height:52vh;background:#111;object-fit:contain;border-radius:8px}.panel{border:1px solid #8886;border-radius:8px;padding:12px;margin-top:12px}.grid{display:grid;grid-template-columns:max-content 1fr;gap:.4rem .8rem}.value{overflow-wrap:anywhere;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.ok{font-weight:700}.err{white-space:pre-wrap;color:#c33}.note{font-size:.9rem;opacity:.8}#log{font-size:.85rem;white-space:pre-wrap;max-height:24vh;overflow:auto}
+</style>
+</head>
+<body>
+<h1>ZXing-WASM バーコード評価 v1.00</h1>
+<div class="row">
+<label>条件 <select id="preset">
+<option value="v213">A: v2.13そのまま</option>
+<option value="c128">B: Code128のみ</option>
+<option value="c128e13">C: Code128 + EAN13</option>
+<option value="c128e8">D: Code128 + EAN8</option>
+<option value="c128upca">E: Code128 + UPCA</option>
+<option value="c128upce">F: Code128 + UPCE</option>
+<option value="retail">G: Code128 + EAN13 + EAN8 + UPCA + UPCE</option>
+<option value="e13">H: EAN13のみ</option>
+</select></label>
+<button id="start">カメラ開始</button><button id="stop" disabled>停止</button>
+</div>
+<video id="video" playsinline muted></video>
+<div class="panel grid">
+<div>実解像度</div><div class="value" id="resolution">—</div>
+<div>formats</div><div class="value" id="formats">—</div>
+<div>状態</div><div class="value" id="status">待機</div>
+<div>認識形式</div><div class="value ok" id="format">—</div>
+<div>認識文字列</div><div class="value ok" id="text">—</div>
+<div>処理時間</div><div class="value" id="time">—</div>
+<div>直近10回平均</div><div class="value" id="avg">—</div>
+<div>エラー</div><div class="err" id="error">—</div>
+</div>
+<div class="panel"><div class="note">処理経路: 1920×1080 ideal → video → canvas → ImageData → zxing-wasm readBarcodes()。crop / resize / 二値化なし。400 ms間隔。tryHarder=true、maxNumberOfSymbols=1 はv2.13と同じ。</div><div id="log"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js"></script>
+<script>
+const V213=["QRCode","Codabar","Code39","Code93","Code128","DataBar","DataBarExpanded","DataBarLimited","EAN8","EAN13","ITF","UPCA","UPCE"];
+const PRESETS={
+ v213:V213,c128:["Code128"],c128e13:["Code128","EAN13"],c128e8:["Code128","EAN8"],
+ c128upca:["Code128","UPCA"],c128upce:["Code128","UPCE"],retail:["Code128","EAN13","EAN8","UPCA","UPCE"],e13:["EAN13"]
+};
+const $=id=>document.getElementById(id), video=$("video"), preset=$("preset");
+let stream=null,timer=null,busy=false,zxingReadyPromise=null,times=[];
+function currentFormats(){return PRESETS[preset.value]}
+function showFormats(){$("formats").textContent=JSON.stringify(currentFormats())}
+preset.onchange=()=>{showFormats();times=[];$("avg").textContent="—";log(`条件変更: ${preset.options[preset.selectedIndex].text}`)};
+showFormats();
+async function ensureZxing(){
+ if(zxingReadyPromise)return zxingReadyPromise;
+ zxingReadyPromise=(async()=>{
+  if(!window.ZXingWASM?.readBarcodes)throw new Error("zxing-wasm unavailable");
+  if(window.ZXingWASM.prepareZXingModule){
+   await window.ZXingWASM.prepareZXingModule({overrides:{locateFile:(path,prefix)=>path.endsWith(".wasm")?"https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/reader/zxing_reader.wasm":prefix+path},fireImmediately:true});
+  }
+  return window.ZXingWASM;
+ })(); return zxingReadyPromise;
+}
+function log(s){const now=new Date().toLocaleTimeString();$("log").textContent=`\n${now}  ${s}`+$("log").textContent.slice(0,5000)}
+async function scan(){
+ if(!stream||busy||!video.videoWidth)return; busy=true;
+ try{
+  const c=document.createElement("canvas");c.width=video.videoWidth;c.height=video.videoHeight;
+  const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(video,0,0,c.width,c.height);
+  const imageData=ctx.getImageData(0,0,c.width,c.height), z=await ensureZxing();
+  const t0=performance.now();
+  const results=await z.readBarcodes(imageData,{tryHarder:true,formats:currentFormats(),maxNumberOfSymbols:1});
+  const dt=performance.now()-t0; times.push(dt);if(times.length>10)times.shift();
+  $("time").textContent=dt.toFixed(1)+" ms";$("avg").textContent=(times.reduce((a,b)=>a+b,0)/times.length).toFixed(1)+" ms";
+  const r=results?.find(x=>x?.text);
+  if(r){$("format").textContent=r.format||r.symbology||"?";$("text").textContent=r.text;$("status").textContent="認識成功";$("error").textContent="—";log(`OK ${r.format||r.symbology||"?"} / ${r.text} / ${dt.toFixed(1)} ms`)}
+  else{$("status").textContent="未認識（継続中）"}
+ }catch(e){$("error").textContent=String(e?.stack||e);$("status").textContent="エラー";log("ERROR "+String(e))}
+ finally{busy=false}
+}
+$("start").onclick=async()=>{
+ try{
+  $("error").textContent="—";$("status").textContent="ZXing準備中…";await ensureZxing();
+  stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}}});
+  video.srcObject=stream;await video.play();$("resolution").textContent=`${video.videoWidth}×${video.videoHeight}`;
+  $("status").textContent="認識中";$("start").disabled=true;$("stop").disabled=false;
+  timer=setInterval(scan,400);setTimeout(scan,250);log(`開始 ${video.videoWidth}×${video.videoHeight}`);
+ }catch(e){$("error").textContent=String(e?.stack||e);$("status").textContent="開始失敗"}
+};
+$("stop").onclick=()=>{if(timer)clearInterval(timer);timer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;$("start").disabled=false;$("stop").disabled=true;$("status").textContent="停止";log("停止")};
+</script>
+</body></html>
