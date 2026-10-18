@@ -296,7 +296,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.16</div>
+      <div class="app-version">ここコード v2.17</div>
       
     </div></div>
   </div>
@@ -319,7 +319,7 @@
 
   <div class="modal" id="editModal" aria-hidden="true">
     <div class="sheet">
-      <div class="panel-header"><h2 id="formTitle">IDを追加</h2><div class="panel-actions"><button class="btn" id="cancelBtn">キャンセル</button><button class="btn primary" id="saveBtn">保存</button></div></div><div class="panel-body">
+      <div class="panel-header"><h2 id="formTitle">ID項目を追加</h2><div class="panel-actions"><button class="btn" id="cancelBtn">キャンセル</button><button class="btn primary" id="saveBtn">保存</button></div></div><div class="panel-body">
 
       <div class="field">
         <label for="name">表示名</label>
@@ -430,7 +430,7 @@
       </div>
 
       <div class="actions" id="editPrimaryActions">
-        <button class="btn danger hidden" id="deleteBtn">このIDを削除</button>
+        <button class="btn danger hidden" id="deleteBtn">このID項目を削除</button>
         
       </div>
 
@@ -1245,7 +1245,7 @@
       editingId = id;
       const item = items.find(x => x.id === id);
 
-      formTitle.textContent = item ? "IDを編集" : "IDを追加";
+      formTitle.textContent = item ? "ID項目を編集" : "ID項目を追加";
       nameInput.value = item?.name || "";
       memoInput.value = item?.memo || "";
       validityTypeInput.value = item?.validityType === "date" ? "date" : "daily";
@@ -2286,7 +2286,7 @@
     function deleteCurrent() {
       if (!editingId) return;
       const item = items.find(x => x.id === editingId);
-      if (!confirm(`「${item.name}」を削除しますか？`)) return;
+      if (!confirm(`ID項目「${item.name}」を削除しますか？`)) return;
       items = items.filter(x => x.id !== editingId);
       saveItems();
       render();
@@ -2472,6 +2472,33 @@
     wireHelpLongPress(tabBar.querySelector('[data-tab="location"]'),"現在地向け","現在地の近くに利用場所を登録してある項目を表示します。現在地を更新したいときは📍をダブルタップします。");
     wireHelpLongPress(tabBar.querySelector('[data-tab="search"]'),"検索","登録した項目を名前やメモから検索します。");
 
+    // 設定・登録画面：意味が自明な「保存／戻る／キャンセル／閉じる」は説明対象外。
+    wireHelpLongPress(openTabSettingsBtn,"タブ(Tag)設定","表示するTagタブの追加・名前・色・並び順を設定します。");
+    wireHelpLongPress(layoutAutoBtn,"自動","端末の表示設定に合わせて、ライト／ダーク表示を自動で切り替えます。");
+    wireHelpLongPress(layoutLightBtn,"ライト","ここコードを常に明るい配色で表示します。");
+    wireHelpLongPress(layoutDarkBtn,"ダーク","ここコードを常に暗い配色で表示します。");
+    wireHelpLongPress(exportBtn,"ファイルに保存","登録したID項目やTag、設定などをバックアップファイルとして保存します。");
+    wireHelpLongPress(importBtn,"ファイルから読み込み","保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。");
+    wireHelpLongPress(addGroupBtn,"Tag追加","新しいTagを追加します。1つのID項目には複数のTagを付けられます。");
+    wireHelpLongPress(imageScanBtn,"画像から読み取る","写真や保存画像に含まれるQRコード／バーコードを読み取って登録します。");
+    wireHelpLongPress(cameraScanBtn,"カメラで読み取る","カメラでQRコード／バーコードを読み取って登録します。");
+    wireHelpLongPress(appRegisterBtn,"公式アプリを登録","QRコードなどをここコードに保存せず、必要なときに公式アプリを起動する項目を登録します。");
+    wireHelpLongPress(manualToggleBtn,"手入力・詳細設定","コード内容や種類などを手入力・確認するための詳細設定を表示／非表示にします。");
+    wireHelpLongPress(copyShortcutNameBtn,"名前をコピー","ショートカット作成に使う名前をクリップボードへコピーします。");
+    wireHelpLongPress(createShortcutBtn,"作成を開始","Appleショートカットの作成を開始します。");
+    wireHelpLongPress(testShortcutBtn,"起動テスト","登録したショートカットから目的のアプリが起動するか確認します。");
+    wireHelpLongPress(addCurrentLocationBtn,"現在地を追加","現在地を、このID項目を利用する場所として追加します。");
+    wireHelpLongPress(addMapLocationBtn,"地図","地図から、このID項目を利用する場所を選んで追加します。");
+    wireHelpLongPress(itemColorButton,"ボタン色","このID項目を一覧に表示するときのボタン色を変更します。");
+    wireHelpLongPress(deleteBtn,"このID項目を削除","このID項目をここコードから削除します。");
+    wireHelpLongPress(mapSearchBtn,"地図の検索","地名や施設名などを検索して、登録する位置を探します。");
+    wireHelpLongPress(confirmMapBtn,"この位置を追加","地図で選択している位置を、このID項目の利用場所として追加します。");
+    wireHelpLongPress(reconstructBtn,"再構成","読み取った内容からQRコードを新しく生成して表示します。元のQRパターンとは異なる場合があります。");
+    wireHelpLongPress(tabSettingsStarColor,"タブの色","お気に入りタブの表示色を変更します。");
+    wireHelpLongPress(tabSettingsLocationColor,"タブの色","現在地タブの表示色を変更します。");
+    wireHelpLongPress(tabSettingsSearchColor,"タブの色","検索タブの表示色を変更します。");
+    wireHelpLongPress(tabSettingsUntaggedColor,"タブの色","タグ無しタブの表示色を変更します。");
+
     tabBar.addEventListener("click", async (e) => {
       const btn = e.target.closest(".tab");
       if (!btn) return;
@@ -2533,7 +2560,7 @@
     let tabDraft=[]; let tabDraftDrag=null;
     function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);updateColorButton(tabSettingsUntaggedColor,settings.untaggedColor);renderTabSettings();tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");syncTabSettingsViewport();}
     function closeTabSettings(){releaseFormFocus();tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true");}
-    function renderTabSettings(){tabSettingsList.innerHTML="";tabDraft.forEach((t,i)=>{const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Tag${i+1}`}の色`);const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));row.append(h,inp,col,del);tabSettingsList.appendChild(row);});}
+    function renderTabSettings(){tabSettingsList.innerHTML="";tabDraft.forEach((t,i)=>{const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Tag${i+1}`}の色`);wireHelpLongPress(col,"タブの色",()=>`「${t.name||`Tag${i+1}`}」タブの表示色を変更します。`);const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));row.append(h,inp,col,del);tabSettingsList.appendChild(row);});}
     function addTabDraft(){const n=tabDraft.length+1;tabDraft.push({id:crypto.randomUUID(),name:`Tag${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length]});renderTabSettings();}
     function deleteTabDraft(i){const t=tabDraft[i];const count=items.filter(x=>x.tagIds.includes(t.id)).length;if(!confirm(`Tag「${t.name||`Tag${i+1}`}」を削除します。${count}項目からこのTagだけを外します。ID項目自体は削除されません。`))return;tabDraft.splice(i,1);renderTabSettings();}
     function beginTabDraftDrag(e,index){e.preventDefault();const row=e.currentTarget.closest(".tab-setting-row");e.currentTarget.setPointerCapture?.(e.pointerId);tabDraftDrag={pointerId:e.pointerId,row,from:index,to:index,startY:e.clientY};row.style.willChange="transform";row.classList.add("dragging");document.addEventListener("pointermove",moveTabDraftDrag,{passive:false});document.addEventListener("pointerup",endTabDraftDrag,{once:true});document.addEventListener("pointercancel",endTabDraftDrag,{once:true});}
