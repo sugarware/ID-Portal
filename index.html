@@ -260,7 +260,7 @@
       <div class="tab-scroll" id="groupTabScroll"></div>
     </nav>
 
-    <div class="selected-tag-name" id="selectedTagName" aria-live="polite"></div>
+    <div class="selected-tag-name" id="selectedTagName" aria-live="polite" data-i18n-skip="true"></div>
 
     <div class="search-bar" id="searchBar" hidden>
       <input id="searchInput" type="search" placeholder="ID項目名を検索" aria-label="ID項目名を検索" autocomplete="off">
@@ -310,7 +310,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.21</div>
+      <div class="app-version">ここコード v2.22</div>
       
     </div></div>
   </div>
@@ -623,6 +623,7 @@
     function translateDom(root=document) {
       const en=currentLanguage()==="en";
       root.querySelectorAll?.("*").forEach(el=>{
+        if (el.dataset.i18nSkip === "true") return;
         if (el.children.length===0 && el.textContent.trim()) {
           if (!el.dataset.jaText) el.dataset.jaText=el.textContent;
           if (en && EN_TEXT[el.dataset.jaText]) el.textContent=EN_TEXT[el.dataset.jaText];
@@ -645,7 +646,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
       const appVersion=document.querySelector(".app-version");
-      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.21";
+      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.22";
       document.title=en?"CoCo-Code":"ここコード";
       render?.();
       if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
