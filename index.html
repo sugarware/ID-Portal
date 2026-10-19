@@ -95,6 +95,7 @@
     h1 { font-size: 25px; margin: 0; letter-spacing: .02em; }
     .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
     .toolbar { display: flex; gap: 8px; }
+    #dataBtn { font-size: 25px; line-height: 1; }
     .btn { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 11px; padding: 8px 11px; min-height: 40px; cursor: pointer; }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: white; font-weight: 700; }
     .btn.danger { color: var(--danger); }
@@ -138,7 +139,7 @@
     #barcode { max-width: 92vw; max-height: 56vh; }
     .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
     .code-back-wrap { width: min(92vw, 520px); margin-top: 20px; display:flex; justify-content:center; }
-    .codeview.memo-view .code-title { order:1; }
+    .codeview.memo-view .code-title { order:1; width:min(88vw,700px); text-align:left; }
     .codeview.memo-view #codeArea { order:2; }
     .codeview.memo-view .code-text { order:3; width:min(88vw,700px); text-align:left; word-break:normal; }
     .codeview.memo-view .code-back-wrap { order:4; }
@@ -309,7 +310,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.20</div>
+      <div class="app-version">ここコード v2.21</div>
       
     </div></div>
   </div>
@@ -586,7 +587,7 @@
     }
 
     const EN_TEXT = {
-      "ここで使うコードを、今すぐ表示！":"Show what you need, right where you need it!", "設定":"Settings", "閉じる":"Close", "タブ(Tag)":"Tabs (Tags)", "タブ(Tag)設定":"Tab (Tag) Settings", "レイアウト":"Appearance", "自動":"Auto", "ライト":"Light", "ダーク":"Dark", "データ保存・読み込み":"Data Backup / Restore", "登録データをJSON形式で保存・復元します。":"Save and restore registered data in JSON format.", "ファイルに保存":"Export to File", "ファイルから読み込み":"Import from File", "データを初期化":"Reset Data", "読み込みは全データを置き換えます。先に保存してください。":"Import replaces all current data. Export a backup first.",
+      "ここコード":"CoCo-Code", "ここで使うコードを、今すぐ表示！":"What you need, where you need it.", "設定":"Settings", "閉じる":"Close", "タブ(Tag)":"Tabs (Tags)", "タブ(Tag)設定":"Tab (Tag) Settings", "レイアウト":"Appearance", "自動":"Auto", "ライト":"Light", "ダーク":"Dark", "データ保存・読み込み":"Data Backup / Restore", "登録データをJSON形式で保存・復元します。":"Save and restore registered data in JSON format.", "ファイルに保存":"Export to File", "ファイルから読み込み":"Import from File", "データを初期化":"Reset Data", "読み込みは全データを置き換えます。先に保存してください。":"Import replaces all current data. Export a backup first.",
       "保存":"Save", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"Set names, colors, and order. Text before ':' is shown on the tab (or the first character if there is no separator). Deleting a Tag does not delete ID items.", "お気に入り":"Favorites", "現在地":"Nearby", "検索":"Search", "タグ無し":"Untagged", "＋ Tag追加":"＋ Add Tag", "ID項目を追加":"Add ID Item", "ID項目を編集":"Edit ID Item", "キャンセル":"Cancel", "表示名":"Name", "コードを読み取る":"Scan Code", "画像から読み取る":"Scan Image", "カメラで読み取る":"Scan Camera", "公式アプリを登録":"Register App", "認識":"Detected", "QRコード／主要バーコードを自動判定します。":"Automatically detects QR codes and major barcode formats.", "手入力・詳細設定":"Manual / Advanced Settings", "詳細設定を隠す":"Hide Advanced Settings", "動作":"Action", "バーコード形式":"Barcode Format", "コード内容":"Code Content", "Appleショートカットの初回設定":"Initial Apple Shortcut Setup", "作成するショートカット名":"Shortcut name to create", "名前をコピー":"Copy Name", "作成を開始":"Start Setup", "起動テスト":"Test Launch", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"iOS may ask for permission the first time. If you plan to keep using it, choosing Always Allow makes later launches smoother.", "メモ":"Memo", "有効期間":"Validity", "毎日":"Every Day", "特定の日付":"Specific Date", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"The 📍 tab includes only IDs set to Every Day or to today's date.", "Tag（複数選択可）":"Tags (multiple allowed)", "位置情報":"Locations", "現在地を追加":"Add Current Location", "地図":"Map", "ボタン色":"Button Color", "このID項目を削除":"Delete This ID Item", "地図から位置を追加":"Add Location from Map", "この位置を追加":"Add This Location", "検索":"Search", "地点を選択してください。":"Select a location.", "再構成":"Rebuild", "戻る":"Back", "色を選択":"Choose Color",
       "複製":"Duplicate", "ID項目":"ID Item", "お気に入り登録":"Favorite", "利用場所の登録":"Register Location", "Tag追加":"Add Tag"
     };
@@ -644,9 +645,10 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
       const appVersion=document.querySelector(".app-version");
-      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.20";
+      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.21";
       document.title=en?"CoCo-Code":"ここコード";
       render?.();
+      if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
     }
 
     let settings = loadSettings();
@@ -1319,7 +1321,7 @@
       const d = new Date();
       const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       a.href = url;
-      a.download = `ここコード_backup_${stamp}.json`;
+      a.download = `${currentLanguage()==="en" ? "CoCo-Code" : "ここコード"}_backup_${stamp}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
