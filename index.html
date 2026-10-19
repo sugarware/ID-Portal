@@ -138,6 +138,11 @@
     #barcode { max-width: 92vw; max-height: 56vh; }
     .code-text { margin-top: 18px; font-size: 16px; word-break: break-all; text-align: center; }
     .code-back-wrap { width: min(92vw, 520px); margin-top: 20px; display:flex; justify-content:center; }
+    .codeview.memo-view .code-title { order:1; }
+    .codeview.memo-view #codeArea { order:2; }
+    .codeview.memo-view .code-text { order:3; width:min(88vw,700px); text-align:left; word-break:normal; }
+    .codeview.memo-view .code-back-wrap { order:4; }
+    .codeview.memo-view #codeVerify { order:5; }
     .close-code { width:100%; min-height:56px; font-size:18px; font-weight:800; border-radius:14px; background:#eef5ff; border-color:#c8dafd; box-shadow:0 1px 0 rgba(255,255,255,.9) inset; }
     .reconstruct-corner { position:absolute; top:calc(10px + env(safe-area-inset-top)); right:12px; z-index:2; min-height:34px; padding:6px 10px; border-radius:9px; font-size:12px; font-weight:700; background:#eef5ff; border-color:#c8dafd; box-shadow:0 1px 0 rgba(255,255,255,.9) inset; }
     #qrcode { position:relative; }
@@ -304,7 +309,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.19</div>
+      <div class="app-version">ここコード v2.20</div>
       
     </div></div>
   </div>
@@ -633,7 +638,16 @@
       document.documentElement.lang=en?"en":"ja";
       document.getElementById("languageJaBtn")?.classList.toggle("selected",!en); document.getElementById("languageEnBtn")?.classList.toggle("selected",en);
     }
-    function applyLanguage(){ translateDom(document); render?.(); }
+    function applyLanguage(){
+      translateDom(document);
+      const en=currentLanguage()==="en";
+      const appTitle=document.querySelector("header h1");
+      if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
+      const appVersion=document.querySelector(".app-version");
+      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.20";
+      document.title=en?"CoCo-Code":"ここコード";
+      render?.();
+    }
 
     let settings = loadSettings();
     const systemDarkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -2432,6 +2446,7 @@
     }
 
     function showMemo(item) {
+      codeView.classList.add("memo-view");
       codeTitle.textContent = item.name;
       codeArea.classList.add("hidden");
       codeText.textContent = item.memo || "";
@@ -2444,6 +2459,7 @@
     }
 
     async function showCode(item) {
+      codeView.classList.remove("memo-view");
       codeArea.classList.remove("hidden");
       codeText.style.whiteSpace = "";
       codeText.style.fontSize = "";
@@ -2547,6 +2563,7 @@
     }
 
     async function closeCode() {
+      codeView.classList.remove("memo-view");
       codeView.classList.remove("show");
       document.body.style.overflow = "";
       if (wakeLock) {
