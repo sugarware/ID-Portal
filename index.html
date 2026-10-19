@@ -240,7 +240,7 @@
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
-        <button class="btn" id="dataBtn">設定</button>
+        <button class="btn" id="dataBtn" aria-label="設定">⚙️</button>
         <button class="btn primary" id="addBtn" aria-label="追加">＋</button>
       </div>
     </header>
@@ -265,7 +265,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.13 — QR／BARの一次認識をzxing-wasmへ統一。QR詳細解析のみjsQRを使用。
+        v2.19 — Memo type and Japanese / English language mode.
       </div>
     </div>
   </div>
@@ -277,6 +277,13 @@
       <div class="field">
         <label>タブ(Tag)</label>
         <button class="btn" id="openTabSettingsBtn" type="button" style="width:100%;">タブ(Tag)設定</button>
+      </div>
+      <div class="field">
+        <label>言語 / Language</label>
+        <div class="layout-choice" id="languageChoice">
+          <button class="btn" id="languageJaBtn" type="button">日本語</button>
+          <button class="btn" id="languageEnBtn" type="button">English</button>
+        </div>
       </div>
       <div class="field">
         <label>レイアウト</label>
@@ -297,7 +304,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.18</div>
+      <div class="app-version">ここコード v2.19</div>
       
     </div></div>
   </div>
@@ -355,6 +362,7 @@
             <option value="link">Link　普通のURLを開く</option>
             <option value="qr">QR　QRコードを表示</option>
             <option value="barcode">BAR　バーコードを表示</option>
+            <option value="memo">Memo　メモを表示</option>
           </select>
         </div>
 
@@ -482,9 +490,21 @@
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
     const SETTINGS_KEY = "idPortalSettings.v10";
-    const INITIALIZED_KEY = "idPortalInitialized.v218";
-    const INITIAL_SETTINGS = {"tags":[{"id":"tag-shopping","name":"🛒：買い物","color":"lavender"},{"id":"tag-event","name":"🎫：イベント","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark"};
-    const INITIAL_ITEMS = [{"id":"sample-cocomart","name":"ココマート会員証","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"東京駅"},{"lat":34.702485,"lng":135.495951,"label":"大阪駅"}]},{"id":"sample-rakutenpay","name":"楽天ペイ","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-cocogolf","name":"ココゴルフ会員証","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"オーガスタ・ナショナル・ゴルフクラブ"}]},{"id":"sample-cocofes-2027","name":"ココフェス2027 入場券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-cocofes-2026","name":"ココフェス2026 入場券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-emojidas","name":"絵文字ダス","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"タグ表示に使える絵文字を探す為のWebアプリを起動します","validityType":"daily","validDate":"","locations":[]}];
+    const INITIALIZED_KEY = "idPortalInitialized.v219";
+    const INITIAL_SETTINGS = {"tags":[{"id":"tag-shopping","name":"🛒：買い物","color":"lavender"},{"id":"tag-event","name":"🎫：イベント","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark","language":"ja"};
+    const INITIAL_ITEMS = [{"id":"sample-cocomart","name":"ココマート会員証","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"東京駅"},{"lat":34.702485,"lng":135.495951,"label":"大阪駅"}]},{"id":"sample-rakutenpay","name":"楽天ペイ","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-cocogolf","name":"ココゴルフ会員証","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"オーガスタ・ナショナル・ゴルフクラブ"}]},{"id":"sample-cocofes-2027","name":"ココフェス2027 入場券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-cocofes-2026","name":"ココフェス2026 入場券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-emojidas","name":"絵文字ダス","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"タグ表示に使える絵文字を探す為のWebアプリを起動します","validityType":"daily","validDate":"","locations":[]},      {"id":"sample-shopping-memo","name":"買い物リスト","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"牛乳\n卵\nティッシュ\n電池","validityType":"daily","validDate":"","locations":[]}];
+
+    const INITIAL_SETTINGS_EN = {"tags":[{"id":"tag-shopping","name":"🛒:Shopping","color":"lavender"},{"id":"tag-event","name":"🎫:Events","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark","language":"en"};
+    const INITIAL_ITEMS_EN = [
+      {"id":"sample-cocomart","name":"CoCo Mart Membership","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"This is a fictional membership card for trying the app. It cannot be used with any real service.","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"Tokyo Station"},{"lat":34.702485,"lng":135.495951,"label":"Osaka Station"}]},
+      {"id":"sample-rakutenpay","name":"Rakuten Pay","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"Opens the Rakuten Pay app when it is installed. It cannot be used on devices without the app.","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"Opens the PayPay app when it is installed. It cannot be used on devices without the app.","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-cocogolf","name":"CoCo Golf Membership","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"This is a fictional golf club membership card for trying the app. It cannot be used with any real service.","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"Augusta National Golf Club"}]},
+      {"id":"sample-cocofes-2027","name":"CoCoFes 2027 Ticket","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"A ticket for a fictional event at Tokyo Big Sight on October 17, 2027.","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"Tokyo Big Sight"}]},
+      {"id":"sample-cocofes-2026","name":"CoCoFes 2026 Ticket","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"A sample whose Tag was removed after its validity period ended. Finished items can be kept without deleting them.","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"Tokyo Big Sight"}]},
+      {"id":"sample-emojidas","name":"EmojiDas","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"Opens a Web app for finding emoji that can be used in Tag labels.","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-shopping-memo","name":"Shopping List","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"Milk\nEggs\nTissues\nBatteries","validityType":"daily","validDate":"","locations":[]}
+    ];
 
     function cloneInitial(value) { return JSON.parse(JSON.stringify(value)); }
     function ensureInitialData() {
@@ -559,6 +579,61 @@
         updateColorButton(button,color); onSelect?.(color);
       }, title));
     }
+
+    const EN_TEXT = {
+      "ここで使うコードを、今すぐ表示！":"Show what you need, right where you need it!", "設定":"Settings", "閉じる":"Close", "タブ(Tag)":"Tabs (Tags)", "タブ(Tag)設定":"Tab (Tag) Settings", "レイアウト":"Appearance", "自動":"Auto", "ライト":"Light", "ダーク":"Dark", "データ保存・読み込み":"Data Backup / Restore", "登録データをJSON形式で保存・復元します。":"Save and restore registered data in JSON format.", "ファイルに保存":"Export to File", "ファイルから読み込み":"Import from File", "データを初期化":"Reset Data", "読み込みは全データを置き換えます。先に保存してください。":"Import replaces all current data. Export a backup first.",
+      "保存":"Save", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"Set names, colors, and order. Text before ':' is shown on the tab (or the first character if there is no separator). Deleting a Tag does not delete ID items.", "お気に入り":"Favorites", "現在地":"Nearby", "検索":"Search", "タグ無し":"Untagged", "＋ Tag追加":"＋ Add Tag", "ID項目を追加":"Add ID Item", "ID項目を編集":"Edit ID Item", "キャンセル":"Cancel", "表示名":"Name", "コードを読み取る":"Scan Code", "画像から読み取る":"Scan Image", "カメラで読み取る":"Scan Camera", "公式アプリを登録":"Register App", "認識":"Detected", "QRコード／主要バーコードを自動判定します。":"Automatically detects QR codes and major barcode formats.", "手入力・詳細設定":"Manual / Advanced Settings", "詳細設定を隠す":"Hide Advanced Settings", "動作":"Action", "バーコード形式":"Barcode Format", "コード内容":"Code Content", "Appleショートカットの初回設定":"Initial Apple Shortcut Setup", "作成するショートカット名":"Shortcut name to create", "名前をコピー":"Copy Name", "作成を開始":"Start Setup", "起動テスト":"Test Launch", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"iOS may ask for permission the first time. If you plan to keep using it, choosing Always Allow makes later launches smoother.", "メモ":"Memo", "有効期間":"Validity", "毎日":"Every Day", "特定の日付":"Specific Date", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"The 📍 tab includes only IDs set to Every Day or to today's date.", "Tag（複数選択可）":"Tags (multiple allowed)", "位置情報":"Locations", "現在地を追加":"Add Current Location", "地図":"Map", "ボタン色":"Button Color", "このID項目を削除":"Delete This ID Item", "地図から位置を追加":"Add Location from Map", "この位置を追加":"Add This Location", "検索":"Search", "地点を選択してください。":"Select a location.", "再構成":"Rebuild", "戻る":"Back", "色を選択":"Choose Color",
+      "複製":"Duplicate", "ID項目":"ID Item", "お気に入り登録":"Favorite", "利用場所の登録":"Register Location", "Tag追加":"Add Tag"
+    };
+
+    const EN_HELP = {
+      "表示やタブ、データの保存・読込など、ここコード全体の設定を行います。":"Configure Cococode, including appearance, tabs, backup, and restore.",
+      "新しいQRコード、バーコード、アプリ、Webページなどを登録します。":"Register a new QR code, barcode, app, Web page, or memo.",
+      "⭐️を付けた項目だけを表示します。よく使う項目や、今日使う予定の項目をまとめておくと便利です。":"Shows only starred items. Use it for frequently used items or things you plan to use today.",
+      "現在地の近くに利用場所を登録してある項目を表示します。現在地を更新したいときは📍をダブルタップします。":"Shows items with registered locations near your current position. Double-tap 📍 to update your location.",
+      "登録した項目を名前やメモから検索します。":"Search registered items by name or memo.",
+      "表示するTagタブの追加・名前・色・並び順を設定します。":"Add Tag tabs and set their names, colors, and order.",
+      "端末の表示設定に合わせて、ライト／ダーク表示を自動で切り替えます。":"Automatically follows the device light/dark appearance.",
+      "ここコードを常に明るい配色で表示します。":"Always use the light appearance.",
+      "ここコードを常に暗い配色で表示します。":"Always use the dark appearance.",
+      "登録したID項目やTag、設定などをバックアップファイルとして保存します。":"Save ID items, Tags, and settings to a backup file.",
+      "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"Restore Cococode from a backup file. Current data will be replaced.",
+      "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"Delete registered ID items, Tags, and display settings and return Cococode to its initial state.",
+      "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"Add a new Tag. One ID item can have multiple Tags.",
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「複製」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Duplicate or Settings. Drag ≡ on the right to reorder.",
+      "タップすると、この項目のお気に入り登録／解除を切り替えます。":"Tap to add or remove this item from Favorites.",
+      "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"Register your current position as a place where this item is used. It will be easier to find from the 📍 tab nearby.",
+      "登録してあるメモを画面に表示します。":"Displays the saved memo on screen.",
+      "この項目の種類を表示します。":"Shows this item type.",
+      "登録してあるバーコードを画面に表示します。":"Displays the saved barcode on screen.",
+      "登録してあるQRコードを画面に表示します。":"Displays the saved QR code on screen.",
+      "登録したWebページをブラウザで開きます。":"Opens the registered Web page in the browser.",
+      "ショートカットを使って、対応するアプリを起動します。":"Uses an Apple Shortcut to launch the corresponding app.",
+      "URLスキームを使って、対応するアプリを直接起動します。":"Uses a URL scheme to launch the corresponding app directly."
+    };
+    const EN_PLACEHOLDER = {"ID項目名を検索":"Search ID items", "例：○○クリニック":"e.g. Example Clinic", "検索にも使うメモを入力":"Enter a memo (also searchable)", "文字列または番号":"Text or number", "店名・施設名・住所を検索":"Search place, facility, or address"};
+    function currentLanguage(){ return settings?.language === "en" ? "en" : "ja"; }
+    function tr(ja,en){ return currentLanguage()==="en" ? en : ja; }
+    function translateDom(root=document) {
+      const en=currentLanguage()==="en";
+      root.querySelectorAll?.("*").forEach(el=>{
+        if (el.children.length===0 && el.textContent.trim()) {
+          if (!el.dataset.jaText) el.dataset.jaText=el.textContent;
+          if (en && EN_TEXT[el.dataset.jaText]) el.textContent=EN_TEXT[el.dataset.jaText];
+          else if (!en && el.dataset.jaText) el.textContent=el.dataset.jaText;
+        }
+        ["placeholder","aria-label","title"].forEach(attr=>{
+          const key="ja"+attr.replace("-","").replace(/^./,c=>c.toUpperCase());
+          const val=el.getAttribute?.(attr); if(val && !el.dataset[key]) el.dataset[key]=val;
+          const ja=el.dataset[key]; if(!ja) return;
+          const dict=attr==="placeholder"?EN_PLACEHOLDER:EN_TEXT;
+          if(en && dict[ja]) el.setAttribute(attr,dict[ja]); else if(!en) el.setAttribute(attr,ja);
+        });
+      });
+      document.documentElement.lang=en?"en":"ja";
+      document.getElementById("languageJaBtn")?.classList.toggle("selected",!en); document.getElementById("languageEnBtn")?.classList.toggle("selected",en);
+    }
+    function applyLanguage(){ translateDom(document); render?.(); }
 
     let settings = loadSettings();
     const systemDarkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -718,7 +793,7 @@
       if (!tagIds.length && Number.isInteger(Number(x.group)) && Number(x.group) > 0) tagIds=[`tag-${Number(x.group)}`];
       const item = {
         id: x.id || crypto.randomUUID(), name: String(x.name || ""),
-        type: ["qr","barcode","shortcut","link","app1"].includes(x.type) ? x.type : "qr",
+        type: ["qr","barcode","shortcut","link","app1","memo"].includes(x.type) ? x.type : "qr",
         value: String(x.value || ""), barcodeFormat: x.barcodeFormat || "CODE128",
         color: x.color || "white", favorite: x.favorite !== false, tagIds:[...new Set(tagIds)],
         codeSpec: x.codeSpec || null,
@@ -741,7 +816,7 @@
         tags=names.map((name,i)=>({id:`tag-${i+1}`,name:String(name||`Tag${i+1}`).slice(0,12),color:validColorName(colors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
       }
       const layout = raw?.layout === "dark" ? "dark" : raw?.layout === "light" ? "light" : "auto";
-      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), untaggedColor:validColorName(raw?.untaggedColor,"gray"), layout };
+      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), untaggedColor:validColorName(raw?.untaggedColor,"gray"), layout, language: raw?.language === "en" ? "en" : "ja" };
     }
 
     function loadSettings() {
@@ -784,10 +859,10 @@
       const selectedTag = activeTab.startsWith("tag:") ? settings.tags.find(t=>t.id===activeTab.slice(4)) : null;
       let selectedLabel = "";
       if (selectedTag) selectedLabel = tagFullLabel(selectedTag.name);
-      else if (activeTab === "star") selectedLabel = "お気に入り";
-      else if (activeTab === "location") selectedLabel = "現在地向け";
-      else if (activeTab === "search") selectedLabel = "検索";
-      else if (activeTab === "untagged") selectedLabel = "タグ無し";
+      else if (activeTab === "star") selectedLabel = currentLanguage()==="en" ? "Favorites" : "お気に入り";
+      else if (activeTab === "location") selectedLabel = currentLanguage()==="en" ? "Nearby" : "現在地向け";
+      else if (activeTab === "search") selectedLabel = currentLanguage()==="en" ? "Search" : "検索";
+      else if (activeTab === "untagged") selectedLabel = currentLanguage()==="en" ? "Untagged" : "タグ無し";
       selectedTagName.textContent = selectedLabel ? `${selectedLabel} (${count})` : "";
       selectedTagName.classList.toggle("visible", !!selectedLabel);
     }
@@ -938,6 +1013,7 @@
       if (item.type === "link") return "Link";
       if (item.type === "qr") return "QR";
       if (item.type === "barcode") return "BAR";
+      if (item.type === "memo") return "Memo";
       return "";
     }
 
@@ -958,7 +1034,7 @@
     const helpTitle=helpOverlay.querySelector("#helpTitle");
     const helpText=helpOverlay.querySelector("#helpText");
     function closeHelp(){helpOverlay.classList.remove("show");helpOverlay.setAttribute("aria-hidden","true");}
-    function showHelp(title,text){closeContextMenu();helpTitle.textContent=title;helpText.textContent=text;helpOverlay.classList.add("show");helpOverlay.setAttribute("aria-hidden","false");}
+    function showHelp(title,text){closeContextMenu();helpTitle.textContent=currentLanguage()==="en"?(EN_TEXT[title]||title):title;helpText.textContent=currentLanguage()==="en"?(EN_HELP[text]||text):text;helpOverlay.classList.add("show");helpOverlay.setAttribute("aria-hidden","false");}
     helpOverlay.addEventListener("pointerdown",e=>{if(e.target===helpOverlay)closeHelp();});
     helpOverlay.querySelector("[data-help-close]").addEventListener("click",closeHelp);
 
@@ -973,7 +1049,7 @@
 
     let itemTapTimer=null;
     let lastItemTap={id:null,time:0};
-    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコードなどを開きます。\n\nダブルタップすると「複製」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
+    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「複製」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
       el.addEventListener("click",e=>{
         if(Date.now()<suppressItemClickUntil)return;
         const now=Date.now();
@@ -994,14 +1070,14 @@
         const empty = document.createElement("div");
         empty.className = "empty";
         if (activeTab === "search") {
-          empty.textContent = "一致する🆔項目がありません。";
+          empty.textContent = currentLanguage()==="en" ? "No matching ID items." : "一致する🆔項目がありません。";
         } else if (activeTab === "star") {
-          empty.innerHTML = "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。";
+          empty.innerHTML = currentLanguage()==="en" ? "No favorite IDs.<br>Tap ☆ on another tab to add items here." : "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。";
         } else if (activeTab === "location") {
-          if (locationState.status === "loading") empty.textContent = "現在地を取得しています…";
+          if (locationState.status === "loading") empty.textContent = currentLanguage()==="en" ? "Getting current location…" : "現在地を取得しています…";
           else if (locationState.status === "error") { empty.classList.add("location-error"); empty.textContent = locationState.errorMessage; }
-          else if (locationState.status === "ok") empty.textContent = "現在地から200m以内に登録されたIDはありません。";
-          else empty.textContent = "📍をダブルタップすると、現在地から200m以内のIDを表示します。";
+          else if (locationState.status === "ok") empty.textContent = currentLanguage()==="en" ? "No registered IDs within 200 m." : "現在地から200m以内に登録されたIDはありません。";
+          else empty.textContent = currentLanguage()==="en" ? "Double-tap 📍 to show IDs within 200 m of your current location." : "📍をダブルタップすると、現在地から200m以内のIDを表示します。";
         } else {
           empty.textContent = activeTab === "untagged" ? "♻️タグ無しには🆔項目がありません。" : `${settings.tags.find(t=>`tag:${t.id}`===activeTab)?.name || "Tag"}には🆔項目がありません。`;
         }
@@ -1062,7 +1138,7 @@
         meta.className = "meta";
         const tagMarks=item.tagIds.map(id=>settings.tags.find(t=>t.id===id)).filter(Boolean).map(t=>firstGrapheme(t.name)).join("");
         meta.textContent = activeTab === "search" ? `${typeLabel(item)}${tagMarks ? `・${tagMarks}` : "・♻️"}` : typeLabel(item);
-        wireItemAction(meta,item,()=>typeLabel(item),()=>({App1:"URLスキームを使って、対応するアプリを直接起動します。",App2:"ショートカットを使って、対応するアプリを起動します。",Link:"登録したWebページをブラウザで開きます。",QR:"登録してあるQRコードを画面に表示します。",BAR:"登録してあるバーコードを画面に表示します。"}[typeLabel(item)]||"この項目の種類を表示します。"));
+        wireItemAction(meta,item,()=>typeLabel(item),()=>{const ja=({App1:"URLスキームを使って、対応するアプリを直接起動します。",App2:"ショートカットを使って、対応するアプリを起動します。",Link:"登録したWebページをブラウザで開きます。",QR:"登録してあるQRコードを画面に表示します。",BAR:"登録してあるバーコードを画面に表示します。",Memo:"登録してあるメモを画面に表示します。"}[typeLabel(item)]||"この項目の種類を表示します。"); return currentLanguage()==="en"?(EN_HELP[ja]||ja):ja;});
 
         const buttons = document.createElement("div");
         buttons.className = "drag";
@@ -1129,6 +1205,7 @@
       refreshSelectedTabName(shown.length);
       renderList(list, shown);
       renderList(listRight, shown);
+      translateDom(document);
     }
 
     let dragState = null;
@@ -1255,14 +1332,15 @@
     }
 
     function resetToInitialData() {
-      if (!confirm("現在のデータと設定を削除し、初期状態に戻します。\nこの操作は元に戻せません。")) return;
-      settings=normalizeSettings(cloneInitial(INITIAL_SETTINGS));
+      if (!confirm(currentLanguage()==="en" ? "Delete the current data and settings and restore the initial state?\nThis cannot be undone." : "現在のデータと設定を削除し、初期状態に戻します。\nこの操作は元に戻せません。")) return;
+      const resetLang=currentLanguage();
+      settings=normalizeSettings(cloneInitial(resetLang === "en" ? INITIAL_SETTINGS_EN : INITIAL_SETTINGS));
       const validTagIds=new Set(settings.tags.map(t=>t.id));
-      items=cloneInitial(INITIAL_ITEMS).map(x=>normalizeItem(x)).map(item=>({...item,tagIds:item.tagIds.filter(id=>validTagIds.has(id))}));
+      items=cloneInitial(resetLang === "en" ? INITIAL_ITEMS_EN : INITIAL_ITEMS).map(x=>normalizeItem(x)).map(item=>({...item,tagIds:item.tagIds.filter(id=>validTagIds.has(id))}));
       activeTab="star"; searchQuery=""; searchInput.value="";
       saveSettings(); saveItems(); localStorage.setItem(INITIALIZED_KEY,"1");
       applyLayoutTheme(); refreshTabs(); render(); closeDataModal();
-      alert("データと設定を初期状態に戻しました。");
+      alert(currentLanguage()==="en" ? "Data and settings have been reset." : "データと設定を初期状態に戻しました。");
     }
 
     function updateColorSelection() {
@@ -1527,6 +1605,7 @@
       const type = typeInput.value;
       barcodeFormatField.classList.toggle("hidden", type !== "barcode");
       shortcutSetupField.classList.toggle("hidden", type !== "shortcut");
+      valueField.classList.toggle("hidden", type === "memo");
 
       if (type === "app1") {
         valueLabel.textContent = "URLスキーム";
@@ -2255,12 +2334,13 @@
 
     function validate(item) {
       if (!item.name.trim()) return "表示名を入力してください。";
-      if (!item.value.trim()) {
+      if (item.type !== "memo" && !item.value.trim()) {
         if (item.type === "app1") return "URLスキームを入力してください。";
         if (item.type === "link") return "URLを入力してください。";
         if (item.type === "shortcut") return "ショートカット名を入力してください。";
         return "コード内容を入力してください。";
       }
+      if (item.type === "memo" && !item.memo.trim()) return currentLanguage() === "en" ? "Enter a memo." : "メモを入力してください。";
       return "";
     }
 
@@ -2322,6 +2402,7 @@
     }
 
     async function activate(item) {
+      if (item.type === "memo") { showMemo(item); return; }
       if (item.type === "app1") {
         window.location.href = item.value;
         return;
@@ -2350,7 +2431,23 @@
       await showCode(item);
     }
 
+    function showMemo(item) {
+      codeTitle.textContent = item.name;
+      codeArea.classList.add("hidden");
+      codeText.textContent = item.memo || "";
+      codeText.style.whiteSpace = "pre-wrap";
+      codeText.style.fontSize = "clamp(18px,4.5vw,28px)";
+      codeText.style.maxWidth = "88vw";
+      codeVerify.textContent = "";
+      reconstructBtn.classList.add("hidden");
+      codeView.classList.add("show");
+    }
+
     async function showCode(item) {
+      codeArea.classList.remove("hidden");
+      codeText.style.whiteSpace = "";
+      codeText.style.fontSize = "";
+      codeText.style.maxWidth = "";
       codeTitle.textContent = item.name;
       codeText.textContent = item.value;
       codeVerify.textContent = "";
@@ -2490,6 +2587,9 @@
       refreshTabs();
       render();
     }
+
+    document.getElementById("languageJaBtn").addEventListener("click",()=>{ settings.language="ja"; saveSettings(); translateDom(document); render(); });
+    document.getElementById("languageEnBtn").addEventListener("click",()=>{ settings.language="en"; saveSettings(); translateDom(document); render(); });
 
     validityTypeInput.addEventListener("change", () => { validDateInput.classList.toggle("hidden", validityTypeInput.value !== "date"); });
     searchInput.addEventListener("input", () => { searchQuery=searchInput.value; render(); });
@@ -2769,7 +2869,9 @@
 
     refreshTabs();
     render();
-  </script>
+  
+    translateDom(document);
+</script>
 
 </body>
 </html>
