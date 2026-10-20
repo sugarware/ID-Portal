@@ -11,7 +11,6 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2.07">
   <link rel="shortcut icon" type="image/png" href="icon-192.png?v=2.07">
   <link rel="apple-touch-icon" href="icon-192.png?v=2.07">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <title>ここコード</title>
   <style>
     :root {
@@ -480,10 +479,6 @@
     <div class="scan-status" id="codeVerify" style="text-align:center;max-width:92vw"></div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js"></script>
   <div class="modal color-picker-modal" id="colorPickerModal" aria-hidden="true">
     <div class="color-picker-card" role="dialog" aria-modal="true" aria-labelledby="colorPickerTitle">
       <div class="panel-header"><h3 id="colorPickerTitle">色を選択</h3><div class="panel-actions"><button class="btn" id="closeColorPickerBtn" type="button">閉じる</button></div></div><div class="panel-body">
@@ -492,7 +487,6 @@
     </div></div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = "idPortalItems.v01";
     const SETTINGS_KEY = "idPortalSettings.v10";
@@ -770,6 +764,55 @@
     let originalEditValue = "";
     let activeQrItem = null;
     let showingReconstructed = false;
+
+    // Heavy external libraries are loaded only when the corresponding feature is used.
+    // This keeps a cold PWA start independent of CDN/library startup work.
+    const lazyAssets = new Map();
+    function loadScriptOnce(url, ready) {
+      if (ready?.()) return Promise.resolve();
+      if (lazyAssets.has(url)) return lazyAssets.get(url);
+      const promise = new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+        el.src = url;
+        el.async = true;
+        el.onload = () => ready && !ready() ? reject(new Error(`Library unavailable: ${url}`)) : resolve();
+        el.onerror = () => reject(new Error(`Could not load: ${url}`));
+        document.head.appendChild(el);
+      }).catch(err => { lazyAssets.delete(url); throw err; });
+      lazyAssets.set(url, promise);
+      return promise;
+    }
+    function loadCssOnce(url) {
+      if (document.querySelector(`link[data-lazy-css="${url}"]`)) return Promise.resolve();
+      const key=`css:${url}`;
+      if (lazyAssets.has(key)) return lazyAssets.get(key);
+      const promise = new Promise((resolve, reject) => {
+        const el=document.createElement("link");
+        el.rel="stylesheet"; el.href=url; el.dataset.lazyCss=url;
+        el.onload=resolve; el.onerror=()=>reject(new Error(`Could not load: ${url}`));
+        document.head.appendChild(el);
+      }).catch(err => { lazyAssets.delete(key); throw err; });
+      lazyAssets.set(key,promise);
+      return promise;
+    }
+    const ensureQrGenerator = () => loadScriptOnce(
+      "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
+      () => typeof window.qrcode === "function"
+    );
+    const ensureJsQr = () => loadScriptOnce(
+      "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
+      () => typeof window.jsQR === "function"
+    );
+    const ensureJsBarcode = () => loadScriptOnce(
+      "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js",
+      () => typeof window.JsBarcode === "function"
+    );
+    async function ensureLeaflet() {
+      await Promise.all([
+        loadCssOnce("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"),
+        loadScriptOnce("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js", () => typeof window.L !== "undefined")
+      ]);
+    }
 
     const codeView = document.getElementById("codeView");
     const codeTitle = document.getElementById("codeTitle");
@@ -1429,6 +1472,7 @@
     }
 
     async function openMapPicker() {
+      const leafletPromise = ensureLeaflet();
       mapSelected=null; mapCurrentPosition=null; mapCoordText.textContent="地点を選択してください。";
       mapSearchInput.value=""; mapSearchResults.innerHTML=""; mapSearchResults.classList.add("hidden");
       mapModal.classList.add("show"); mapModal.setAttribute("aria-hidden","false");
@@ -1439,6 +1483,8 @@
         mapCurrentPosition={lat:pos.coords.latitude,lng:pos.coords.longitude};
         center=[mapCurrentPosition.lat,mapCurrentPosition.lng]; zoom=16;
       } catch {}
+      try { await leafletPromise; }
+      catch { mapCoordText.textContent="地図を読み込めませんでした。通信状態を確認してください。"; return; }
       setTimeout(()=>{
         if (typeof L === "undefined") { mapCoordText.textContent="地図を読み込めませんでした。通信状態を確認してください。"; return; }
         if (!mapInstance) {
@@ -1704,6 +1750,7 @@
       if (jsQRWithMatrixPromise) return jsQRWithMatrixPromise;
       jsQRWithMatrixPromise = (async () => {
         try {
+          await ensureJsQr();
           const url = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
           const res = await fetch(url, { cache: "force-cache" });
           if (!res.ok) throw new Error(`jsQR source ${res.status}`);
@@ -2065,6 +2112,10 @@
     async function ensureZxing() {
       if (zxingReadyPromise) return zxingReadyPromise;
       zxingReadyPromise=(async()=>{
+        await loadScriptOnce(
+          "https://cdn.jsdelivr.net/npm/zxing-wasm@2.2.4/dist/iife/reader/index.js",
+          () => !!window.ZXingWASM?.readBarcodes
+        );
         if (!window.ZXingWASM?.readBarcodes) throw new Error("zxing-wasm unavailable");
         if (window.ZXingWASM.prepareZXingModule) {
           await window.ZXingWASM.prepareZXingModule({
@@ -2478,6 +2529,7 @@
 
       try {
         if (item.type === "qr") {
+          await Promise.all([ensureQrGenerator(), ensureJsQr()]);
           codeVerify.textContent = "再生成コードを検証しています…";
           const spec = item.codeSpec || legacySpec(item);
           if (spec?.matrix) {
@@ -2544,6 +2596,7 @@
             } else codeVerify.textContent="再生成検証：確認できませんでした";
           } catch { codeVerify.textContent="再生成検証：未実施"; }
         } else {
+          await ensureJsBarcode();
           codeVerify.textContent = `形式：${item.codeSpec?.symbology || item.barcodeFormat || "CODE128"}`;
           JsBarcode(barcode, item.value, {
             format: item.barcodeFormat || "CODE128",
@@ -2821,7 +2874,8 @@
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
     });
-    function renderReconstructedQr(item) {
+    async function renderReconstructedQr(item) {
+      await Promise.all([ensureQrGenerator(), ensureJsQr()]);
       qrcodeEl.innerHTML = "";
       // 元Version/ECC/Mask/装飾とは比較せず、デコード済みdataだけを正とする。
       // clean表示ではECC=Lを優先し、モジュール数を抑えて1セルを大きくする。
@@ -2864,7 +2918,7 @@
       const item=activeQrItem;
       const originalHtml=qrcodeEl.innerHTML;
       const originalVerify=codeVerify.textContent;
-      if (renderReconstructedQr(item)) {
+      if (await renderReconstructedQr(item)) {
         activeQrItem=item;
         showingReconstructed=true;
         reconstructBtn.classList.remove("hidden");
