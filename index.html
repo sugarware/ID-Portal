@@ -309,7 +309,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.24</div>
+      <div class="app-version">ここコード v2.25</div>
       
     </div></div>
   </div>
@@ -1141,9 +1141,25 @@
       const type=raw.type||"qr";
       const ok=confirm(`ここコードの項目データを読み取りました。\n\n名称：${raw.name}\n種類：${typeLabel({type})}\n位置情報：${locCount}件\n\nこの項目を取り込みますか？`);
       if(!ok)return true;
-      const imported=normalizeItem({...raw,id:crypto.randomUUID(),color:"white",tagIds:[]});
-      items.push(imported); saveItems(); render();
-      alert(`「${imported.name}」を取り込みました。\nTagなし・色は初期値で登録しました。`);
+      // 読み取り時点では登録・更新せず、現在開いている項目設定画面へ展開する。
+      // 色とTagはexport対象外として、現在の設定（新規時は初期値）を維持する。
+      nameInput.value=String(raw.name||"");
+      memoInput.value=String(raw.memo||"");
+      validityTypeInput.value=raw.validityType==="date" ? "date" : "daily";
+      validDateInput.value=raw.validDate || localDateYmd();
+      validDateInput.classList.toggle("hidden", validityTypeInput.value!=="date");
+      typeInput.value=raw.type;
+      barcodeFormatInput.value=raw.barcodeFormat || "CODE128";
+      valueInput.value=String(raw.value||"");
+      originalEditValue=valueInput.value;
+      currentCodeSpec=raw.codeSpec ? structuredClone(raw.codeSpec) : null;
+      editLocations=Array.isArray(raw.locations) ? structuredClone(raw.locations) : [];
+      renderLocationList();
+      manualFields.classList.remove("hidden");
+      manualToggleBtn.textContent="詳細設定を隠す";
+      updateFormFields();
+      updateShortcutPreview();
+      setScanStatus(`項目データを各入力欄に設定しました。内容を確認し、保存してください。`);
       return true;
     }
 
