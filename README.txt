@@ -1,3 +1,46 @@
+ここコード PWA v2.47 v2.44最小差分・検出開始ボタン版
+
+【変更範囲】
+v2.44を直接ベースにし、カメラのCSS、video要素、getUserMedia条件、Crop再読込処理は変更していません。
+自動検出開始を止め、「検出開始」ボタン押下後に既存のstartHighResolutionFrameScan()を呼ぶ変更だけを追加しています。
+
+
+【v2.47テスト目的】
+カメラでQRを認識した直後、ZXing 3の検出位置周辺を切り出し、そのcropをZXing 3で1回だけ再読込して得たSymbolを保存します。
+画像ファイル読込経路はv2.43のまま変更していません。
+表示時に「ZXing 3 Camera Crop Symbol」と出れば再読込Symbolが使われています。
+
+QR読取時に zxing-wasm 3.1.6 の ReadResult.symbol を直接保存・表示し、元QRパターンとの一致を実機比較します。
+jsQR/qrcode-generator/JsBarcode は削除せず、通常の再構成機能も残しています。
+
+ここコード PWA v2.42
+
+
+【v2.41 変更点】
+
+【v2.42 変更点】
+- ZXing 3移行後のカメラQR読取で、元QR Matrix抽出前にjsQR Matrix decoderを確実に準備するよう修正。
+- 画像ファイル読取側には既に同処理があり、カメラ側だけ欠けていたため、その1点のみを修正。
+- QR/BAR生成方式、保存データ形式、UI仕様は変更なし。
+
+- ZXing-WASM reader を 2.2.4 から 3.1.6 へ更新。
+- ZXing 3系の canonical format 名（EAN8/EAN13/UPCA/UPCE/DataBarExp/DataBarLtd）へ更新。
+- QR生成(qrcode-generator)、BAR生成(JsBarcode)、QR詳細解析(jsQR)は従来のまま。
+- その他の機能・UIは v2.40 から変更しない。
+
+
+v2.41: v2.39をベースにした保守・清掃版。機能仕様と保存データ形式は変更なし。
+- 未使用関数6個を削除。
+- 未参照の旧 app.js を配布ZIPから削除。
+- Service Workerのキャッシュ名をv2.41へ更新。
+- 初期キャッシュの ./ と ./index.html の重複を解消。
+- 初期キャッシュ取得時に cache:"reload" を使用。
+- 実行時キャッシュは自オリジンと jsDelivr の正常応答（HTTP OK）のみに限定し、地図タイル・Nominatim等の外部応答をService Workerへ無制限保存しないよう整理。
+- manifestのアイコン参照バージョンをv2.41へ更新。
+- READMEを現行版に更新。
+
+以下は過去版の履歴です。
+
 ここコード PWA v2.23
 
 v2.23: 起動高速化。QR/BAR読取・生成、ZXing、Leafletを必要時に遅延読み込みし、Service Workerの初期キャッシュをアプリ本体に限定。機能仕様はv2.22から変更なし。
