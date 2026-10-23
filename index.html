@@ -243,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.44</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.45</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.44 — App version in title and built-in QR sharing item.
+        v2.45 — Camera preview now waits for an explicit detection start.
       </div>
     </div>
   </div>
@@ -354,6 +354,7 @@
           </div>
           <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
         </div>
+        <button class="btn scan-btn hidden" id="cameraDetectBtn" type="button" style="width:100%;margin-top:10px">検出開始</button>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
         <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
@@ -725,7 +726,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.44";
+      if(headerVersion) headerVersion.textContent="v2.45";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -807,6 +808,7 @@
     const valueLabel = document.getElementById("valueLabel");
     const imageScanBtn = document.getElementById("imageScanBtn");
     const cameraScanBtn = document.getElementById("cameraScanBtn");
+    const cameraDetectBtn = document.getElementById("cameraDetectBtn");
     const imageFileInput = document.getElementById("imageFileInput");
     const reader = document.getElementById("reader");
     const readerWrap = document.getElementById("readerWrap");
@@ -2627,9 +2629,11 @@
         cameraRunning=true;
         // カメラ開始時は認識枠全体が見える位置へ移動する。
         requestAnimationFrame(() => readerWrap.scrollIntoView({behavior:"smooth", block:"center"}));
-        startHighResolutionFrameScan();
         cameraScanBtn.textContent="カメラを停止";
-        setScanStatus("大きな枠を目安にコードを映してください。QR／バーコードを1920フルフレームでZXing認識します。");
+        cameraDetectBtn.classList.remove("hidden");
+        cameraDetectBtn.disabled=false;
+        cameraDetectBtn.textContent="検出開始";
+        setScanStatus("大きな枠を目安にコードを映し、ピントと位置を整えてから「検出開始」を押してください。");
       }catch(e){
         if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
         reader.innerHTML="";
@@ -2646,6 +2650,9 @@
       if(video) video.srcObject=null;
       reader.innerHTML="";
       cameraScanBtn.textContent="カメラで読み取る";
+      cameraDetectBtn.classList.add("hidden");
+      cameraDetectBtn.disabled=false;
+      cameraDetectBtn.textContent="検出開始";
       cameraGuide.classList.add("hidden"); hideDetectionBox(); readerWrap.classList.add("hidden");
     }
 
@@ -3124,6 +3131,13 @@
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
     cameraScanBtn.addEventListener("click", startCamera);
+    cameraDetectBtn.addEventListener("click", () => {
+      if(!cameraRunning || frameDecodeTimer) return;
+      cameraDetectBtn.disabled=true;
+      cameraDetectBtn.textContent="検出中…";
+      setScanStatus("検出中です。コードをそのまま枠内に保持してください。");
+      startHighResolutionFrameScan();
+    });
     manualToggleBtn.addEventListener("click", () => {
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
