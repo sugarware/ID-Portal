@@ -157,6 +157,7 @@
     .shortcut-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
     .scan-btn { min-height: 50px; font-weight: 700; }
+    #cameraDetectBtn.camera-detect-fixed { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto !important; margin: 0 !important; z-index: 10020; box-shadow: 0 4px 16px rgba(0,0,0,.22); }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; height:min(46vh,420px); margin-top: 8px; border-radius: 14px; overflow: hidden; background: #111; }
@@ -272,7 +273,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.49 — camera preview shows a centered square crop; detection behavior unchanged.
+        v2.50 — camera detection button stays fixed at the bottom while the camera is active.
       </div>
     </div>
   </div>
@@ -2644,6 +2645,7 @@
         // カメラ開始時は認識枠全体が見える位置へ移動する。
         cameraScanBtn.textContent="カメラを停止";
         cameraDetectBtn.classList.remove("hidden");
+        cameraDetectBtn.classList.add("camera-detect-fixed");
         cameraDetectBtn.disabled=false;
         cameraDetectBtn.textContent="検出開始";
         setScanStatus("大きな枠を目安にコードを映し、ピントと位置を整えてから「検出開始」を押してください。");
@@ -2665,6 +2667,7 @@
       reader.innerHTML="";
       cameraScanBtn.textContent="カメラで読み取る";
       cameraDetectBtn.classList.add("hidden");
+      cameraDetectBtn.classList.remove("camera-detect-fixed");
       cameraDetectBtn.disabled=false;
       cameraDetectBtn.textContent="検出開始";
       cameraGuide.classList.add("hidden"); hideDetectionBox(); readerWrap.style.height=""; readerWrap.classList.add("hidden");
