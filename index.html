@@ -310,7 +310,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.27</div>
+      <div class="app-version">ここコード v2.28</div>
       
     </div></div>
   </div>
@@ -1127,13 +1127,23 @@
       const markModules=7;
       const startCol=quiet+Math.floor((modules-markModules)/2);
       const startRow=quiet+Math.floor((modules-markModules)/2);
+      // 元ロゴと同じ「変形ファインダー」：7×7の赤い外枠を基調に、
+      // 中央左側を赤でつないで、残る白領域が「コ」に見えるパターン。
+      // QR本体と同じモジュール単位で描画し、アンチエイリアスは使わない。
+      const cocoMark=[
+        "1111111",
+        "1000001",
+        "1000001",
+        "1111001",
+        "1111001",
+        "1000001",
+        "1111111"
+      ];
       ctx.fillStyle="#e53935";
-      ctx.fillRect(startCol*scale,startRow*scale,markModules*scale,markModules*scale);
-      ctx.fillStyle="#fff";
-      // 白い「コ」：上横棒・右縦棒・下横棒。外周1モジュールは赤のまま残す。
-      ctx.fillRect((startCol+1)*scale,(startRow+1)*scale,5*scale,scale);
-      ctx.fillRect((startCol+5)*scale,(startRow+1)*scale,scale,4*scale);
-      ctx.fillRect((startCol+1)*scale,(startRow+4)*scale,5*scale,scale);
+      for(let r=0;r<markModules;r++)for(let c=0;c<markModules;c++){
+        if(cocoMark[r][c]==="1")ctx.fillRect((startCol+c)*scale,(startRow+r)*scale,scale,scale);
+        else { ctx.fillStyle="#fff"; ctx.fillRect((startCol+c)*scale,(startRow+r)*scale,scale,scale); ctx.fillStyle="#e53935"; }
+      }
 
       qrcodeEl.appendChild(canvas);
       const version=(modules-17)/4;
