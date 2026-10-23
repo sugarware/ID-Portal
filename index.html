@@ -245,7 +245,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.54</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.56</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -274,7 +274,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.54 — QR generation migrated to ZXing 3 Writer; qrcode-generator removed.
+        v2.56 — ZXing 3 reliability and race-condition fixes; existing interaction behavior retained.
       </div>
     </div>
   </div>
@@ -728,7 +728,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.54";
+      if(headerVersion) headerVersion.textContent="v2.56";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -849,6 +849,8 @@
     let frameDecodeTimer = null;
     let frameDecodeBusy = false;
     let cameraRunning = false;
+    let cameraStarting = false;
+    let showCodeRequestId = 0;
     let currentCodeSpec = null;
     let originalEditValue = "";
     let activeQrItem = null;
@@ -863,6 +865,7 @@
       const promise = new Promise((resolve, reject) => {
         const el = document.createElement("script");
         el.src = url;
+        el.crossOrigin = "anonymous";
         el.async = true;
         el.onload = () => ready && !ready() ? reject(new Error(`Library unavailable: ${url}`)) : resolve();
         el.onerror = () => reject(new Error(`Could not load: ${url}`));
@@ -961,7 +964,7 @@
       return normalizeSettings(null);
     }
 
-    function saveSettings() { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+    function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); return true; } catch(e) { console.error("設定の保存に失敗しました",e); alert("設定を保存できませんでした。端末の空き容量やブラウザの保存設定を確認してください。"); return false; } }
 
     function firstGrapheme(text) {
       if (typeof Intl !== "undefined" && Intl.Segmenter) {
@@ -1141,7 +1144,7 @@
     }
 
     function saveItems() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); return true; } catch(e) { console.error("IDデータの保存に失敗しました",e); alert("IDデータを保存できませんでした。端末の空き容量やブラウザの保存設定を確認してください。"); return false; }
     }
 
     function typeLabel(item) {
@@ -2281,7 +2284,7 @@
           });
         }
         return window.ZXingWASM;
-      })();
+      })().catch(err=>{ zxingReadyPromise=null; throw err; });
       return zxingReadyPromise;
     }
 
@@ -2453,7 +2456,7 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
-          // v2.54: QR detail and original Symbol are obtained from ZXing 3 only.
+          // v2.56: QR detail and original Symbol are obtained from ZXing 3 only.
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             // v2.48 camera-only test: re-read a crop around the detected QR and
@@ -2603,7 +2606,9 @@
     }
 
     async function startCamera() {
+      if(cameraStarting) return;
       if(cameraRunning){ await stopCamera(); return; }
+      cameraStarting=true; cameraScanBtn.disabled=true;
       readerWrap.classList.remove("hidden"); cameraGuide.classList.remove("hidden"); hideDetectionBox();
       setScanStatus("カメラを起動しています…");
       try{
@@ -2631,7 +2636,7 @@
         setScanStatus("カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。",true);
         readerWrap.style.height="";
         readerWrap.classList.add("hidden");
-      }
+      } finally { cameraStarting=false; cameraScanBtn.disabled=false; }
     }
 
     async function stopCamera() {
@@ -2762,6 +2767,8 @@
     }
 
     async function showCode(item) {
+      const requestId=++showCodeRequestId;
+      codeTitle.dataset.i18nSkip="true"; codeText.dataset.i18nSkip="true"; codeVerify.dataset.i18nSkip="true";
       codeView.classList.remove("memo-view");
       codeArea.classList.remove("hidden");
       codeText.style.whiteSpace = "";
@@ -2779,6 +2786,7 @@
       try {
         if (item.type === "qr") {
           await ensureZxing();
+          if(requestId!==showCodeRequestId)return;
           codeVerify.textContent = "再生成コードを検証しています…";
           const spec = item.codeSpec || legacySpec(item);
           if (spec?.matrix) {
@@ -2816,7 +2824,7 @@
             return;
           }
           const ec = spec?.errorCorrection || "M";
-          const qr=await makeZxingQr(item.value,ec);
+          const qr=await makeZxingQr(item.value,ec); if(requestId!==showCodeRequestId)return;
           const rendered=renderZxingQrSymbol(qr.symbol,Math.min(window.innerWidth*0.82,520));
           const {canvas,ctx,side,modules}=rendered;
           qrcodeEl.appendChild(canvas);
@@ -2830,7 +2838,7 @@
             } else codeVerify.textContent="再生成検証：確認できませんでした";
           } catch { codeVerify.textContent="再生成検証：未実施"; }
         } else {
-          const generated=await makeZxingBarcode(item.value,item.barcodeFormat || "CODE128");
+          const generated=await makeZxingBarcode(item.value,item.barcodeFormat || "CODE128"); if(requestId!==showCodeRequestId)return;
           renderZxingBarcodeSymbol(generated.symbol,barcode);
           codeVerify.textContent = `形式：${item.codeSpec?.symbology || item.barcodeFormat || "CODE128"} ／ ZXing 3 Writer`;
         }
@@ -2839,6 +2847,7 @@
         return;
       }
 
+      if(requestId!==showCodeRequestId)return;
       codeView.classList.add("show");
       document.body.style.overflow = "hidden";
       try {
@@ -2847,6 +2856,7 @@
     }
 
     async function closeCode() {
+      showCodeRequestId++;
       codeView.classList.remove("memo-view");
       codeView.classList.remove("show");
       document.body.style.overflow = "";
