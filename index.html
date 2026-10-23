@@ -271,7 +271,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.19 — Memo type and Japanese / English language mode.
+        v2.33 — Japanese / English / 简体中文 language mode.
       </div>
     </div>
   </div>
@@ -289,6 +289,7 @@
         <div class="layout-choice" id="languageChoice">
           <button class="btn" id="languageJaBtn" type="button">日本語</button>
           <button class="btn" id="languageEnBtn" type="button">English</button>
+          <button class="btn" id="languageZhBtn" type="button">简体中文</button>
         </div>
       </div>
       <div class="field">
@@ -310,7 +311,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.30</div>
+      <div class="app-version">ここコード v2.33</div>
       
     </div></div>
   </div>
@@ -507,6 +508,18 @@
       {"id":"sample-shopping-memo","name":"Shopping List","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"Milk\nEggs\nTissues\nBatteries","validityType":"daily","validDate":"","locations":[]}
     ];
 
+    const INITIAL_SETTINGS_ZH = {"tags":[{"id":"tag-shopping","name":"🛒:购物","color":"lavender"},{"id":"tag-event","name":"🎫:活动","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark","language":"zh"};
+    const INITIAL_ITEMS_ZH = [
+      {"id":"sample-cocomart","name":"CoCo超市会员卡","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"这是用于体验操作的虚构会员卡，不能用于任何真实服务。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"东京站"},{"lat":34.702485,"lng":135.495951,"label":"大阪站"}]},
+      {"id":"sample-rakutenpay","name":"Rakuten Pay","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"已安装 Rakuten Pay 时可启动该应用；未安装时无法使用。","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"已安装 PayPay 时可启动该应用；未安装时无法使用。","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-cocogolf","name":"CoCo高尔夫会员卡","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"这是用于体验操作的虚构高尔夫俱乐部会员卡，不能用于任何真实服务。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"奥古斯塔国家高尔夫俱乐部"}]},
+      {"id":"sample-cocofes-2027","name":"CoCoFes 2027 入场券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"这是一个虚构活动的入场券，活动日期为2027年10月17日，地点为东京国际展览中心。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"东京国际展览中心"}]},
+      {"id":"sample-cocofes-2026","name":"CoCoFes 2026 入场券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"这是一个有效期已结束并移除 Tag 的示例。已结束的项目也可以保留而不删除。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"东京国际展览中心"}]},
+      {"id":"sample-emojidas","name":"EmojiDas","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"打开用于查找可用于 Tag 标签的表情符号 Web 应用。","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-shopping-memo","name":"购物清单","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"牛奶\n鸡蛋\n纸巾\n电池","validityType":"daily","validDate":"","locations":[]}
+    ];
+
     function cloneInitial(value) { return JSON.parse(JSON.stringify(value)); }
     function ensureInitialData() {
       if (localStorage.getItem(INITIALIZED_KEY) === "1") return;
@@ -613,38 +626,108 @@
       "URLスキームを使って、対応するアプリを直接起動します。":"Uses a URL scheme to launch the corresponding app directly."
     };
     const EN_PLACEHOLDER = {"ID項目名を検索":"Search ID items", "例：○○クリニック":"e.g. Example Clinic", "検索にも使うメモを入力":"Enter a memo (also searchable)", "文字列または番号":"Text or number", "店名・施設名・住所を検索":"Search place, facility, or address"};
-    function currentLanguage(){ return settings?.language === "en" ? "en" : "ja"; }
-    function tr(ja,en){ return currentLanguage()==="en" ? en : ja; }
+    const ZH_TEXT = {
+      "ここコード":"这里码", "ここで使うコードを、今すぐ表示！":"此处所需，一点即用！", "設定":"设置", "閉じる":"关闭", "追加":"添加", "タブ(Tag)":"标签页（Tag）", "タブ(Tag)設定":"标签页（Tag）设置", "言語 / Language":"语言 / Language", "レイアウト":"外观", "自動":"自动", "ライト":"浅色", "ダーク":"深色", "データ保存・読み込み":"数据备份与恢复", "登録データをJSON形式で保存・復元します。":"以 JSON 文件备份和恢复已登记的数据。", "ファイルに保存":"导出到文件", "ファイルから読み込み":"从文件导入", "データを初期化":"重置数据", "読み込みは全データを置き換えます。先に保存してください。":"导入会替换当前全部数据，请先导出备份。",
+      "保存":"保存", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"可设置名称、颜色和顺序。标签页显示“:”或“：”前的文字；没有分隔符时显示首字符。删除 Tag 不会删除 ID 项目。", "お気に入り":"收藏", "現在地":"附近", "検索":"搜索", "タグ無し":"无标签", "＋ Tag追加":"＋ 添加 Tag", "ID項目を追加":"添加 ID 项目", "ID項目を編集":"编辑 ID 项目", "キャンセル":"取消", "表示名":"显示名称", "コードを読み取る":"扫描代码", "画像から読み取る":"从图片扫描", "カメラで読み取る":"用相机扫描", "公式アプリを登録":"登记官方应用", "認識":"识别结果", "QRコード／主要バーコードを自動判定します。":"自动识别二维码及常见条形码格式。", "手入力・詳細設定":"手动输入 / 高级设置", "詳細設定を隠す":"收起高级设置", "動作":"操作类型", "バーコード形式":"条形码格式", "コード内容":"代码内容", "Appleショートカットの初回設定":"首次设置 Apple 快捷指令", "作成するショートカット名":"要创建的快捷指令名称", "名前をコピー":"复制名称", "作成を開始":"开始设置", "起動テスト":"测试启动", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"首次使用时，iOS 可能会询问是否允许启动应用。若要长期使用，选择“始终允许”可让以后启动更顺畅。", "メモ":"备注", "有効期間":"有效期", "毎日":"每天", "特定の日付":"指定日期", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"📍标签页只显示设为“每天”或日期与今天一致的 ID。", "Tag（複数選択可）":"Tag（可多选）", "位置情報":"使用地点", "現在地を追加":"添加当前位置", "地図":"地图", "ボタン色":"按钮颜色", "このID項目を削除":"删除此 ID 项目", "地図から位置を追加":"从地图添加地点", "この位置を追加":"添加此位置", "地点を選択してください。":"请选择地点。", "再構成":"重新生成", "戻る":"返回", "色を選択":"选择颜色", "複製":"复制项目", "項目export":"导出项目", "ID項目":"ID 项目", "お気に入り登録":"收藏", "利用場所の登録":"登记使用地点", "Tag追加":"添加 Tag", "削除":"删除", "現在地向け":"附近", "ID追加":"添加 ID", "登録済みコードです。再読み取りすると置き換わります。":"已登记代码。重新扫描会替换现有内容。", "位置情報は未登録です。":"尚未登记使用地点。", "取得中…":"正在获取…", "検索中…":"正在搜索…", "カメラを停止":"停止相机", "カメラで読み取る":"用相机扫描", "認識しました":"识别成功", "画像を解析しています…":"正在分析图片…", "地点名を保存":"保存地点名称", "この地点を削除":"删除此地点", "地図の検索":"地图搜索", "タブの色":"标签页颜色", "お気に入りから外す":"取消收藏", "お気に入りに追加":"添加到收藏", "ドラッグして並び替え":"拖动排序"
+    };
+    const ZH_HELP = {
+      "表示やタブ、データの保存・読込など、ここコード全体の設定を行います。":"设置 CoCo-Code 的显示、标签页以及数据备份/恢复等。",
+      "新しいQRコード、バーコード、アプリ、Webページなどを登録します。":"登记新的二维码、条形码、应用、网页或备注。",
+      "⭐️を付けた項目だけを表示します。よく使う項目や、今日使う予定の項目をまとめておくと便利です。":"只显示已收藏的项目。可将常用项目或今天要用的项目集中在这里。",
+      "現在地の近くに利用場所を登録してある項目を表示します。現在地を更新したいときは📍をダブルタップします。":"显示已登记使用地点且位于当前位置附近的项目。要更新当前位置，请双击 📍。",
+      "登録した項目を名前やメモから検索します。":"按名称或备注搜索已登记项目。",
+      "表示するTagタブの追加・名前・色・並び順を設定します。":"添加 Tag 标签页，并设置名称、颜色和顺序。",
+      "端末の表示設定に合わせて、ライト／ダーク表示を自動で切り替えます。":"跟随设备设置自动切换浅色/深色外观。", "ここコードを常に明るい配色で表示します。":"始终使用浅色外观。", "ここコードを常に暗い配色で表示します。":"始终使用深色外观。",
+      "登録したID項目やTag、設定などをバックアップファイルとして保存します。":"将 ID 项目、Tag 和设置保存为备份文件。", "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"读取备份文件并恢复 CoCo-Code 数据。当前数据将被替换。", "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"删除已登记的 ID 项目、Tag 和显示设置，恢复到首次启动状态。", "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"添加新的 Tag。一个 ID 项目可以添加多个 Tag。",
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"点击可打开已登记的应用、网页、二维码、条形码或备注。\n\n双击可选择“设置”“复制项目”或“导出项目”。上下拖动右侧 ≡ 可调整顺序。", "タップすると、この項目のお気に入り登録／解除を切り替えます。":"点击可收藏或取消收藏此项目。", "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"将当前位置登记为此项目的使用地点。到达附近时，可在 📍 标签页快速找到。", "登録してあるメモを画面に表示します。":"显示已保存的备注。", "この項目の種類を表示します。":"显示此项目的类型。", "登録してあるバーコードを画面に表示します。":"显示已保存的条形码。", "登録してあるQRコードを画面に表示します。":"显示已保存的二维码。", "登録したWebページをブラウザで開きます。":"在浏览器中打开已登记的网页。", "ショートカットを使って、対応するアプリを起動します。":"通过 Apple 快捷指令启动对应应用。", "URLスキームを使って、対応するアプリを直接起動します。":"通过 URL Scheme 直接启动对应应用。"
+    };
+    const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
+
+
+    // v2.33: use 这里码 as the Simplified Chinese app title.
+    Object.assign(EN_TEXT, {
+      "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
+      "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
+      "1つの項目に複数地点を登録できます。📍タブでは、Tagが1つ以上あり、有効期間が「毎日」または今日で、現在地から200m以内に登録地点が1つでもあれば表示されます。":"You can register multiple locations for one item. The 📍 tab shows an item when it has at least one Tag, is valid Every Day or today, and has a registered location within 200 m of your current position.",
+      "タブの色":"Tab Color", "登録済みコードです。再読み取りすると置き換わります。":"A code is already registered. Scanning again will replace it.", "位置情報は未登録です。":"No locations registered.", "取得中…":"Getting location…", "検索中…":"Searching…", "カメラを停止":"Stop Camera", "認識しました":"Code detected", "画像を解析しています…":"Analyzing image…", "地点名を保存":"Save Location Name", "この地点を削除":"Delete This Location", "地図の検索":"Map Search", "お気に入りから外す":"Remove from Favorites", "お気に入りに追加":"Add to Favorites", "ドラッグして並び替え":"Drag to reorder",
+      "一致する🆔項目がありません。":"No matching ID items.", "お気に入りのIDがありません。":"No favorite IDs yet.", "現在地を取得しています…":"Getting your current location…", "現在地から200m以内に登録されたIDはありません。":"No registered IDs were found within 200 m of your current location.", "📍をダブルタップすると、現在地から200m以内のIDを表示します。":"Double-tap 📍 to show IDs within 200 m of your current location.", "♻️タグ無しには🆔項目がありません。":"There are no ID items under Untagged.",
+      "地点名":"Location Name", "アプリ":"App", "URLスキーム":"URL Scheme", "ショートカット名":"Shortcut Name", "バーコード":"Barcode", "不明":"Unknown", "元画像":"Original", "メモを入力してください。":"Enter a memo."
+    });
+    Object.assign(ZH_TEXT, {
+      "App1　URLスキームでアプリ起動":"App1　通过 URL Scheme 启动应用", "App2　ショートカットでアプリ起動":"App2　通过快捷指令启动应用", "Link　普通のURLを開く":"Link　打开普通网页链接", "QR　QRコードを表示":"QR　显示二维码", "BAR　バーコードを表示":"BAR　显示条形码", "Memo　メモを表示":"Memo　显示备注",
+      "1つの項目に複数地点を登録できます。📍タブでは、Tagが1つ以上あり、有効期間が「毎日」または今日で、現在地から200m以内に登録地点が1つでもあれば表示されます。":"一个项目可登记多个地点。项目至少有一个 Tag、有效期为“每天”或今天，并且至少有一个登记地点距当前位置 200 米以内时，会显示在 📍 标签页中。",
+      "一致する🆔項目がありません。":"没有匹配的 ID 项目。", "お気に入りのIDがありません。":"还没有收藏的 ID。", "現在地を取得しています…":"正在获取当前位置…", "現在地から200m以内に登録されたIDはありません。":"当前位置 200 米内没有已登记的 ID。", "📍をダブルタップすると、現在地から200m以内のIDを表示します。":"双击 📍 可显示当前位置 200 米内的 ID。", "♻️タグ無しには🆔項目がありません。":"“无标签”中没有 ID 项目。", "地点名":"地点名称", "アプリ":"应用", "URLスキーム":"URL Scheme", "ショートカット名":"快捷指令名称", "バーコード":"条形码", "不明":"未知", "元画像":"原始图案"
+    });
+    Object.assign(EN_HELP, {
+      "写真や保存画像に含まれるQRコード／バーコードを読み取って登録します。":"Scan a QR code or barcode from a photo or saved image and register it.",
+      "カメラでQRコード／バーコードを読み取って登録します。":"Scan a QR code or barcode with the camera and register it.",
+      "QRコードなどをここコードに保存せず、必要なときに公式アプリを起動する項目を登録します。":"Register an item that launches the official app when needed instead of storing its QR code in CoCo-Code.",
+      "コード内容や種類などを手入力・確認するための詳細設定を表示／非表示にします。":"Show or hide advanced settings for manually entering and checking the code content and type.",
+      "ショートカット作成に使う名前をクリップボードへコピーします。":"Copy the name used to create the Shortcut to the clipboard.", "Appleショートカットの作成を開始します。":"Start creating an Apple Shortcut.", "登録したショートカットから目的のアプリが起動するか確認します。":"Check whether the registered Shortcut launches the intended app.",
+      "現在地を、このID項目を利用する場所として追加します。":"Add your current position as a place where this ID item is used.", "地図から、このID項目を利用する場所を選んで追加します。":"Choose and add a place where this ID item is used from the map.", "このID項目を一覧に表示するときのボタン色を変更します。":"Change the button color used for this ID item in the list.", "このID項目をここコードから削除します。":"Delete this ID item from CoCo-Code.", "地名や施設名などを検索して、登録する位置を探します。":"Search for a place or facility to find a location to register.", "地図で選択している位置を、このID項目の利用場所として追加します。":"Add the selected map position as a place where this ID item is used.", "読み取った内容からQRコードを新しく生成して表示します。元のQRパターンとは異なる場合があります。":"Generate and display a new QR code from the decoded content. Its pattern may differ from the original QR code.", "お気に入りタブの表示色を変更します。":"Change the Favorites tab color.", "現在地タブの表示色を変更します。":"Change the Nearby tab color.", "検索タブの表示色を変更します。":"Change the Search tab color.", "タグ無しタブの表示色を変更します。":"Change the Untagged tab color.", "まだタグが付いていない項目を表示します。":"Shows items that do not have any Tags yet."
+    });
+    Object.assign(ZH_HELP, {
+      "写真や保存画像に含まれるQRコード／バーコードを読み取って登録します。":"从照片或已保存的图片中扫描二维码/条形码并登记。", "カメラでQRコード／バーコードを読み取って登録します。":"使用相机扫描二维码/条形码并登记。", "QRコードなどをここコードに保存せず、必要なときに公式アプリを起動する項目を登録します。":"登记一个在需要时启动官方应用的项目，而不在 CoCo-Code 中保存二维码等内容。", "コード内容や種類などを手入力・確認するための詳細設定を表示／非表示にします。":"显示或隐藏高级设置，用于手动输入和确认代码内容、类型等。", "ショートカット作成に使う名前をクリップボードへコピーします。":"将创建快捷指令时使用的名称复制到剪贴板。", "Appleショートカットの作成を開始します。":"开始创建 Apple 快捷指令。", "登録したショートカットから目的のアプリが起動するか確認します。":"确认已登记的快捷指令能否启动目标应用。", "現在地を、このID項目を利用する場所として追加します。":"将当前位置添加为使用此 ID 项目的地点。", "地図から、このID項目を利用する場所を選んで追加します。":"从地图中选择并添加使用此 ID 项目的地点。", "このID項目を一覧に表示するときのボタン色を変更します。":"更改此 ID 项目在列表中的按钮颜色。", "このID項目をここコードから削除します。":"从 CoCo-Code 中删除此 ID 项目。", "地名や施設名などを検索して、登録する位置を探します。":"搜索地名或设施名称，查找要登记的位置。", "地図で選択している位置を、このID項目の利用場所として追加します。":"将地图中选中的位置添加为此 ID 项目的使用地点。", "読み取った内容からQRコードを新しく生成して表示します。元のQRパターンとは異なる場合があります。":"根据识别出的内容重新生成并显示二维码。图案可能与原二维码不同。", "お気に入りタブの表示色を変更します。":"更改“收藏”标签页的颜色。", "現在地タブの表示色を変更します。":"更改“附近”标签页的颜色。", "検索タブの表示色を変更します。":"更改“搜索”标签页的颜色。", "タグ無しタブの表示色を変更します。":"更改“无标签”标签页的颜色。", "まだタグが付いていない項目を表示します。":"显示尚未添加任何 Tag 的项目。"
+    });
+
+    function currentLanguage(){ return settings?.language === "en" ? "en" : settings?.language === "zh" ? "zh" : "ja"; }
+    function tr(ja,en,zh){ const l=currentLanguage(); return l==="en" ? en : l==="zh" ? (zh || ja) : ja; }
+    const nativeAlert=window.alert.bind(window), nativeConfirm=window.confirm.bind(window);
+    function zhMessage(text){
+      let x=String(text);
+      const exact={
+        "このデータは読み込めませんでした。\n現在のデータは変更されていません。":"无法读取此数据。\n当前数据未被更改。",
+        "位置情報を取得できませんでした。位置情報の利用を許可してから、もう一度お試しください。":"无法获取位置。请允许使用位置信息后重试。",
+        "現在地を取得できませんでした。電波状況の良い場所で、もう一度お試しください。":"无法获取当前位置。请到信号较好的位置后重试。",
+        "現在地の取得がタイムアウトしました。もう一度お試しください。":"获取当前位置超时，请重试。",
+        "現在地を取得できませんでした。位置情報の設定を確認して、もう一度お試しください。":"无法获取当前位置。请检查定位设置后重试。",
+        "現在地情報の有効時間が切れています。📍タブをタップして現在地を更新してください。":"当前位置信息已过期。请双击 📍 更新当前位置。",
+        "表示名を入力してください。":"请输入显示名称。", "URLスキームを入力してください。":"请输入 URL Scheme。", "URLを入力してください。":"请输入 URL。", "ショートカット名を入力してください。":"请输入快捷指令名称。", "コード内容を入力してください。":"请输入代码内容。", "有効期間の日付を選択してください。":"请选择有效期日期。", "Linkの起動準備中です。少し待ってからもう一度タップしてください。":"正在准备打开链接，请稍候再点击一次。", "現在地を更新しました":"当前位置已更新。", "地図上で位置を選択してください。":"请在地图上选择位置。", "QRコード生成機能を読み込めませんでした。":"无法加载二维码生成功能。", "コードを生成できませんでした。形式と内容を確認してください。":"无法生成代码，请检查格式和内容。", "カメラを開始できませんでした。ブラウザのカメラ権限を確認してください。":"无法启动相机，请检查浏览器的相机权限。", "コードを読み取れませんでした。別の画像を試すか、手入力してください。":"无法识别代码。请尝试其他图片或手动输入。", "データと設定を初期状態に戻しました。":"数据和设置已恢复到初始状态。"
+      };
+      if(exact[x]) return exact[x];
+      x=x.replace(/^ID項目「(.+)」を削除しますか？$/, '确定删除 ID 项目“$1”吗？')
+         .replace(/^現在の(\d+)件を、読み込んだ(\d+)件で置き換えますか？$/, '要用导入的 $2 个项目替换当前 $1 个项目吗？')
+         .replace(/^(\d+)件を読み込みました。/, '已导入 $1 个项目。')
+         .replace(/(\d+)項目で存在しないTagを外しました。/, '已从 $1 个项目中移除不存在的 Tag。')
+         .replace(/^「(.+)」をコピーしました。$/, '已复制“$1”。');
+      return x;
+    }
+    window.alert=(text)=>nativeAlert(currentLanguage()==="zh"?zhMessage(text):text);
+    window.confirm=(text)=>nativeConfirm(currentLanguage()==="zh"?zhMessage(text):text);
+
     function translateDom(root=document) {
-      const en=currentLanguage()==="en";
+      const lang=currentLanguage();
       root.querySelectorAll?.("*").forEach(el=>{
         if (el.dataset.i18nSkip === "true") return;
         if (el.children.length===0 && el.textContent.trim()) {
           if (!el.dataset.jaText) el.dataset.jaText=el.textContent;
-          if (en && EN_TEXT[el.dataset.jaText]) el.textContent=EN_TEXT[el.dataset.jaText];
-          else if (!en && el.dataset.jaText) el.textContent=el.dataset.jaText;
+          if (lang==="en" && EN_TEXT[el.dataset.jaText]) el.textContent=EN_TEXT[el.dataset.jaText];
+          else if (lang==="zh" && ZH_TEXT[el.dataset.jaText]) el.textContent=ZH_TEXT[el.dataset.jaText];
+          else if (lang==="ja" && el.dataset.jaText) el.textContent=el.dataset.jaText;
         }
         ["placeholder","aria-label","title"].forEach(attr=>{
           const key="ja"+attr.replace("-","").replace(/^./,c=>c.toUpperCase());
           const val=el.getAttribute?.(attr); if(val && !el.dataset[key]) el.dataset[key]=val;
           const ja=el.dataset[key]; if(!ja) return;
-          const dict=attr==="placeholder"?EN_PLACEHOLDER:EN_TEXT;
-          if(en && dict[ja]) el.setAttribute(attr,dict[ja]); else if(!en) el.setAttribute(attr,ja);
+          const dict=attr==="placeholder" ? (lang==="zh"?ZH_PLACEHOLDER:EN_PLACEHOLDER) : (lang==="zh"?ZH_TEXT:EN_TEXT);
+          if ((lang==="en" || lang==="zh") && dict[ja]) el.setAttribute(attr,dict[ja]); else if(lang==="ja") el.setAttribute(attr,ja);
         });
       });
-      document.documentElement.lang=en?"en":"ja";
-      document.getElementById("languageJaBtn")?.classList.toggle("selected",!en); document.getElementById("languageEnBtn")?.classList.toggle("selected",en);
+      document.documentElement.lang=lang==="zh"?"zh-CN":lang;
+      document.getElementById("languageJaBtn")?.classList.toggle("selected",lang==="ja");
+      document.getElementById("languageEnBtn")?.classList.toggle("selected",lang==="en");
+      document.getElementById("languageZhBtn")?.classList.toggle("selected",lang==="zh");
     }
     function applyLanguage(){
       translateDom(document);
-      const en=currentLanguage()==="en";
+      const lang=currentLanguage();
       const appTitle=document.querySelector("header h1");
-      if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
+      if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const appVersion=document.querySelector(".app-version");
-      if(appVersion) appVersion.textContent=(en?"CoCo-Code":"ここコード")+" v2.23";
-      document.title=en?"CoCo-Code":"ここコード";
+      if(appVersion) appVersion.textContent=(lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code")+" v2.33";
+      document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
-      if(appTitle) appTitle.textContent=en?"CoCo-Code":"ここコード";
+      if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
     }
 
     let settings = loadSettings();
@@ -877,7 +960,7 @@
         tags=names.map((name,i)=>({id:`tag-${i+1}`,name:String(name||`Tag${i+1}`).slice(0,12),color:validColorName(colors[i],DEFAULT_GROUP_COLORS[i%DEFAULT_GROUP_COLORS.length])}));
       }
       const layout = raw?.layout === "dark" ? "dark" : raw?.layout === "light" ? "light" : "auto";
-      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), untaggedColor:validColorName(raw?.untaggedColor,"gray"), layout, language: raw?.language === "en" ? "en" : "ja" };
+      return { tags, starColor:validColorName(raw?.starColor,"white"), locationColor:validColorName(raw?.locationColor,"white"), searchColor:validColorName(raw?.searchColor,"white"), untaggedColor:validColorName(raw?.untaggedColor,"gray"), layout, language: raw?.language === "en" ? "en" : raw?.language === "zh" ? "zh" : "ja" };
     }
 
     function loadSettings() {
@@ -920,10 +1003,10 @@
       const selectedTag = activeTab.startsWith("tag:") ? settings.tags.find(t=>t.id===activeTab.slice(4)) : null;
       let selectedLabel = "";
       if (selectedTag) selectedLabel = tagFullLabel(selectedTag.name);
-      else if (activeTab === "star") selectedLabel = currentLanguage()==="en" ? "Favorites" : "お気に入り";
-      else if (activeTab === "location") selectedLabel = currentLanguage()==="en" ? "Nearby" : "現在地向け";
-      else if (activeTab === "search") selectedLabel = currentLanguage()==="en" ? "Search" : "検索";
-      else if (activeTab === "untagged") selectedLabel = currentLanguage()==="en" ? "Untagged" : "タグ無し";
+      else if (activeTab === "star") selectedLabel = tr("お気に入り","Favorites","收藏");
+      else if (activeTab === "location") selectedLabel = tr("現在地向け","Nearby","附近");
+      else if (activeTab === "search") selectedLabel = tr("検索","Search","搜索");
+      else if (activeTab === "untagged") selectedLabel = tr("タグ無し","Untagged","无标签");
       selectedTagName.textContent = selectedLabel ? `${selectedLabel} (${count})` : "";
       selectedTagName.classList.toggle("visible", !!selectedLabel);
     }
@@ -1199,7 +1282,7 @@
     const helpTitle=helpOverlay.querySelector("#helpTitle");
     const helpText=helpOverlay.querySelector("#helpText");
     function closeHelp(){helpOverlay.classList.remove("show");helpOverlay.setAttribute("aria-hidden","true");}
-    function showHelp(title,text){closeContextMenu();helpTitle.textContent=currentLanguage()==="en"?(EN_TEXT[title]||title):title;helpText.textContent=currentLanguage()==="en"?(EN_HELP[text]||text):text;helpOverlay.classList.add("show");helpOverlay.setAttribute("aria-hidden","false");}
+    function showHelp(title,text){closeContextMenu(); if(typeof title==="function") title=title(); if(typeof text==="function") text=text(); const l=currentLanguage();helpTitle.textContent=l==="en"?(EN_TEXT[title]||title):l==="zh"?(ZH_TEXT[title]||title):title;helpText.textContent=l==="en"?(EN_HELP[text]||text):l==="zh"?(ZH_HELP[text]||text):text;helpOverlay.classList.add("show");helpOverlay.setAttribute("aria-hidden","false");}
     helpOverlay.addEventListener("pointerdown",e=>{if(e.target===helpOverlay)closeHelp();});
     helpOverlay.querySelector("[data-help-close]").addEventListener("click",closeHelp);
 
@@ -1235,14 +1318,14 @@
         const empty = document.createElement("div");
         empty.className = "empty";
         if (activeTab === "search") {
-          empty.textContent = currentLanguage()==="en" ? "No matching ID items." : "一致する🆔項目がありません。";
+          empty.textContent = tr("一致する🆔項目がありません。","No matching ID items.","没有匹配的 ID 项目。");
         } else if (activeTab === "star") {
-          empty.innerHTML = currentLanguage()==="en" ? "No favorite IDs.<br>Tap ☆ on another tab to add items here." : "お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。";
+          empty.innerHTML = tr("お気に入りのIDがありません。<br>他のタブで☆をタップすると、ここに追加されます。","No favorite IDs.<br>Tap ☆ on another tab to add items here.","还没有收藏的 ID。<br>在其他标签页点击 ☆ 即可添加到这里。");
         } else if (activeTab === "location") {
-          if (locationState.status === "loading") empty.textContent = currentLanguage()==="en" ? "Getting current location…" : "現在地を取得しています…";
+          if (locationState.status === "loading") empty.textContent = tr("現在地を取得しています…","Getting current location…","正在获取当前位置…");
           else if (locationState.status === "error") { empty.classList.add("location-error"); empty.textContent = locationState.errorMessage; }
-          else if (locationState.status === "ok") empty.textContent = currentLanguage()==="en" ? "No registered IDs within 200 m." : "現在地から200m以内に登録されたIDはありません。";
-          else empty.textContent = currentLanguage()==="en" ? "Double-tap 📍 to show IDs within 200 m of your current location." : "📍をダブルタップすると、現在地から200m以内のIDを表示します。";
+          else if (locationState.status === "ok") empty.textContent = tr("現在地から200m以内に登録されたIDはありません。","No registered IDs within 200 m.","当前位置 200 米内没有已登记的 ID。");
+          else empty.textContent = tr("📍をダブルタップすると、現在地から200m以内のIDを表示します。","Double-tap 📍 to show IDs within 200 m of your current location.","双击 📍 可显示当前位置 200 米内的 ID。");
         } else {
           empty.textContent = activeTab === "untagged" ? "♻️タグ無しには🆔項目がありません。" : `${settings.tags.find(t=>`tag:${t.id}`===activeTab)?.name || "Tag"}には🆔項目がありません。`;
         }
@@ -1303,7 +1386,7 @@
         meta.className = "meta";
         const tagMarks=item.tagIds.map(id=>settings.tags.find(t=>t.id===id)).filter(Boolean).map(t=>firstGrapheme(t.name)).join("");
         meta.textContent = activeTab === "search" ? `${typeLabel(item)}${tagMarks ? `・${tagMarks}` : "・♻️"}` : typeLabel(item);
-        wireItemAction(meta,item,()=>typeLabel(item),()=>{const ja=({App1:"URLスキームを使って、対応するアプリを直接起動します。",App2:"ショートカットを使って、対応するアプリを起動します。",Link:"登録したWebページをブラウザで開きます。",QR:"登録してあるQRコードを画面に表示します。",BAR:"登録してあるバーコードを画面に表示します。",Memo:"登録してあるメモを画面に表示します。"}[typeLabel(item)]||"この項目の種類を表示します。"); return currentLanguage()==="en"?(EN_HELP[ja]||ja):ja;});
+        wireItemAction(meta,item,()=>typeLabel(item),()=>{const ja=({App1:"URLスキームを使って、対応するアプリを直接起動します。",App2:"ショートカットを使って、対応するアプリを起動します。",Link:"登録したWebページをブラウザで開きます。",QR:"登録してあるQRコードを画面に表示します。",BAR:"登録してあるバーコードを画面に表示します。",Memo:"登録してあるメモを画面に表示します。"}[typeLabel(item)]||"この項目の種類を表示します。"); return currentLanguage()==="en"?(EN_HELP[ja]||ja):currentLanguage()==="zh"?(ZH_HELP[ja]||ja):ja;});
 
         const buttons = document.createElement("div");
         buttons.className = "drag";
@@ -1470,7 +1553,7 @@
       const d = new Date();
       const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
       a.href = url;
-      a.download = `${currentLanguage()==="en" ? "CoCo-Code" : "ここコード"}_backup_${stamp}.json`;
+      a.download = `${currentLanguage()==="ja" ? "ここコード" : "CoCo-Code"}_backup_${stamp}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -1497,15 +1580,15 @@
     }
 
     function resetToInitialData() {
-      if (!confirm(currentLanguage()==="en" ? "Delete the current data and settings and restore the initial state?\nThis cannot be undone." : "現在のデータと設定を削除し、初期状態に戻します。\nこの操作は元に戻せません。")) return;
+      if (!confirm(tr("現在のデータと設定を削除し、初期状態に戻します。\nこの操作は元に戻せません。","Delete the current data and settings and restore the initial state?\nThis cannot be undone.","删除当前数据和设置并恢复初始状态？\n此操作无法撤销。"))) return;
       const resetLang=currentLanguage();
-      settings=normalizeSettings(cloneInitial(resetLang === "en" ? INITIAL_SETTINGS_EN : INITIAL_SETTINGS));
+      settings=normalizeSettings(cloneInitial(resetLang === "en" ? INITIAL_SETTINGS_EN : resetLang === "zh" ? INITIAL_SETTINGS_ZH : INITIAL_SETTINGS));
       const validTagIds=new Set(settings.tags.map(t=>t.id));
-      items=cloneInitial(resetLang === "en" ? INITIAL_ITEMS_EN : INITIAL_ITEMS).map(x=>normalizeItem(x)).map(item=>({...item,tagIds:item.tagIds.filter(id=>validTagIds.has(id))}));
+      items=cloneInitial(resetLang === "en" ? INITIAL_ITEMS_EN : resetLang === "zh" ? INITIAL_ITEMS_ZH : INITIAL_ITEMS).map(x=>normalizeItem(x)).map(item=>({...item,tagIds:item.tagIds.filter(id=>validTagIds.has(id))}));
       activeTab="star"; searchQuery=""; searchInput.value="";
       saveSettings(); saveItems(); localStorage.setItem(INITIALIZED_KEY,"1");
       applyLayoutTheme(); refreshTabs(); render(); closeDataModal();
-      alert(currentLanguage()==="en" ? "Data and settings have been reset." : "データと設定を初期状態に戻しました。");
+      alert(tr("データと設定を初期状態に戻しました。","Data and settings have been reset.","数据和设置已恢复到初始状态。"));
     }
 
     function updateColorSelection() {
@@ -1516,7 +1599,7 @@
       editingId = id;
       const item = items.find(x => x.id === id);
 
-      formTitle.textContent = item ? "ID項目を編集" : "ID項目を追加";
+      formTitle.textContent = item ? tr("ID項目を編集","Edit ID Item","编辑 ID 项目") : tr("ID項目を追加","Add ID Item","添加 ID 项目");
       nameInput.value = item?.name || "";
       memoInput.value = item?.memo || "";
       validityTypeInput.value = item?.validityType === "date" ? "date" : "daily";
@@ -1546,13 +1629,14 @@
       updateShortcutPreview();
       modal.classList.add("show");
       modal.setAttribute("aria-hidden", "false");
+      translateDom(modal);
       setTimeout(() => nameInput.focus(), 50);
     }
 
     function renderLocationList() {
       locationList.innerHTML="";
       if (!editLocations.length) {
-        const div=document.createElement("div"); div.className="scan-status"; div.textContent="位置情報は未登録です。"; locationList.appendChild(div); return;
+        const div=document.createElement("div"); div.className="scan-status"; div.textContent="位置情報は未登録です。"; locationList.appendChild(div); translateDom(locationList); return;
       }
       editLocations.forEach((p,i) => {
         const row=document.createElement("div"); row.className="location-row";
@@ -1563,6 +1647,7 @@
         del.addEventListener("click",()=>{ editLocations.splice(i,1); renderLocationList(); });
         row.append(txt,del); locationList.appendChild(row);
       });
+      translateDom(locationList);
     }
 
     async function addCurrentLocation() {
@@ -1650,7 +1735,7 @@
         // 第1段階は表示範囲内、見つからない場合だけ表示範囲の約4倍まで拡張する。
         async function localSearch(w,s,e,n,limit=30) {
           const viewbox=`${w},${n},${e},${s}`;
-          const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${limit}&accept-language=ja&viewbox=${encodeURIComponent(viewbox)}&bounded=1&q=${encodeURIComponent(q)}`;
+          const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${limit}&accept-language=${currentLanguage()==="zh"?"zh-CN":currentLanguage()==="en"?"en":"ja"}&viewbox=${encodeURIComponent(viewbox)}&bounded=1&q=${encodeURIComponent(q)}`;
           const res=await fetch(url,{headers:{"Accept":"application/json"}});
           if (!res.ok) throw new Error("search failed");
           const json=await res.json();
@@ -2515,7 +2600,7 @@
         if (item.type === "shortcut") return "ショートカット名を入力してください。";
         return "コード内容を入力してください。";
       }
-      if (item.type === "memo" && !item.memo.trim()) return currentLanguage() === "en" ? "Enter a memo." : "メモを入力してください。";
+      if (item.type === "memo" && !item.memo.trim()) return tr("メモを入力してください。","Enter a memo.","请输入备注。");
       return "";
     }
 
@@ -2768,8 +2853,9 @@
       render();
     }
 
-    document.getElementById("languageJaBtn").addEventListener("click",()=>{ settings.language="ja"; saveSettings(); translateDom(document); render(); });
-    document.getElementById("languageEnBtn").addEventListener("click",()=>{ settings.language="en"; saveSettings(); translateDom(document); render(); });
+    document.getElementById("languageJaBtn").addEventListener("click",()=>{ settings.language="ja"; saveSettings(); applyLanguage(); });
+    document.getElementById("languageEnBtn").addEventListener("click",()=>{ settings.language="en"; saveSettings(); applyLanguage(); });
+    document.getElementById("languageZhBtn").addEventListener("click",()=>{ settings.language="zh"; saveSettings(); applyLanguage(); });
 
     validityTypeInput.addEventListener("change", () => { validDateInput.classList.toggle("hidden", validityTypeInput.value !== "date"); });
     searchInput.addEventListener("input", () => { searchQuery=searchInput.value; render(); });
@@ -2867,7 +2953,7 @@
     window.addEventListener("resize", syncTabSettingsViewport, { passive:true });
 
     let tabDraft=[]; let tabDraftDrag=null;
-    function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);updateColorButton(tabSettingsUntaggedColor,settings.untaggedColor);renderTabSettings();tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");syncTabSettingsViewport();}
+    function openTabSettings(){tabDraft=settings.tags.map(t=>({...t}));updateColorButton(tabSettingsStarColor,settings.starColor);updateColorButton(tabSettingsLocationColor,settings.locationColor);updateColorButton(tabSettingsSearchColor,settings.searchColor);updateColorButton(tabSettingsUntaggedColor,settings.untaggedColor);renderTabSettings();translateDom(tabSettingsModal);tabSettingsModal.classList.add("show");tabSettingsModal.setAttribute("aria-hidden","false");syncTabSettingsViewport();}
     function closeTabSettings(){releaseFormFocus();tabSettingsModal.classList.remove("show");tabSettingsModal.setAttribute("aria-hidden","true");}
     function renderTabSettings(){tabSettingsList.innerHTML="";tabDraft.forEach((t,i)=>{const row=document.createElement("div");row.className="group-setting-row tab-setting-row";row.dataset.index=String(i);const h=document.createElement("button");h.type="button";h.className="tab-setting-handle";h.textContent="≡";h.setAttribute("aria-label",`${t.name}を並び替え`);h.addEventListener("pointerdown",e=>beginTabDraftDrag(e,i));const inp=document.createElement("input");inp.maxLength=12;inp.value=t.name;inp.addEventListener("input",()=>t.name=inp.value);const col=document.createElement("button");col.type="button";col.className="color-current";col.innerHTML='<span class="color-current-swatch"></span>';updateColorButton(col,t.color);wireColorButton(col,t.color,c=>{t.color=c;updateColorButton(col,c);},`${t.name||`Tag${i+1}`}の色`);wireHelpLongPress(col,"タブの色",()=>`「${t.name||`Tag${i+1}`}」タブの表示色を変更します。`);const del=document.createElement("button");del.type="button";del.className="btn tab-delete";del.textContent="削除";del.addEventListener("click",()=>deleteTabDraft(i));row.append(h,inp,col,del);tabSettingsList.appendChild(row);});}
     function addTabDraft(){const n=tabDraft.length+1;tabDraft.push({id:crypto.randomUUID(),name:`Tag${n}`,color:DEFAULT_GROUP_COLORS[(n-1)%DEFAULT_GROUP_COLORS.length]});renderTabSettings();}
