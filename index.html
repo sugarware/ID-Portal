@@ -271,7 +271,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.33 — Japanese / English / 简体中文 language mode.
+        v2.34 — Compact lossless item-export QR format.
       </div>
     </div>
   </div>
@@ -311,7 +311,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.33</div>
+      <div class="app-version">ここコード v2.34</div>
       
     </div></div>
   </div>
@@ -644,7 +644,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.33: use 这里码 as the Simplified Chinese app title.
+    // v2.34: compact item-export QR; use 这里码 as the Simplified Chinese app title.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -724,7 +724,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const appVersion=document.querySelector(".app-version");
-      if(appVersion) appVersion.textContent=(lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code")+" v2.33";
+      if(appVersion) appVersion.textContent=(lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code")+" v2.34";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -1168,7 +1168,13 @@
     function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=180;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
     function duplicateItem(id){const src=items.find(x=>x.id===id);if(!src)return;const base=src.name.replace(/-\d+$/,"");let max=0;for(const x of items){const m=x.name.match(new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}-(\\d+)$`));if(m)max=Math.max(max,Number(m[1]));}const n=max+1;const copy=structuredClone(src);copy.id=crypto.randomUUID();copy.name=`${base}-${n}`;const pos=items.findIndex(x=>x.id===id);items.splice(pos+1,0,copy);saveItems();render();}
 
-    const ITEM_EXPORT_PREFIX="COCOCODE:ITEM:1:";
+    // v2.34: compact, lossless item-export format.
+    // codeSpec / favorite / color / Tag / ID are intentionally excluded.
+    // Empty/default fields are omitted. Locations are stored as compact arrays.
+    // For larger payloads, gzip+Base64 is used when it is smaller than plain JSON.
+    const ITEM_EXPORT_PREFIX_V1="COCOCODE:ITEM:1:";
+    const ITEM_EXPORT_PREFIX_JSON="COCOCODE:I2:J:";
+    const ITEM_EXPORT_PREFIX_GZIP="COCOCODE:I2:G:";
     function utf8ToBase64(text){
       const bytes=new TextEncoder().encode(text); let bin="";
       for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
@@ -1179,16 +1185,65 @@
       for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
       return new TextDecoder().decode(bytes);
     }
-    function itemExportObject(item,locations){
-      return {name:item.name,type:item.type,value:item.value,barcodeFormat:item.barcodeFormat,favorite:item.favorite,codeSpec:item.codeSpec,memo:item.memo,validityType:item.validityType,validDate:item.validDate,locations};
+    function bytesToBase64(bytes){
+      let bin="";
+      for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+      return btoa(bin);
     }
-    function buildItemExportQr(item){
-      const all=Array.isArray(item.locations)?structuredClone(item.locations):[];
-      for(let keep=all.length;keep>=0;keep--){
-        const payload=ITEM_EXPORT_PREFIX+utf8ToBase64(JSON.stringify(itemExportObject(item,all.slice(0,keep))));
+    function base64ToBytes(text){
+      const bin=atob(text), bytes=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      return bytes;
+    }
+    async function gzipText(text){
+      if(typeof CompressionStream==="undefined")return null;
+      const stream=new Blob([new TextEncoder().encode(text)]).stream().pipeThrough(new CompressionStream("gzip"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+    async function gunzipText(bytes){
+      if(typeof DecompressionStream==="undefined")throw new Error("gzip unsupported");
+      const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+      return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+    }
+    const EXPORT_TYPE_TO_CODE={qr:"q",barcode:"b",shortcut:"s",link:"l",app1:"a",memo:"m"};
+    const EXPORT_CODE_TO_TYPE={q:"qr",b:"barcode",s:"shortcut",l:"link",a:"app1",m:"memo"};
+    function compactItemExportObject(item){
+      const o={n:String(item.name||""),t:EXPORT_TYPE_TO_CODE[item.type]||item.type};
+      if(item.value)o.v=item.value;
+      if(item.type==="barcode" && item.barcodeFormat && item.barcodeFormat!=="CODE128")o.b=item.barcodeFormat;
+      if(item.memo)o.m=item.memo;
+      if(item.validityType==="date" && item.validDate)o.d=item.validDate;
+      if(Array.isArray(item.locations)&&item.locations.length){
+        o.l=item.locations.map(x=>{
+          const a=[Number(x.lat),Number(x.lng)];
+          if(x.label)a.push(String(x.label));
+          return a;
+        });
+      }
+      return o;
+    }
+    function expandCompactItemExport(o){
+      if(!o||typeof o!=="object")return null;
+      const type=EXPORT_CODE_TO_TYPE[o.t]||o.t;
+      const locations=Array.isArray(o.l)?o.l.map(x=>Array.isArray(x)&&x.length>=2?{lat:Number(x[0]),lng:Number(x[1]),label:x.length>=3?String(x[2]||""):""}:null).filter(x=>x&&Number.isFinite(x.lat)&&Number.isFinite(x.lng)):[];
+      return {
+        name:String(o.n||""), type, value:String(o.v||""),
+        barcodeFormat:String(o.b||"CODE128"), codeSpec:null, memo:String(o.m||""),
+        validityType:o.d?"date":"daily", validDate:String(o.d||""), locations
+      };
+    }
+    async function buildItemExportQr(item){
+      const json=JSON.stringify(compactItemExportObject(item));
+      const candidates=[ITEM_EXPORT_PREFIX_JSON+json];
+      try{
+        const gz=await gzipText(json);
+        if(gz)candidates.push(ITEM_EXPORT_PREFIX_GZIP+bytesToBase64(gz));
+      }catch{}
+      candidates.sort((a,b)=>new TextEncoder().encode(a).length-new TextEncoder().encode(b).length);
+      for(const payload of candidates){
         try{
           const qr=window.qrcode(0,"L"); qr.addData(payload,"Byte"); qr.make();
-          if(qr.getModuleCount()<=177) return {qr,payload,kept:keep,total:all.length};
+          if(qr.getModuleCount()<=177) return {qr,payload,total:Array.isArray(item.locations)?item.locations.length:0,compressed:payload.startsWith(ITEM_EXPORT_PREFIX_GZIP)};
         }catch{}
       }
       return null;
@@ -1196,8 +1251,8 @@
     async function exportItemQr(id){
       const item=items.find(x=>x.id===id); if(!item)return;
       try{ await ensureQrGenerator(); }catch{ alert("QRコード生成機能を読み込めませんでした。"); return; }
-      const built=buildItemExportQr(item);
-      if(!built){ alert("位置情報をすべて除いても、項目データがQR Version 40に収まりません。"); return; }
+      const built=await buildItemExportQr(item);
+      if(!built){ alert("項目データがQR Version 40に収まりません。メモや位置情報を減らしてから再度お試しください。"); return; }
       codeView.classList.remove("memo-view"); codeArea.classList.remove("hidden");
       codeTitle.textContent=`項目export：${item.name}`; codeText.textContent="ここコード 項目データ"; codeVerify.textContent="";
       qrcodeEl.innerHTML=""; barcode.innerHTML=""; qrcodeEl.classList.remove("hidden"); barcode.classList.add("hidden"); reconstructBtn.classList.add("hidden"); activeQrItem=null; showingReconstructed=false;
@@ -1205,52 +1260,48 @@
       const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side; const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
       for(let r=0;r<modules;r++)for(let c=0;c<modules;c++)if(qr.isDark(r,c))ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
 
-      // 「ここQR」の識別用マーク。確定済みの7×7「コ」パターンを2個横並びで描画する。
-      // 2個の間は1モジュール空け、その1列は元のQR白黒パターンを一切変更しない。
       const markModules=7, markGap=1, markPairWidth=markModules*2+markGap;
       const startCol=quiet+Math.floor((modules-markPairWidth)/2);
       const startRow=quiet+Math.floor((modules-markModules)/2);
-      const cocoMark=[
-        "1111111",
-        "1000001",
-        "1111101",
-        "1111101",
-        "1111101",
-        "1000001",
-        "1111111"
-      ];
+      const cocoMark=["1111111","1000001","1111101","1111101","1111101","1000001","1111111"];
       const drawCocoMark=(baseCol)=>{
         for(let r=0;r<markModules;r++)for(let c=0;c<markModules;c++){
           ctx.fillStyle=cocoMark[r][c]==="1" ? "#e53935" : "#fff";
           ctx.fillRect((baseCol+c)*scale,(startRow+r)*scale,scale,scale);
         }
       };
-      drawCocoMark(startCol);
-      drawCocoMark(startCol+markModules+markGap);
+      drawCocoMark(startCol); drawCocoMark(startCol+markModules+markGap);
 
       qrcodeEl.appendChild(canvas);
       const version=(modules-17)/4;
-      codeVerify.textContent=built.kept<built.total ? `項目export QR ／ Version ${version} ／ 位置情報 ${built.total}件中${built.kept}件を収録（容量のため一部省略）` : `項目export QR ／ Version ${version} ／ 位置情報 ${built.total}件を収録`;
+      codeVerify.textContent=`項目export QR ／ Version ${version} ／ 位置情報 ${built.total}件を収録${built.compressed?" ／ 圧縮":""}`;
       codeView.classList.add("show"); document.body.style.overflow="hidden";
       try{if("wakeLock" in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch{}
     }
-    function parseItemExport(text){
-      if(typeof text!=="string"||!text.startsWith(ITEM_EXPORT_PREFIX))return null;
+    async function parseItemExport(text){
+      if(typeof text!=="string")return null;
       try{
-        const raw=JSON.parse(base64ToUtf8(text.slice(ITEM_EXPORT_PREFIX.length)));
+        let raw;
+        if(text.startsWith(ITEM_EXPORT_PREFIX_JSON)){
+          raw=expandCompactItemExport(JSON.parse(text.slice(ITEM_EXPORT_PREFIX_JSON.length)));
+        }else if(text.startsWith(ITEM_EXPORT_PREFIX_GZIP)){
+          const json=await gunzipText(base64ToBytes(text.slice(ITEM_EXPORT_PREFIX_GZIP.length)));
+          raw=expandCompactItemExport(JSON.parse(json));
+        }else if(text.startsWith(ITEM_EXPORT_PREFIX_V1)){
+          // v2.33以前の項目Export QRも引き続き読み取れる。
+          raw=JSON.parse(base64ToUtf8(text.slice(ITEM_EXPORT_PREFIX_V1.length)));
+        }else return null;
         if(!raw||typeof raw!=="object"||!String(raw.name||"").trim())return null;
         const allowed=["qr","barcode","shortcut","link","app1","memo"]; if(!allowed.includes(raw.type))return null;
         return raw;
       }catch{return null;}
     }
-    function importScannedItem(text){
-      const raw=parseItemExport(text); if(!raw)return false;
+    async function importScannedItem(text){
+      const raw=await parseItemExport(text); if(!raw)return false;
       const locCount=Array.isArray(raw.locations)?raw.locations.length:0;
       const type=raw.type||"qr";
       const ok=confirm(`ここコードの項目データを読み取りました。\n\n名称：${raw.name}\n種類：${typeLabel({type})}\n位置情報：${locCount}件\n\nこの項目を取り込みますか？`);
       if(!ok)return true;
-      // 読み取り時点では登録・更新せず、現在開いている項目設定画面へ展開する。
-      // 色とTagはexport対象外として、現在の設定（新規時は初期値）を維持する。
       nameInput.value=String(raw.name||"");
       memoInput.value=String(raw.memo||"");
       validityTypeInput.value=raw.validityType==="date" ? "date" : "daily";
@@ -1260,7 +1311,8 @@
       barcodeFormatInput.value=raw.barcodeFormat || "CODE128";
       valueInput.value=String(raw.value||"");
       originalEditValue=valueInput.value;
-      currentCodeSpec=raw.codeSpec ? structuredClone(raw.codeSpec) : null;
+      // Export QRは表示内容の移送専用。元コード再現用codeSpecは引き継がない。
+      currentCodeSpec=null;
       editLocations=Array.isArray(raw.locations) ? structuredClone(raw.locations) : [];
       renderLocationList();
       manualFields.classList.remove("hidden");
@@ -2423,7 +2475,7 @@
         await new Promise(resolve=>setTimeout(resolve,850));
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
-          if(importScannedItem(result.text)){ await stopCamera(); return; }
+          if(await importScannedItem(result.text)){ await stopCamera(); return; }
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             valueInput.value=qr.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128"; currentCodeSpec=qr.spec;
@@ -2470,7 +2522,7 @@
         if(!result) throw new Error("not found");
         const mapped=mapScanFormat(result.format || result.symbology || "");
         if(mapped.type==="qr"){
-          if(importScannedItem(result.text)){ setScanStatus("ここコードの項目データを認識しました。"); return; }
+          if(await importScannedItem(result.text)){ setScanStatus("ここコードの項目データを認識しました。"); return; }
           await ensureJsQrMatrixDecoder();
           const imageData=await imageDataFromFile(file);
           const qr=decodeQrDetailFromZxing(imageData,result,"image");
