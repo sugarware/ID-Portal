@@ -245,7 +245,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.53</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.54</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -274,7 +274,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.53 — QR generation migrated to ZXing 3 Writer; qrcode-generator removed.
+        v2.54 — QR generation migrated to ZXing 3 Writer; qrcode-generator removed.
       </div>
     </div>
   </div>
@@ -728,7 +728,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.53";
+      if(headerVersion) headerVersion.textContent="v2.54";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -884,10 +884,6 @@
       lazyAssets.set(key,promise);
       return promise;
     }
-    const ensureJsBarcode = () => loadScriptOnce(
-      "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js",
-      () => typeof window.JsBarcode === "function"
-    );
     async function ensureLeaflet() {
       await Promise.all([
         loadCssOnce("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"),
@@ -1261,6 +1257,40 @@
       const out=await zxing.writeBarcode(String(payload),{format:"QRCode",scale:1,addHRT:false,addQuietZones:false,options:`ecLevel=${ecc}`});
       if(out?.error || !out?.symbol?.data) throw new Error(out?.error || "QR generation failed");
       return {symbol:out.symbol,ecc};
+    }
+    function zxingWriterFormat(format){
+      const map={CODE128:"Code128",CODE39:"Code39",EAN13:"EAN13",EAN8:"EAN8",UPC:"UPCA",ITF14:"ITF"};
+      return map[String(format||"CODE128").toUpperCase()] || "Code128";
+    }
+    async function makeZxingBarcode(payload,format){
+      const zxing=await ensureZxing();
+      const writerFormat=zxingWriterFormat(format);
+      const out=await zxing.writeBarcode(String(payload),{format:writerFormat,scale:1,addHRT:false,addQuietZones:true});
+      if(out?.error || !out?.symbol?.data || !out.symbol.width || !out.symbol.height) throw new Error(out?.error || "Barcode generation failed");
+      return {symbol:out.symbol,writerFormat};
+    }
+    function renderZxingBarcodeSymbol(symbol,svg){
+      const w=Number(symbol?.width||0), h=Number(symbol?.height||0), data=symbol?.data;
+      if(!w || !h || !data || data.length < w*h) throw new Error("invalid-zxing-barcode-symbol");
+      svg.innerHTML="";
+      svg.setAttribute("viewBox",`0 0 ${w} ${h}`);
+      svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+      svg.setAttribute("width",String(Math.min(Math.max(w*2,240),760)));
+      svg.setAttribute("height","150");
+      const ns="http://www.w3.org/2000/svg";
+      const bg=document.createElementNS(ns,"rect"); bg.setAttribute("x","0"); bg.setAttribute("y","0"); bg.setAttribute("width",String(w)); bg.setAttribute("height",String(h)); bg.setAttribute("fill","white"); svg.appendChild(bg);
+      // ZXing 3 symbol polarity: 0=black, 255=white. Merge horizontal runs per row.
+      for(let y=0;y<h;y++){
+        let x=0;
+        while(x<w){
+          while(x<w && data[y*w+x]>=128) x++;
+          if(x>=w) break;
+          const start=x;
+          while(x<w && data[y*w+x]<128) x++;
+          const r=document.createElementNS(ns,"rect");
+          r.setAttribute("x",String(start)); r.setAttribute("y",String(y)); r.setAttribute("width",String(x-start)); r.setAttribute("height","1"); r.setAttribute("fill","black"); svg.appendChild(r);
+        }
+      }
     }
     async function exportQrSelfTest(qr,payload){
       const rendered=renderZxingQrSymbol(qr.symbol,Math.max(420,Math.min(window.innerWidth*0.92,760)),true);
@@ -2423,7 +2453,7 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
-          // v2.53: QR detail and original Symbol are obtained from ZXing 3 only.
+          // v2.54: QR detail and original Symbol are obtained from ZXing 3 only.
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             // v2.48 camera-only test: re-read a crop around the detected QR and
@@ -2800,15 +2830,9 @@
             } else codeVerify.textContent="再生成検証：確認できませんでした";
           } catch { codeVerify.textContent="再生成検証：未実施"; }
         } else {
-          await ensureJsBarcode();
-          codeVerify.textContent = `形式：${item.codeSpec?.symbology || item.barcodeFormat || "CODE128"}`;
-          JsBarcode(barcode, item.value, {
-            format: item.barcodeFormat || "CODE128",
-            displayValue: false,
-            margin: 10,
-            height: 150,
-            width: 2
-          });
+          const generated=await makeZxingBarcode(item.value,item.barcodeFormat || "CODE128");
+          renderZxingBarcodeSymbol(generated.symbol,barcode);
+          codeVerify.textContent = `形式：${item.codeSpec?.symbology || item.barcodeFormat || "CODE128"} ／ ZXing 3 Writer`;
         }
       } catch (e) {
         alert("コードを生成できませんでした。形式と内容を確認してください。");
