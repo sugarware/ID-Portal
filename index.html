@@ -245,7 +245,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.56</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.57</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -274,7 +274,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.56 — ZXing 3 reliability and race-condition fixes; existing interaction behavior retained.
+        v2.57 — navigation cache-first startup test; v2.56 behavior otherwise retained.
       </div>
     </div>
   </div>
@@ -728,7 +728,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.56";
+      if(headerVersion) headerVersion.textContent="v2.57";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
