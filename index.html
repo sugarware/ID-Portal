@@ -243,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.41</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.42</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.41 — App version in title and built-in QR sharing item.
+        v2.42 — App version in title and built-in QR sharing item.
       </div>
     </div>
   </div>
@@ -645,7 +645,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.41: show app version beside the title and provide the public app URL as an initial QR item.
+    // v2.42: show app version beside the title and provide the public app URL as an initial QR item.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -725,7 +725,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.41";
+      if(headerVersion) headerVersion.textContent="v2.42";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -2438,6 +2438,9 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
+          // v2.42: camera scanning also prepares the patched jsQR decoder before
+          // extracting the original QR matrix. Image-file scanning already did this.
+          await ensureJsQrMatrixDecoder();
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             valueInput.value=qr.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128"; currentCodeSpec=qr.spec;

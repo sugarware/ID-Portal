@@ -1,7 +1,13 @@
-ここコード PWA v2.41
+ここコード PWA v2.42
 
 
 【v2.41 変更点】
+
+【v2.42 変更点】
+- ZXing 3移行後のカメラQR読取で、元QR Matrix抽出前にjsQR Matrix decoderを確実に準備するよう修正。
+- 画像ファイル読取側には既に同処理があり、カメラ側だけ欠けていたため、その1点のみを修正。
+- QR/BAR生成方式、保存データ形式、UI仕様は変更なし。
+
 - ZXing-WASM reader を 2.2.4 から 3.1.6 へ更新。
 - ZXing 3系の canonical format 名（EAN8/EAN13/UPCA/UPCE/DataBarExp/DataBarLtd）へ更新。
 - QR生成(qrcode-generator)、BAR生成(JsBarcode)、QR詳細解析(jsQR)は従来のまま。
