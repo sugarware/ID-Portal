@@ -243,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.46</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.44</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.46 — v2.44 camera behavior with explicit detection start only.
+        v2.44 — App version in title and built-in QR sharing item.
       </div>
     </div>
   </div>
@@ -354,7 +354,6 @@
           </div>
           <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
         </div>
-        <button class="btn scan-btn hidden" id="cameraDetectBtn" type="button" style="width:100%;margin-top:10px">検出開始</button>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
         <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
@@ -646,7 +645,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.46: show app version beside the title and provide the public app URL as an initial QR item.
+    // v2.44: show app version beside the title and provide the public app URL as an initial QR item.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -726,7 +725,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.46";
+      if(headerVersion) headerVersion.textContent="v2.44";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -808,7 +807,6 @@
     const valueLabel = document.getElementById("valueLabel");
     const imageScanBtn = document.getElementById("imageScanBtn");
     const cameraScanBtn = document.getElementById("cameraScanBtn");
-    const cameraDetectBtn = document.getElementById("cameraDetectBtn");
     const imageFileInput = document.getElementById("imageFileInput");
     const reader = document.getElementById("reader");
     const readerWrap = document.getElementById("readerWrap");
@@ -2380,7 +2378,7 @@
       return {imageData:out,x:x0,y:y0};
     }
 
-    // v2.46 test: preserve ZXing 3's decoded symbol directly as a display matrix.
+    // v2.44 test: preserve ZXing 3's decoded symbol directly as a display matrix.
     // In zxing-wasm 3.x symbol.data uses luminance polarity: 0=black, 255=white.
     function extractZxingSymbolMatrix(zxingResult) {
       const s=zxingResult?.symbol;
@@ -2398,7 +2396,7 @@
       };
     }
 
-    // v2.46 test: after the full camera frame finds a QR, crop around that QR and
+    // v2.44 test: after the full camera frame finds a QR, crop around that QR and
     // ask ZXing 3 to decode the cropped image once more.  This isolates whether the
     // camera-only Symbol difference comes from decoding the entire video frame.
     async function rereadZxingQrFromDetectedCrop(zxing, imageData, zxingResult) {
@@ -2471,12 +2469,12 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
-          // v2.46: camera scanning also prepares the patched jsQR decoder before
+          // v2.44: camera scanning also prepares the patched jsQR decoder before
           // extracting the original QR matrix. Image-file scanning already did this.
           await ensureJsQrMatrixDecoder();
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
-            // v2.46 camera-only test: re-read a crop around the detected QR and
+            // v2.44 camera-only test: re-read a crop around the detected QR and
             // prefer that second ZXing Symbol.  Keep the first-frame Symbol only as
             // fallback so image-file behavior remains unchanged.
             const reread=await rereadZxingQrFromDetectedCrop(zxing,imageData,result);
@@ -2629,11 +2627,9 @@
         cameraRunning=true;
         // カメラ開始時は認識枠全体が見える位置へ移動する。
         requestAnimationFrame(() => readerWrap.scrollIntoView({behavior:"smooth", block:"center"}));
+        startHighResolutionFrameScan();
         cameraScanBtn.textContent="カメラを停止";
-        cameraDetectBtn.classList.remove("hidden");
-        cameraDetectBtn.disabled=false;
-        cameraDetectBtn.textContent="検出開始";
-        setScanStatus("大きな枠を目安にコードを映し、ピントと位置を整えてから「検出開始」を押してください。");
+        setScanStatus("大きな枠を目安にコードを映してください。QR／バーコードを1920フルフレームでZXing認識します。");
       }catch(e){
         if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
         reader.innerHTML="";
@@ -2650,9 +2646,6 @@
       if(video) video.srcObject=null;
       reader.innerHTML="";
       cameraScanBtn.textContent="カメラで読み取る";
-      cameraDetectBtn.classList.add("hidden");
-      cameraDetectBtn.disabled=false;
-      cameraDetectBtn.textContent="検出開始";
       cameraGuide.classList.add("hidden"); hideDetectionBox(); readerWrap.classList.add("hidden");
     }
 
@@ -3131,13 +3124,6 @@
     imageScanBtn.addEventListener("click", () => imageFileInput.click());
     imageFileInput.addEventListener("change", () => scanImageFile(imageFileInput.files?.[0]));
     cameraScanBtn.addEventListener("click", startCamera);
-    cameraDetectBtn.addEventListener("click", () => {
-      if(!cameraRunning || frameDecodeTimer) return;
-      cameraDetectBtn.disabled=true;
-      cameraDetectBtn.textContent="検出中…";
-      setScanStatus("検出中です。コードをそのまま枠内に保持してください。");
-      startHighResolutionFrameScan();
-    });
     manualToggleBtn.addEventListener("click", () => {
       const hidden = manualFields.classList.toggle("hidden");
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";

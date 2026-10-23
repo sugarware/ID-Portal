@@ -1,11 +1,6 @@
-ここコード PWA v2.46 v2.44最小差分・検出開始ボタン版
+ここコード PWA v2.44 ZXing 3 カメラCrop再読込テスト版
 
-【変更範囲】
-v2.44を直接ベースにし、カメラのCSS、video要素、getUserMedia条件、Crop再読込処理は変更していません。
-自動検出開始を止め、「検出開始」ボタン押下後に既存のstartHighResolutionFrameScan()を呼ぶ変更だけを追加しています。
-
-
-【v2.46テスト目的】
+【v2.44テスト目的】
 カメラでQRを認識した直後、ZXing 3の検出位置周辺を切り出し、そのcropをZXing 3で1回だけ再読込して得たSymbolを保存します。
 画像ファイル読込経路はv2.43のまま変更していません。
 表示時に「ZXing 3 Camera Crop Symbol」と出れば再読込Symbolが使われています。
