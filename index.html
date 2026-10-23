@@ -157,7 +157,8 @@
     .shortcut-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .shortcut-name-preview { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; background: #f7f7f4; border-radius: 10px; padding: 9px; margin-top: 7px; }
     .scan-btn { min-height: 50px; font-weight: 700; }
-    #cameraDetectBtn.camera-detect-fixed { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto !important; margin: 0 !important; z-index: 10020; box-shadow: 0 4px 16px rgba(0,0,0,.22); }
+    #cameraDetectBtn.camera-detect-fixed { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: auto !important; margin: 0 !important; z-index: 10020; box-shadow: 0 4px 16px rgba(0,0,0,.22); background: var(--accent); border-color: var(--accent); color: #fff; }
+    #cameraDetectBtn.camera-detect-fixed:disabled { background: var(--card); border-color: var(--line); color: var(--muted); }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
     .reader-wrap { position: relative; width: 100%; height:min(46vh,420px); margin-top: 8px; border-radius: 14px; overflow: hidden; background: #111; }
@@ -244,7 +245,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.51</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.52</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -273,7 +274,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.51 — jsQR removed; QR read/verification uses ZXing 3.
+        v2.52 — jsQR removed; QR read/verification uses ZXing 3.
       </div>
     </div>
   </div>
@@ -727,7 +728,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.51";
+      if(headerVersion) headerVersion.textContent="v2.52";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -2419,7 +2420,7 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
-          // v2.51: QR detail and original Symbol are obtained from ZXing 3 only.
+          // v2.52: QR detail and original Symbol are obtained from ZXing 3 only.
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             // v2.48 camera-only test: re-read a crop around the detected QR and
