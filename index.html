@@ -81,6 +81,7 @@
     .context-menu.show { display:grid; gap:4px; }
     .context-menu button { border:1px solid var(--line); background:var(--card); color:var(--text); min-height:42px; padding:8px 14px; text-align:left; border-radius:10px; font-weight:650; }
     .context-menu button:active { filter:brightness(.94); }
+    .context-menu button[data-action="cancel"] { background:var(--bg); color:var(--muted); border-style:dashed; font-weight:600; text-align:center; }
     .color-current { width:48px; height:40px; padding:5px; border:1px solid var(--line); border-radius:10px; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
     .color-current-swatch { width:30px; height:26px; border-radius:7px; border:1px solid rgba(0,0,0,.18); display:block; }
     .color-picker-modal { z-index:60; align-items:center; padding:18px; }
@@ -309,7 +310,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.26</div>
+      <div class="app-version">ここコード v2.27</div>
       
     </div></div>
   </div>
@@ -600,7 +601,7 @@
       "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"Restore Cococode from a backup file. Current data will be replaced.",
       "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"Delete registered ID items, Tags, and display settings and return Cococode to its initial state.",
       "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"Add a new Tag. One ID item can have multiple Tags.",
-      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「複製」「項目export」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Duplicate, Item Export, or Settings. Drag ≡ on the right to reorder.",
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Settings, Duplicate, or Item Export. Drag ≡ on the right to reorder.",
       "タップすると、この項目のお気に入り登録／解除を切り替えます。":"Tap to add or remove this item from Favorites.",
       "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"Register your current position as a place where this item is used. It will be easier to find from the 📍 tab nearby.",
       "登録してあるメモを画面に表示します。":"Displays the saved memo on screen.",
@@ -1078,7 +1079,7 @@
     }
 
     let suppressItemClickUntil=0;
-    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="settings">設定</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
+    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="settings">設定</button><button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
     let contextItemId=null;
     function closeContextMenu(){contextMenu.classList.remove("show");contextItemId=null;}
     function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=180;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
@@ -1121,26 +1122,18 @@
       const canvas=document.createElement("canvas"); canvas.width=side; canvas.height=side; const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
       for(let r=0;r<modules;r++)for(let c=0;c<modules;c++)if(qr.isDark(r,c))ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
 
-      // 「ここQR」の識別用マーク。QR本体幅の7%に抑え、白抜きも必要最小限にする。
-      const qrSide=modules*scale;
-      const markSize=Math.max(7,qrSide*0.07);
-      const cx=side/2, cy=side/2;
-      const whitePad=Math.max(scale,markSize*0.08);
-      const whiteR=markSize/2+whitePad;
-      ctx.fillStyle="#fff";
-      ctx.beginPath(); ctx.arc(cx,cy,whiteR,0,Math.PI*2); ctx.fill();
-
-      // フォント依存の絵文字ではなくベクターで赤い位置ピンを描画する。
-      const pinW=markSize*0.66, pinH=markSize*0.92;
-      const headR=pinW*0.34, headCy=cy-pinH*0.15;
+      // 「ここQR」の識別用マーク。ファインダパターンと同じ7×7モジュール固定。
+      // 赤地に、ここコードのロゴと同じ向きの白い「コ」を描く。
+      const markModules=7;
+      const startCol=quiet+Math.floor((modules-markModules)/2);
+      const startRow=quiet+Math.floor((modules-markModules)/2);
       ctx.fillStyle="#e53935";
-      ctx.beginPath();
-      ctx.arc(cx,headCy,headR,Math.PI*0.12,Math.PI*0.88,true);
-      ctx.lineTo(cx,cy+pinH*0.48);
-      ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,headCy,headR,0,Math.PI*2); ctx.fill();
+      ctx.fillRect(startCol*scale,startRow*scale,markModules*scale,markModules*scale);
       ctx.fillStyle="#fff";
-      ctx.beginPath(); ctx.arc(cx,headCy,headR*0.34,0,Math.PI*2); ctx.fill();
+      // 白い「コ」：上横棒・右縦棒・下横棒。外周1モジュールは赤のまま残す。
+      ctx.fillRect((startCol+1)*scale,(startRow+1)*scale,5*scale,scale);
+      ctx.fillRect((startCol+5)*scale,(startRow+1)*scale,scale,4*scale);
+      ctx.fillRect((startCol+1)*scale,(startRow+4)*scale,5*scale,scale);
 
       qrcodeEl.appendChild(canvas);
       const version=(modules-17)/4;
@@ -1211,7 +1204,7 @@
 
     let itemTapTimer=null;
     let lastItemTap={id:null,time:0};
-    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「複製」「項目export」「設定」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
+    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
       el.addEventListener("click",e=>{
         if(Date.now()<suppressItemClickUntil)return;
         const now=Date.now();
