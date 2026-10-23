@@ -159,11 +159,11 @@
     .scan-btn { min-height: 50px; font-weight: 700; }
     .scan-status { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .manual-toggle { margin-top: 8px; width: 100%; }
-    .reader-wrap { position: relative; width: 100%; height:min(46vh,420px); margin-top: 8px; border-radius: 14px; overflow: hidden; background: #111; }
+    .reader-wrap { position: relative; width: 100%; margin-top: 12px; border-radius: 14px; overflow: hidden; background: #111; }
     .frame-decoder { position:fixed; left:-10000px; top:-10000px; width:640px; height:480px; overflow:hidden; pointer-events:none; }
-    #reader { width: 100%; height:100%; background: #111; display:flex; align-items:center; justify-content:center; }
-    #reader video { width:100% !important; height:100% !important; object-fit:contain; display:block; }
-    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(72vw,72%,340px); max-height:88%; aspect-ratio:1/1; pointer-events:none; z-index:5; }
+    #reader { width: 100%; background: #111; }
+    #reader video { width: 100% !important; display:block; }
+    .camera-guide { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(82%,520px); aspect-ratio:1/1; pointer-events:none; z-index:5; }
     .camera-guide::before, .camera-guide::after { content:""; position:absolute; inset:0; border:0 solid transparent; }
     .camera-guide .corner { position:absolute; width:54px; height:54px; border-color:#fff; border-style:solid; filter:drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
     .camera-guide .tl { left:0; top:0; border-width:7px 0 0 7px; }
@@ -243,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.39</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.38</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.39 — App version in title and built-in QR sharing item.
+        v2.38 — App version in title and built-in QR sharing item.
       </div>
     </div>
   </div>
@@ -346,6 +346,7 @@
           <button class="btn scan-btn" id="imageScanBtn" type="button">画像から読み取る</button>
           <button class="btn scan-btn" id="cameraScanBtn" type="button">カメラで読み取る</button>
         </div>
+        <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <input id="imageFileInput" type="file" accept="image/*" class="hidden">
         <div id="readerWrap" class="reader-wrap hidden">
           <div id="reader"></div>
@@ -355,7 +356,6 @@
           <div id="detectBox" class="detect-box hidden" aria-hidden="true"><div id="detectLabel" class="detect-label">認識</div></div>
         </div>
         <div class="scan-status" id="scanStatus">QRコード／主要バーコードを自動判定します。</div>
-        <button class="btn app-register-btn" id="appRegisterBtn" type="button">公式アプリを登録</button>
         <button class="btn manual-toggle" id="manualToggleBtn" type="button">手入力・詳細設定</button>
       </div>
 
@@ -645,7 +645,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.39: show app version beside the title and provide the public app URL as an initial QR item.
+    // v2.38: show app version beside the title and provide the public app URL as an initial QR item.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -725,7 +725,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.39";
+      if(headerVersion) headerVersion.textContent="v2.38";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -2675,8 +2675,6 @@
         reader.appendChild(video);
         await video.play();
         cameraRunning=true;
-        // カメラ開始時は認識枠全体が見える位置へ移動する。
-        requestAnimationFrame(() => readerWrap.scrollIntoView({behavior:"smooth", block:"center"}));
         startHighResolutionFrameScan();
         cameraScanBtn.textContent="カメラを停止";
         setScanStatus("大きな枠を目安にコードを映してください。QR／バーコードを1920フルフレームでZXing認識します。");
