@@ -1,17 +1,5 @@
-const CACHE="id-portal-v2.40";
-const APP=["./index.html","./manifest.webmanifest","./icon-192.png?v=2.40","./icon-512.png?v=2.40"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(async c=>{for(const u of APP){try{await c.add(new Request(u,{cache:"reload"}))}catch{}}}));self.skipWaiting();});
+const CACHE="id-portal-v2.38";
+const APP=["./","./index.html","./manifest.webmanifest","./icon-192.png?v=2.07","./icon-512.png?v=2.07"];
+self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(async c=>{for(const u of APP){try{await c.add(u)}catch{}}}));self.skipWaiting();});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
-self.addEventListener("fetch",e=>{
-  if(e.request.method!=="GET") return;
-  e.respondWith(caches.match(e.request).then(async r=>{
-    if(r) return r;
-    const resp=await fetch(e.request);
-    try{
-      const url=new URL(e.request.url);
-      const cacheable=(url.origin===self.location.origin || url.hostname==="cdn.jsdelivr.net");
-      if(cacheable && resp.ok) (await caches.open(CACHE)).put(e.request,resp.clone());
-    }catch{}
-    return resp;
-  }));
-});
+self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{const cp=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,cp)).catch(()=>{});return resp;})))});

@@ -243,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.40</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.39</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.40 — App version in title and built-in QR sharing item.
+        v2.39 — App version in title and built-in QR sharing item.
       </div>
     </div>
   </div>
@@ -645,7 +645,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.40: show app version beside the title and provide the public app URL as an initial QR item.
+    // v2.39: show app version beside the title and provide the public app URL as an initial QR item.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -725,7 +725,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.40";
+      if(headerVersion) headerVersion.textContent="v2.39";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -1176,6 +1176,11 @@
     const ITEM_EXPORT_PREFIX_V1="COCOCODE:ITEM:1:";
     const ITEM_EXPORT_PREFIX_JSON="COCOCODE:I2:J:";
     const ITEM_EXPORT_PREFIX_GZIP="COCOCODE:I2:G:";
+    function utf8ToBase64(text){
+      const bytes=new TextEncoder().encode(text); let bin="";
+      for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+      return btoa(bin);
+    }
     function base64ToUtf8(text){
       const bin=atob(text); const bytes=new Uint8Array(bin.length);
       for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
@@ -2122,7 +2127,64 @@
       return out;
     }
 
+    function normalizeQrFunctionPatterns(rawBits, version, ec, mask) {
+      const n = 17 + 4 * version;
+      const a = rawBits.split("");
+      let changes = 0;
+      const set = (r,c,v) => {
+        if (r<0||c<0||r>=n||c>=n) return;
+        const i=r*n+c, nv=v?"1":"0";
+        if (a[i] !== nv) { a[i]=nv; changes++; }
+      };
+      const finder = (r0,c0) => {
+        for(let r=0;r<7;r++) for(let c=0;c<7;c++) {
+          const dark = r===0||r===6||c===0||c===6||(r>=2&&r<=4&&c>=2&&c<=4);
+          set(r0+r,c0+c,dark);
+        }
+      };
+      finder(0,0); finder(0,n-7); finder(n-7,0);
+      for(let i=0;i<=7;i++){ set(7,i,0); set(i,7,0); set(7,n-1-i,0); set(i,n-8,0); set(n-8,i,0); set(n-1-i,7,0); }
+      for(let i=8;i<=n-9;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+      const centers=alignmentCenters(version,n);
+      for(const cy of centers) for(const cx of centers) {
+        if ((cx===6&&cy===6)||(cx===6&&cy===n-7)||(cx===n-7&&cy===6)) continue;
+        for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++) {
+          const d=Math.max(Math.abs(dx),Math.abs(dy)); set(cy+dy,cx+dx,d!==1);
+        }
+      }
+      if (ec && Number.isInteger(mask)) {
+        const ecBits={M:0,L:1,H:2,Q:3}[ec];
+        if (ecBits != null) {
+          const fmt=bchTypeInfo((ecBits<<3)|mask);
+          for(let i=0;i<15;i++) {
+            const bit=(fmt>>i)&1;
+            const rv=i<6?i:(i<8?i+1:n-15+i);
+            set(rv,8,bit);
+            const ch=i<8?n-i-1:(i<9?15-i:15-i-1);
+            set(8,ch,bit);
+          }
+        }
+      }
+      set(n-8,8,1);
+      if (version>=7) {
+        const vb=bchTypeNumber(version);
+        for(let i=0;i<18;i++) {
+          const bit=(vb>>i)&1, r=Math.floor(i/3), c=i%3+n-7;
+          set(r,c,bit); set(c,r,bit);
+        }
+      }
+      return {bits:a.join(""),changes};
+    }
 
+    function samplePerspectivePixel(imageData, loc, u, v) {
+      const tl=loc.topLeftCorner,tr=loc.topRightCorner,bl=loc.bottomLeftCorner,br=loc.bottomRightCorner;
+      const x=(1-u)*(1-v)*tl.x+u*(1-v)*tr.x+(1-u)*v*bl.x+u*v*br.x;
+      const y=(1-u)*(1-v)*tl.y+u*(1-v)*tr.y+(1-u)*v*bl.y+u*v*br.y;
+      const ix=Math.max(0,Math.min(imageData.width-1,Math.round(x))), iy=Math.max(0,Math.min(imageData.height-1,Math.round(y)));
+      const k=(iy*imageData.width+ix)*4;
+      const lum=.299*imageData.data[k]+.587*imageData.data[k+1]+.114*imageData.data[k+2];
+      return lum<128?1:0;
+    }
 
     function rotateSquareBits(bits, side, quarterTurnsCW) {
       let src = bits;
@@ -2161,7 +2223,36 @@
       return mismatch;
     }
 
+    function canonicalizeExtractedQr(bits, side) {
+      // jsQR内部Matrixの配列方向は描画座標と異なる場合があるため、
+      // 回転4通り×鏡像2通りの8候補を比較し、規格上の3 Finder Patternに
+      // 最も一致する向きを正規方向として採用する。
+      let best = null;
+      for (let mirrored = 0; mirrored <= 1; mirrored++) {
+        let base = mirrored ? mirrorSquareBitsHorizontal(bits, side) : bits;
+        for (let q = 0; q < 4; q++) {
+          const cand = rotateSquareBits(base, side, q);
+          const score = finderPatternMismatch(cand, side, 0, 0)
+                      + finderPatternMismatch(cand, side, 0, side-7)
+                      + finderPatternMismatch(cand, side, side-7, 0);
+          if (!best || score < best.score) best = { bits:cand, score, mirrored:!!mirrored, quarterTurnsCW:q };
+        }
+      }
+      return best;
+    }
 
+    function sourceQuarterTurn(result) {
+      const tl = result?.location?.topLeftCorner;
+      const tr = result?.location?.topRightCorner;
+      if (!tl || !tr) return 0;
+      const dx = tr.x - tl.x, dy = tr.y - tl.y;
+      if (!Number.isFinite(dx) || !Number.isFinite(dy) || (Math.abs(dx) + Math.abs(dy) < 1)) return 0;
+      // Canvas coordinates: +x=right, +y=down.
+      // Canonical QR top edgeが撮影画像上で何度回っているかを最も近い90°単位に丸める。
+      let deg = Math.atan2(dy, dx) * 180 / Math.PI;
+      let q = Math.round(deg / 90);
+      return ((q % 4) + 4) % 4;
+    }
 
     function transposeSquareBits(bits, side) {
       const dst = new Array(side * side);
@@ -2509,6 +2600,14 @@
       detectBox.classList.add("hidden");
     }
 
+    function qrLocationPoints(qr) {
+      const loc = qr?.location;
+      if (!loc) return [];
+      return [loc.topLeftCorner, loc.topRightCorner, loc.bottomRightCorner, loc.bottomLeftCorner]
+        .filter(Boolean)
+        .map(p => ({ x:Number(p.x), y:Number(p.y) }))
+        .filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+    }
 
     function showDetectedCode(decodedText, decodedResult, explicitPoints=null, sourceSize=null) {
       const video = reader.querySelector("video");
