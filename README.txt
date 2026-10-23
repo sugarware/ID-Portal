@@ -1,10 +1,6 @@
-ここコード PWA v2.44 ZXing 3 カメラCrop再読込テスト版
+ここコード PWA v2.43 ZXing 3 Symbol比較テスト版
 
-【v2.44テスト目的】
-カメラでQRを認識した直後、ZXing 3の検出位置周辺を切り出し、そのcropをZXing 3で1回だけ再読込して得たSymbolを保存します。
-画像ファイル読込経路はv2.43のまま変更していません。
-表示時に「ZXing 3 Camera Crop Symbol」と出れば再読込Symbolが使われています。
-
+【v2.43テスト目的】
 QR読取時に zxing-wasm 3.1.6 の ReadResult.symbol を直接保存・表示し、元QRパターンとの一致を実機比較します。
 jsQR/qrcode-generator/JsBarcode は削除せず、通常の再構成機能も残しています。
 
