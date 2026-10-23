@@ -244,7 +244,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.48</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.51</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -273,7 +273,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.50 — camera detection button stays fixed at the bottom while the camera is active.
+        v2.51 — jsQR removed; QR read/verification uses ZXing 3.
       </div>
     </div>
   </div>
@@ -727,7 +727,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.48";
+      if(headerVersion) headerVersion.textContent="v2.51";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -886,10 +886,6 @@
     const ensureQrGenerator = () => loadScriptOnce(
       "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js",
       () => typeof window.qrcode === "function"
-    );
-    const ensureJsQr = () => loadScriptOnce(
-      "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
-      () => typeof window.jsQR === "function"
     );
     const ensureJsBarcode = () => loadScriptOnce(
       "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js",
@@ -1263,12 +1259,10 @@
       const qr=window.qrcode(0,ecc); qr.addData(payload,"Byte"); qr.make(); return qr;
     }
     async function exportQrSelfTest(qr,payload){
-      if(typeof jsQR!=="function")return true;
       const rendered=renderExportQrCanvas(qr,Math.max(420,Math.min(window.innerWidth*0.92,760)));
       try{
         const img=rendered.ctx.getImageData(0,0,rendered.side,rendered.side);
-        const chk=jsQR(img.data,rendered.side,rendered.side,{inversionAttempts:"dontInvert"});
-        return chk?.data===payload;
+        return await verifyQrWithZxing(img,payload);
       }catch{return false;}
     }
     async function buildItemExportQr(item){
@@ -1315,7 +1309,7 @@
     }
     async function exportItemQr(id){
       const item=items.find(x=>x.id===id); if(!item)return;
-      try{ await Promise.all([ensureQrGenerator(),ensureJsQr()]); }catch{ alert("QRコード生成機能を読み込めませんでした。"); return; }
+      try{ await Promise.all([ensureQrGenerator(),ensureZxing()]); }catch{ alert("QRコード生成機能を読み込めませんでした。"); return; }
       const built=await buildItemExportQr(item);
       if(!built){ alert("項目データがCoCoマーク付きQR Version 40に安全に収まりません。メモや位置情報を減らしてから再度お試しください。"); return; }
       codeView.classList.remove("memo-view"); codeArea.classList.remove("hidden");
@@ -2002,25 +1996,6 @@
       return m || "byte";
     }
 
-    function extractSegmentsFromJsQr(result, fallbackText) {
-      const chunks = Array.isArray(result?.chunks) ? result.chunks : [];
-      const segments = [];
-      for (const ch of chunks) {
-        const mode = normalizeModeName(ch.type || ch.mode);
-        if (!["numeric","alphanumeric","byte","kanji"].includes(mode)) continue;
-        let text = typeof ch.text === "string" ? ch.text : "";
-        if (!text && Array.isArray(ch.bytes)) {
-          try { text = new TextDecoder("utf-8", {fatal:false}).decode(new Uint8Array(ch.bytes)); } catch {}
-        }
-        if (text) segments.push({ mode, text });
-      }
-      if (!segments.length) {
-        const mode = inferQrMode(fallbackText || "");
-        segments.push({ mode, text: fallbackText || "" });
-      }
-      return segments;
-    }
-
     function bchTypeInfo(data) {
       function digit(n) { let d=0; while(n){d++; n >>>= 1;} return d; }
       const G15 = 0x537, G15_MASK = 0x5412;
@@ -2033,38 +2008,6 @@
       let x=(a^b)&0x7fff, n=0;
       while(x){ n += x & 1; x >>>= 1; }
       return n;
-    }
-
-    let jsQRWithMatrix = null;
-    let jsQRWithMatrixPromise = null;
-
-    async function ensureJsQrMatrixDecoder() {
-      if (typeof jsQRWithMatrix === "function") return jsQRWithMatrix;
-      if (jsQRWithMatrixPromise) return jsQRWithMatrixPromise;
-      jsQRWithMatrixPromise = (async () => {
-        try {
-          await ensureJsQr();
-          const url = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
-          const res = await fetch(url, { cache: "force-cache" });
-          if (!res.ok) throw new Error(`jsQR source ${res.status}`);
-          let src = await res.text();
-          const needle = 'version: decoded.version,\n                location: {';
-          const replacement = 'version: decoded.version,\n                extractedMatrix: { width: extracted.matrix.width, height: extracted.matrix.height, data: Array.prototype.slice.call(extracted.matrix.data) },\n                location: {';
-          if (!src.includes(needle)) throw new Error("jsQR patch point not found");
-          src = src.replace(needle, replacement);
-          const original = window.jsQR;
-          (0, eval)(src + "\n//# sourceURL=jsQR-matrix-patched.js");
-          const patched = window.jsQR;
-          window.jsQR = original;
-          if (typeof patched !== "function") throw new Error("patched jsQR unavailable");
-          jsQRWithMatrix = patched;
-          return jsQRWithMatrix;
-        } catch (e) {
-          console.warn("jsQR matrix decoder could not be prepared", e);
-          return null;
-        }
-      })();
-      return jsQRWithMatrixPromise;
     }
 
     function sampleQrModule(imageData, loc, n, row, col) {
@@ -2283,37 +2226,6 @@
       return {errorCorrection:ecMap[best.data>>3]||null,maskPattern:best.data&7,confidence:best.dist===0?"exact":"corrected"};
     }
 
-    function decodeQrFromImageData(imageData, source="image") {
-      if (!imageData) return null;
-      const decoder = typeof jsQRWithMatrix === "function" ? jsQRWithMatrix : (typeof jsQR === "function" ? jsQR : null);
-      if (!decoder) return null;
-      const result=decoder(imageData.data,imageData.width,imageData.height,{inversionAttempts:"attemptBoth"});
-      if(!result) return null;
-      const segments=extractSegmentsFromJsQr(result,result.data || "");
-      const modes=[...new Set(segments.map(x=>x.mode))];
-      const fmt=extractQrFormatInfoFromExtracted(result) || extractQrFormatInfo(imageData,result);
-      const matrix=extractQrMatrix(imageData,result,fmt,source);
-      return {
-        text: result.data || "",
-        location: result.location || null,
-        imageWidth: imageData.width,
-        imageHeight: imageData.height,
-        spec: {
-          symbology:"QR_CODE",
-          version: Number(result.version) || null,
-          errorCorrection: fmt.errorCorrection,
-          maskPattern: fmt.maskPattern,
-          mode: modes.length===1 ? modes[0] : "mixed",
-          segments,
-          characterEncoding: null,
-          source,
-          detected:{ symbology:true, mode:true, version:!!result.version, errorCorrection:!!fmt.errorCorrection, maskPattern:Number.isInteger(fmt.maskPattern) },
-          formatInfoConfidence: fmt.confidence,
-          matrix
-        }
-      };
-    }
-
     const ZXING_FORMATS=["QRCode","Codabar","Code39","Code93","Code128","DataBar","DataBarExp","DataBarLtd","EAN8","EAN13","ITF","UPCA","UPCE"];
 
     async function ensureZxing() {
@@ -2399,6 +2311,52 @@
       };
     }
 
+    async function verifyQrWithZxing(imageData, expectedText) {
+      try {
+        const zxing=await ensureZxing();
+        const results=await zxing.readBarcodes(imageData,{tryHarder:true,formats:["QRCode"],maxNumberOfSymbols:1});
+        return results?.some(r=>r?.text===expectedText) || false;
+      } catch { return false; }
+    }
+
+    function extractQrFormatInfoFromZxingSymbol(zxingResult) {
+      const s=zxingResult?.symbol;
+      const n=Number(s?.width||0), h=Number(s?.height||0), data=s?.data;
+      if(!n || h!==n || !data || data.length<n*n) return {errorCorrection:null,maskPattern:null,confidence:null};
+      const get=(row,col)=> (row>=0&&col>=0&&row<n&&col<n) ? (Number(data[row*n+col])<128?1:0) : null;
+      const copies=[];
+      let bitsV=0,okV=true;
+      for(let i=0;i<15;i++){ const row=i<6?i:(i<8?i+1:n-15+i); const b=get(row,8); if(b==null){okV=false;break;} bitsV|=(b<<i); }
+      if(okV) copies.push(bitsV);
+      let bitsH=0,okH=true;
+      for(let i=0;i<15;i++){ const col=i<8?n-i-1:(i<9?15-i:15-i-1); const b=get(8,col); if(b==null){okH=false;break;} bitsH|=(b<<i); }
+      if(okH) copies.push(bitsH);
+      let best=null;
+      for(const observed of copies) for(let d=0;d<32;d++){ const dist=hamming15(observed,bchTypeInfo(d)); if(!best||dist<best.dist) best={data:d,dist}; }
+      if(!best||best.dist>3) return {errorCorrection:null,maskPattern:null,confidence:null};
+      const ecMap={0:"M",1:"L",2:"H",3:"Q"};
+      return {errorCorrection:ecMap[best.data>>3]||null,maskPattern:best.data&7,confidence:best.dist===0?"exact":"corrected"};
+    }
+
+    function decodeQrDetailFromZxingResult(zxingResult, source) {
+      const text=zxingResult?.text || "";
+      if(!text) return null;
+      const matrix=extractZxingSymbolMatrix(zxingResult);
+      const n=Number(zxingResult?.symbol?.width||0);
+      const version=(n>=21 && (n-17)%4===0) ? (n-17)/4 : null;
+      const fmt=extractQrFormatInfoFromZxingSymbol(zxingResult);
+      const mode=inferQrMode(text);
+      return {
+        text,
+        spec:{
+          symbology:"QR_CODE", version, errorCorrection:fmt.errorCorrection, maskPattern:fmt.maskPattern,
+          mode, segments:[{mode,text}], characterEncoding:null, source,
+          detected:{symbology:true,mode:true,version:!!version,errorCorrection:!!fmt.errorCorrection,maskPattern:Number.isInteger(fmt.maskPattern)},
+          formatInfoConfidence:fmt.confidence, matrix
+        }
+      };
+    }
+
     // v2.48 test: after the full camera frame finds a QR, crop around that QR and
     // ask ZXing 3 to decode the cropped image once more.  This isolates whether the
     // camera-only Symbol difference comes from decoding the entire video frame.
@@ -2413,18 +2371,7 @@
     }
 
     function decodeQrDetailFromZxing(imageData, zxingResult, source) {
-      const crop=cropImageDataAroundPosition(imageData,zxingResult?.position);
-      const qr=decodeQrFromImageData(crop.imageData,source);
-      if(!qr) return null;
-      if(qr.location){
-        for(const key of ["topLeftCorner","topRightCorner","bottomRightCorner","bottomLeftCorner","topLeftFinderPattern","topRightFinderPattern","bottomLeftFinderPattern"]){
-          const p=qr.location[key];
-          if(p){ p.x+=crop.x; p.y+=crop.y; }
-        }
-      }
-      qr.imageWidth=imageData.width;
-      qr.imageHeight=imageData.height;
-      return qr;
+      return decodeQrDetailFromZxingResult(zxingResult, source);
     }
 
     async function imageDataFromFile(file) {
@@ -2472,9 +2419,7 @@
         if(!cameraRunning) return;
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ await stopCamera(); return; }
-          // v2.48: camera scanning also prepares the patched jsQR decoder before
-          // extracting the original QR matrix. Image-file scanning already did this.
-          await ensureJsQrMatrixDecoder();
+          // v2.51: QR detail and original Symbol are obtained from ZXing 3 only.
           const qr=decodeQrDetailFromZxing(imageData,result,"camera");
           if(qr && qr.text===result.text){
             // v2.48 camera-only test: re-read a crop around the detected QR and
@@ -2483,7 +2428,6 @@
             const reread=await rereadZxingQrFromDetectedCrop(zxing,imageData,result);
             const zxingMatrix=extractZxingSymbolMatrix(reread) || extractZxingSymbolMatrix(result);
             if(zxingMatrix){
-              if(qr.spec.matrix) qr.spec.jsQrMatrix=qr.spec.matrix;
               zxingMatrix.capture = reread ? "zxing3-camera-crop-reread" : "zxing3-symbol";
               qr.spec.matrix=zxingMatrix;
             }
@@ -2532,13 +2476,11 @@
         const mapped=mapScanFormat(result.format || result.symbology || "");
         if(mapped.type==="qr"){
           if(await importScannedItem(result.text)){ setScanStatus("ここコードの項目データを認識しました。"); return; }
-          await ensureJsQrMatrixDecoder();
           const imageData=await imageDataFromFile(file);
           const qr=decodeQrDetailFromZxing(imageData,result,"image");
           if(qr && qr.text===result.text){
             const zxingMatrix=extractZxingSymbolMatrix(result);
             if(zxingMatrix){
-              if(qr.spec.matrix) qr.spec.jsQrMatrix=qr.spec.matrix;
               qr.spec.matrix=zxingMatrix;
             }
             valueInput.value=qr.text; typeInput.value="qr"; barcodeFormatInput.value="CODE128"; currentCodeSpec=qr.spec;
@@ -2802,7 +2744,7 @@
 
       try {
         if (item.type === "qr") {
-          await Promise.all([ensureQrGenerator(), ensureJsQr()]);
+          await Promise.all([ensureQrGenerator(), ensureZxing()]);
           codeVerify.textContent = "再生成コードを検証しています…";
           const spec = item.codeSpec || legacySpec(item);
           if (spec?.matrix) {
@@ -2810,22 +2752,22 @@
             if (!rendered) throw new Error("invalid-matrix");
             try {
               const img = rendered.ctx.getImageData(0, 0, rendered.width, rendered.height);
-              const chk = typeof jsQR === "function" ? jsQR(img.data, rendered.width, rendered.height, {inversionAttempts:"dontInvert"}) : null;
+              const verified = await verifyQrWithZxing(img, item.value);
               const legacyNormalized = spec.matrix.designNormalized === true || spec.matrix.functionPatternsNormalized === true;
               if (legacyNormalized) {
-                codeVerify.textContent = chk?.data === item.value
+                codeVerify.textContent = verified
                   ? `旧版保存パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
                   : `旧版保存パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（再登録推奨）`;
               } else if (spec.matrix.capture === "zxing3-symbol" || spec.matrix.capture === "zxing3-camera-crop-reread") {
-                codeVerify.textContent = chk?.data === item.value
+                codeVerify.textContent = verified
                   ? `ZXing 3 Symbol：OK ／ ${spec.matrix.width}×${spec.matrix.height}`
                   : `ZXing 3 Symbol ／ ${spec.matrix.width}×${spec.matrix.height}（表示比較テスト）`;
               } else if (spec.matrix.capture === "jsqr-extracted-matrix") {
-                codeVerify.textContent = chk?.data === item.value
+                codeVerify.textContent = verified
                   ? `デコーダ抽出パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
                   : `デコーダ抽出パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（抽出Matrix自体は復号成功済み）`;
               } else {
-                codeVerify.textContent = chk?.data === item.value
+                codeVerify.textContent = verified
                   ? `旧方式元パターン：OK ／ ${spec.matrix.width}×${spec.matrix.height} modules`
                   : `旧方式元パターン ／ ${spec.matrix.width}×${spec.matrix.height} modules（v0.9.6で再登録推奨）`;
               }
@@ -2865,10 +2807,10 @@
           // 自己検証：再生成したQRを再度デコードし、保存データと完全一致することを確認。
           try {
             const img=ctx.getImageData(0,0,side,side);
-            const chk=typeof jsQR==="function" ? jsQR(img.data,side,side,{inversionAttempts:"dontInvert"}) : null;
-            if (chk?.data === item.value) {
+            const verified=await verifyQrWithZxing(img,item.value);
+            if (verified) {
               const modeText=spec?.mode || "不明";
-              const vText=spec?.version || chk?.version || "自動";
+              const vText=spec?.version || "自動";
               codeVerify.textContent=`再生成検証：OK ／ mode=${modeText} ／ Version=${vText} ／ ECC=${ec}${Number.isInteger(spec?.maskPattern)?` ／ 元Mask=${spec.maskPattern}`:""}`;
             } else codeVerify.textContent="再生成検証：確認できませんでした";
           } catch { codeVerify.textContent="再生成検証：未実施"; }
@@ -3160,7 +3102,7 @@
       manualToggleBtn.textContent = hidden ? "手入力・詳細設定" : "詳細設定を隠す";
     });
     async function renderReconstructedQr(item) {
-      await Promise.all([ensureQrGenerator(), ensureJsQr()]);
+      await Promise.all([ensureQrGenerator(), ensureZxing()]);
       qrcodeEl.innerHTML = "";
       // 元Version/ECC/Mask/装飾とは比較せず、デコード済みdataだけを正とする。
       // clean表示ではECC=Lを優先し、モジュール数を抑えて1セルを大きくする。
@@ -3184,8 +3126,8 @@
           const ctx=canvas.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,side,side); ctx.fillStyle="#000";
           for(let r=0;r<modules;r++) for(let c=0;c<modules;c++) if(qr.isDark(r,c)) ctx.fillRect((c+quiet)*scale,(r+quiet)*scale,scale,scale);
           const img=ctx.getImageData(0,0,side,side);
-          const chk=typeof jsQR==="function" ? jsQR(img.data,side,side,{inversionAttempts:"dontInvert"}) : null;
-          if (chk?.data !== item.value) continue;
+          const verified=await verifyQrWithZxing(img,item.value);
+          if (!verified) continue;
           qrcodeEl.appendChild(canvas);
           codeVerify.textContent=`再構成：自己検証OK ／ ECC=${a.ec} ／ ${modules}×${modules} modules`;
           return true;

@@ -1,3 +1,14 @@
+ここコード PWA v2.51 jsQR削除・ZXing3一本化テスト版
+
+【v2.51 変更点】
+- v2.50をベースに、jsQR 1.4.0 の読み込みと依存処理を削除。
+- QRのカメラ入力・画像入力の詳細情報／Symbol保存をZXing-WASM 3.1.6で処理。
+- 保存QR・再生成QR・再構成QR・項目export QRの自己検証をZXing-WASM 3.1.6へ変更。
+- qrcode-generator と JsBarcode は今回は変更せず残す。
+- 画面上のバージョン表示を v2.51 に更新。
+- Service Workerキャッシュ名を id-portal-v2.51 に更新。
+- カメラUI、中央正方形プレビュー、固定「検出開始」ボタン、Crop再読込はv2.50のまま。
+
 ここコード PWA v2.50 検出開始ボタン固定版
 
 【v2.50 変更点】
