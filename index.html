@@ -272,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.48 — camera preview uses the actual video aspect ratio; detection behavior unchanged.
+        v2.49 — camera preview shows a centered square crop; detection behavior unchanged.
       </div>
     </div>
   </div>
@@ -2613,12 +2613,15 @@
     }
 
     function fitCameraPreviewToVideo(video) {
-      // Display-only adjustment: preserve the camera stream's actual aspect ratio.
-      // This does not change capture resolution, ZXing input, guide size, or crop/re-read logic.
-      const vw=video?.videoWidth||0, vh=video?.videoHeight||0;
+      // Display-only adjustment: show a centered square crop whose side equals the preview width.
+      // The camera stream itself remains unchanged; ZXing still receives the full-resolution frame.
       const wrapWidth=readerWrap.clientWidth||0;
-      if(vw>0 && vh>0 && wrapWidth>0){
-        readerWrap.style.height=`${Math.round(wrapWidth*vh/vw)}px`;
+      if(wrapWidth>0){
+        readerWrap.style.height=`${Math.round(wrapWidth)}px`;
+        video.style.width="100%";
+        video.style.height="100%";
+        video.style.objectFit="cover";
+        video.style.objectPosition="center center";
       }
     }
 
