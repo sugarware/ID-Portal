@@ -1,9 +1,3 @@
-ここコード PWA v2.43 ZXing 3 Symbol比較テスト版
-
-【v2.43テスト目的】
-QR読取時に zxing-wasm 3.1.6 の ReadResult.symbol を直接保存・表示し、元QRパターンとの一致を実機比較します。
-jsQR/qrcode-generator/JsBarcode は削除せず、通常の再構成機能も残しています。
-
 ここコード PWA v2.42
 
 
