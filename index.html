@@ -30,6 +30,9 @@
     body { position:fixed; inset:0; min-height:0; height:var(--app-height, 100dvh); overflow:hidden; }
     .app { position:fixed; left:0; right:0; top:0; bottom:auto; max-width:720px; width:100%; height:var(--app-height, 100dvh); margin:0 auto; padding:calc(12px + env(safe-area-inset-top)) 14px calc(8px + env(safe-area-inset-bottom)); display:flex; flex-direction:column; overflow:hidden; touch-action:auto; }
     header { display: flex; flex:0 0 auto; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .title-row { display:flex; align-items:baseline; gap:7px; min-width:0; }
+    .title-row h1 { margin:0; }
+    .header-version { flex:0 0 auto; color:var(--muted); font-size:11px; font-weight:600; white-space:nowrap; }
     .tabbar { display:flex; flex:0 0 auto; gap:0; margin:0 0 8px; min-width:0; overflow:hidden; padding:4px; }
     .tab-fixed { display:flex; flex:0 0 auto; gap:4px; padding-right:7px; margin-right:7px; border-right:2px solid var(--line); }
     .tab-scroll { display:flex; flex:1 1 auto; min-width:0; gap:4px; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; scrollbar-width:none; touch-action:pan-x; padding:0 4px; }
@@ -63,7 +66,6 @@
     .search-bar { flex:0 0 auto; margin:0 0 8px; }
     .search-bar[hidden] { display:none; }
     .search-bar input { min-height:42px; padding:8px 12px; border-radius:11px; }
-    .app-version { margin-top:18px; text-align:center; color:var(--muted); font-size:12px; }
     .group-settings { display:grid; gap:8px; margin-top:10px; }
     .group-setting-row { display:grid; grid-template-columns:36px minmax(0,1fr) 48px 58px; gap:6px; align-items:center; }
     .group-setting-row span { font-size:13px; font-weight:700; color:var(--muted); }
@@ -224,7 +226,6 @@
     .panel-actions .btn { margin:0; min-height:44px; padding:9px 14px; }
     .panel-body { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding:0 16px calc(14px + env(safe-area-inset-bottom)); scroll-padding:12px; }
     .panel-body .field { margin:10px 0; }
-    .panel-body .app-version { margin-top:10px; }
     .color-picker-card .panel-body { padding:12px 14px; }
     .tab-scroll .tab { width:auto; min-width:42px; padding-left:8px; padding-right:8px; }
     .tag-choice { flex:0 0 auto; width:auto; min-width:42px; padding:0 8px; white-space:nowrap; }
@@ -242,7 +243,7 @@
   <div class="app">
     <header>
       <div>
-        <h1>ここコード</h1>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.37</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -271,7 +272,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.36 — Compact item-export QR with adaptive ECC and CoCo mark.
+        v2.37 — App version in title and built-in sharing link.
       </div>
     </div>
   </div>
@@ -311,8 +312,6 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
-      <div class="app-version">ここコード v2.36</div>
-      
     </div></div>
   </div>
 
@@ -494,7 +493,7 @@
     const SETTINGS_KEY = "idPortalSettings.v10";
     const INITIALIZED_KEY = "idPortalInitialized.v219";
     const INITIAL_SETTINGS = {"tags":[{"id":"tag-shopping","name":"🛒：買い物","color":"lavender"},{"id":"tag-event","name":"🎫：イベント","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark","language":"ja"};
-    const INITIAL_ITEMS = [{"id":"sample-cocomart","name":"ココマート会員証","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"東京駅"},{"lat":34.702485,"lng":135.495951,"label":"大阪駅"}]},{"id":"sample-rakutenpay","name":"楽天ペイ","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-cocogolf","name":"ココゴルフ会員証","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"オーガスタ・ナショナル・ゴルフクラブ"}]},{"id":"sample-cocofes-2027","name":"ココフェス2027 入場券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-cocofes-2026","name":"ココフェス2026 入場券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-emojidas","name":"絵文字ダス","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"タグ表示に使える絵文字を探す為のWebアプリを起動します","validityType":"daily","validDate":"","locations":[]},      {"id":"sample-shopping-memo","name":"買い物リスト","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"牛乳\n卵\nティッシュ\n電池","validityType":"daily","validDate":"","locations":[]}];
+    const INITIAL_ITEMS = [{"id":"sample-cocomart","name":"ココマート会員証","type":"barcode","value":"COCOMART-SAMPLE-001","barcodeFormat":"CODE128","color":"green","favorite":true,"tagIds":["tag-shopping"],"codeSpec":{"symbology":"CODE128","source":"sample","detected":{"symbology":true}},"memo":"これは使い方を試すための架空の会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":35.681236,"lng":139.767125,"label":"東京駅"},{"lat":34.702485,"lng":135.495951,"label":"大阪駅"}]},{"id":"sample-rakutenpay","name":"楽天ペイ","type":"app1","value":"rakutenpay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"楽天ペイアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-paypay","name":"PayPay","type":"app1","value":"PayPay://","barcodeFormat":"CODE128","color":"pink","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"PayPayアプリがインストールされている場合に起動できます。インストールされていない端末では利用できません。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-cocogolf","name":"ココゴルフ会員証","type":"qr","value":"COCOGOLF-SAMPLE-001","barcodeFormat":"CODE128","color":"vividgreen","favorite":true,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOGOLF-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"これは使い方を試すための架空のゴルフ場会員証です。実際のサービスでは使用できません。","validityType":"daily","validDate":"","locations":[{"lat":33.503,"lng":-82.0205,"label":"オーガスタ・ナショナル・ゴルフクラブ"}]},{"id":"sample-cocofes-2027","name":"ココフェス2027 入場券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"2027年10月17日に東京ビッグサイトで開催される架空イベントの入場券です。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-cocofes-2026","name":"ココフェス2026 入場券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"有効期間が終了したためTagを外したサンプルです。終了した項目を削除せず残しておくこともできます。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"東京ビッグサイト"}]},{"id":"sample-emojidas","name":"絵文字ダス","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"タグ表示に使える絵文字を探す為のWebアプリを起動します","validityType":"daily","validDate":"","locations":[]},      {"id":"sample-cococode-share","name":"ここコード","type":"link","value":"https://sugarware.github.io/ID-Portal","barcodeFormat":"CODE128","color":"vividblue","favorite":true,"tagIds":[],"codeSpec":null,"memo":"ここコードを他の人に紹介するための公開URLです。","validityType":"daily","validDate":"","locations":[]},{"id":"sample-shopping-memo","name":"買い物リスト","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"牛乳\n卵\nティッシュ\n電池","validityType":"daily","validDate":"","locations":[]}];
 
     const INITIAL_SETTINGS_EN = {"tags":[{"id":"tag-shopping","name":"🛒:Shopping","color":"lavender"},{"id":"tag-event","name":"🎫:Events","color":"darkblue"}],"starColor":"navy","locationColor":"vividlime","searchColor":"white","untaggedColor":"yellow","layout":"dark","language":"en"};
     const INITIAL_ITEMS_EN = [
@@ -505,6 +504,7 @@
       {"id":"sample-cocofes-2027","name":"CoCoFes 2027 Ticket","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"A ticket for a fictional event at Tokyo Big Sight on October 17, 2027.","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"Tokyo Big Sight"}]},
       {"id":"sample-cocofes-2026","name":"CoCoFes 2026 Ticket","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"A sample whose Tag was removed after its validity period ended. Finished items can be kept without deleting them.","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"Tokyo Big Sight"}]},
       {"id":"sample-emojidas","name":"EmojiDas","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"Opens a Web app for finding emoji that can be used in Tag labels.","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-cococode-share","name":"CoCo-Code","type":"link","value":"https://sugarware.github.io/ID-Portal","barcodeFormat":"CODE128","color":"vividblue","favorite":true,"tagIds":[],"codeSpec":null,"memo":"Public URL for sharing CoCo-Code with others.","validityType":"daily","validDate":"","locations":[]},
       {"id":"sample-shopping-memo","name":"Shopping List","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"Milk\nEggs\nTissues\nBatteries","validityType":"daily","validDate":"","locations":[]}
     ];
 
@@ -517,6 +517,7 @@
       {"id":"sample-cocofes-2027","name":"CoCoFes 2027 入场券","type":"qr","value":"COCOFES-2027-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":["tag-event"],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2027-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"这是一个虚构活动的入场券，活动日期为2027年10月17日，地点为东京国际展览中心。","validityType":"date","validDate":"2027-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"东京国际展览中心"}]},
       {"id":"sample-cocofes-2026","name":"CoCoFes 2026 入场券","type":"qr","value":"COCOFES-2026-SAMPLE-001","barcodeFormat":"CODE128","color":"blue","favorite":false,"tagIds":[],"codeSpec":{"symbology":"QR_CODE","version":null,"errorCorrection":null,"maskPattern":null,"mode":"alphanumeric","segments":[{"mode":"alphanumeric","text":"COCOFES-2026-SAMPLE-001"}],"characterEncoding":null,"source":"legacy","detected":{"symbology":true,"mode":false,"version":false,"errorCorrection":false,"maskPattern":false}},"memo":"这是一个有效期已结束并移除 Tag 的示例。已结束的项目也可以保留而不删除。","validityType":"date","validDate":"2026-10-17","locations":[{"lat":35.6298,"lng":139.7942,"label":"东京国际展览中心"}]},
       {"id":"sample-emojidas","name":"EmojiDas","type":"link","value":"https://sugarware.github.io/EmojiDas/","barcodeFormat":"CODE128","color":"vividblue","favorite":false,"tagIds":[],"codeSpec":null,"memo":"打开用于查找可用于 Tag 标签的表情符号 Web 应用。","validityType":"daily","validDate":"","locations":[]},
+      {"id":"sample-cococode-share","name":"这里码","type":"link","value":"https://sugarware.github.io/ID-Portal","barcodeFormat":"CODE128","color":"vividblue","favorite":true,"tagIds":[],"codeSpec":null,"memo":"用于向他人分享这里码的公开网址。","validityType":"daily","validDate":"","locations":[]},
       {"id":"sample-shopping-memo","name":"购物清单","type":"memo","value":"","barcodeFormat":"CODE128","color":"cream","favorite":true,"tagIds":["tag-shopping"],"codeSpec":null,"memo":"牛奶\n鸡蛋\n纸巾\n电池","validityType":"daily","validDate":"","locations":[]}
     ];
 
@@ -644,7 +645,7 @@
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
 
-    // v2.36: compact item-export QR with adaptive ECC; use 这里码 as the Simplified Chinese app title.
+    // v2.37: show app version beside the title and add the public app URL to initial data.
     Object.assign(EN_TEXT, {
       "言語 / Language":"Language", "追加":"Add", "ID追加":"Add ID", "削除":"Delete", "現在地向け":"Nearby",
       "App1　URLスキームでアプリ起動":"App1  Launch app with URL scheme", "App2　ショートカットでアプリ起動":"App2  Launch app with Shortcut", "Link　普通のURLを開く":"Link  Open a Web URL", "QR　QRコードを表示":"QR  Show QR code", "BAR　バーコードを表示":"BAR  Show barcode", "Memo　メモを表示":"Memo  Show memo",
@@ -723,8 +724,8 @@
       const lang=currentLanguage();
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
-      const appVersion=document.querySelector(".app-version");
-      if(appVersion) appVersion.textContent=(lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code")+" v2.36";
+      const headerVersion=document.querySelector(".header-version");
+      if(headerVersion) headerVersion.textContent="v2.37";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
