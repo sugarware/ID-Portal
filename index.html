@@ -239,7 +239,7 @@
       content:""; position:absolute; top:100%; left:0;
       width:1px; height:2px; pointer-events:none;
     }
-    /* v2.58 startup diagnostic: visible before app JavaScript initialization completes. */
+    /* v2.59 startup diagnostic: visible before app JavaScript initialization completes. */
     #startupProbe { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); font-weight:700; }
     #startupProbe.hidden { display:none; }
   </style>
@@ -249,7 +249,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.58</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.59</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -278,7 +278,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.58 — startup diagnostic + item-menu delete; navigation cache-first retained.
+        v2.59 — item menu wording and add/edit title clarification; startup diagnostic retained.
       </div>
     </div>
   </div>
@@ -605,7 +605,7 @@
     const EN_TEXT = {
       "ここコード":"CoCo-Code", "ここで使うコードを、今すぐ表示！":"What you need, where you need it.", "設定":"Settings", "閉じる":"Close", "タブ(Tag)":"Tabs (Tags)", "タブ(Tag)設定":"Tab (Tag) Settings", "レイアウト":"Appearance", "自動":"Auto", "ライト":"Light", "ダーク":"Dark", "データ保存・読み込み":"Data Backup / Restore", "登録データをJSON形式で保存・復元します。":"Save and restore registered data in JSON format.", "ファイルに保存":"Export to File", "ファイルから読み込み":"Import from File", "データを初期化":"Reset Data", "読み込みは全データを置き換えます。先に保存してください。":"Import replaces all current data. Export a backup first.",
       "保存":"Save", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"Set names, colors, and order. Text before ':' is shown on the tab (or the first character if there is no separator). Deleting a Tag does not delete ID items.", "お気に入り":"Favorites", "現在地":"Nearby", "検索":"Search", "タグ無し":"Untagged", "＋ Tag追加":"＋ Add Tag", "ID項目を追加":"Add ID Item", "ID項目を編集":"Edit ID Item", "キャンセル":"Cancel", "表示名":"Name", "コードを読み取る":"Scan Code", "画像から読み取る":"Scan Image", "カメラで読み取る":"Scan Camera", "公式アプリを登録":"Register App", "認識":"Detected", "QRコード／主要バーコードを自動判定します。":"Automatically detects QR codes and major barcode formats.", "手入力・詳細設定":"Manual / Advanced Settings", "詳細設定を隠す":"Hide Advanced Settings", "動作":"Action", "バーコード形式":"Barcode Format", "コード内容":"Code Content", "Appleショートカットの初回設定":"Initial Apple Shortcut Setup", "作成するショートカット名":"Shortcut name to create", "名前をコピー":"Copy Name", "作成を開始":"Start Setup", "起動テスト":"Test Launch", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"iOS may ask for permission the first time. If you plan to keep using it, choosing Always Allow makes later launches smoother.", "メモ":"Memo", "有効期間":"Validity", "毎日":"Every Day", "特定の日付":"Specific Date", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"The 📍 tab includes only IDs set to Every Day or to today's date.", "Tag（複数選択可）":"Tags (multiple allowed)", "位置情報":"Locations", "現在地を追加":"Add Current Location", "地図":"Map", "ボタン色":"Button Color", "このID項目を削除":"Delete This ID Item", "地図から位置を追加":"Add Location from Map", "この位置を追加":"Add This Location", "検索":"Search", "地点を選択してください。":"Select a location.", "再構成":"Rebuild", "戻る":"Back", "色を選択":"Choose Color",
-      "複製":"Duplicate", "項目export":"Item Export", "ID項目":"ID Item", "お気に入り登録":"Favorite", "利用場所の登録":"Register Location", "Tag追加":"Add Tag"
+      "編集":"Edit", "複製":"Duplicate", "項目export":"Item Export", "ID項目":"ID Item", "お気に入り登録":"Favorite", "利用場所の登録":"Register Location", "Tag追加":"Add Tag"
     };
 
     const EN_HELP = {
@@ -622,7 +622,7 @@
       "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"Restore Cococode from a backup file. Current data will be replaced.",
       "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"Delete registered ID items, Tags, and display settings and return Cococode to its initial state.",
       "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"Add a new Tag. One ID item can have multiple Tags.",
-      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Settings, Duplicate, Item Export, or Delete. Drag ≡ on the right to reorder.",
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「編集」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Edit, Duplicate, Item Export, or Delete. Drag ≡ on the right to reorder.",
       "タップすると、この項目のお気に入り登録／解除を切り替えます。":"Tap to add or remove this item from Favorites.",
       "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"Register your current position as a place where this item is used. It will be easier to find from the 📍 tab nearby.",
       "登録してあるメモを画面に表示します。":"Displays the saved memo on screen.",
@@ -636,7 +636,7 @@
     const EN_PLACEHOLDER = {"ID項目名を検索":"Search ID items", "例：○○クリニック":"e.g. Example Clinic", "検索にも使うメモを入力":"Enter a memo (also searchable)", "文字列または番号":"Text or number", "店名・施設名・住所を検索":"Search place, facility, or address"};
     const ZH_TEXT = {
       "ここコード":"这里码", "ここで使うコードを、今すぐ表示！":"此处所需，一点即用！", "設定":"设置", "閉じる":"关闭", "追加":"添加", "タブ(Tag)":"标签页（Tag）", "タブ(Tag)設定":"标签页（Tag）设置", "言語 / Language":"语言 / Language", "レイアウト":"外观", "自動":"自动", "ライト":"浅色", "ダーク":"深色", "データ保存・読み込み":"数据备份与恢复", "登録データをJSON形式で保存・復元します。":"以 JSON 文件备份和恢复已登记的数据。", "ファイルに保存":"导出到文件", "ファイルから読み込み":"从文件导入", "データを初期化":"重置数据", "読み込みは全データを置き換えます。先に保存してください。":"导入会替换当前全部数据，请先导出备份。",
-      "保存":"保存", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"可设置名称、颜色和顺序。标签页显示“:”或“：”前的文字；没有分隔符时显示首字符。删除 Tag 不会删除 ID 项目。", "お気に入り":"收藏", "現在地":"附近", "検索":"搜索", "タグ無し":"无标签", "＋ Tag追加":"＋ 添加 Tag", "ID項目を追加":"添加 ID 项目", "ID項目を編集":"编辑 ID 项目", "キャンセル":"取消", "表示名":"显示名称", "コードを読み取る":"扫描代码", "画像から読み取る":"从图片扫描", "カメラで読み取る":"用相机扫描", "公式アプリを登録":"登记官方应用", "認識":"识别结果", "QRコード／主要バーコードを自動判定します。":"自动识别二维码及常见条形码格式。", "手入力・詳細設定":"手动输入 / 高级设置", "詳細設定を隠す":"收起高级设置", "動作":"操作类型", "バーコード形式":"条形码格式", "コード内容":"代码内容", "Appleショートカットの初回設定":"首次设置 Apple 快捷指令", "作成するショートカット名":"要创建的快捷指令名称", "名前をコピー":"复制名称", "作成を開始":"开始设置", "起動テスト":"测试启动", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"首次使用时，iOS 可能会询问是否允许启动应用。若要长期使用，选择“始终允许”可让以后启动更顺畅。", "メモ":"备注", "有効期間":"有效期", "毎日":"每天", "特定の日付":"指定日期", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"📍标签页只显示设为“每天”或日期与今天一致的 ID。", "Tag（複数選択可）":"Tag（可多选）", "位置情報":"使用地点", "現在地を追加":"添加当前位置", "地図":"地图", "ボタン色":"按钮颜色", "このID項目を削除":"删除此 ID 项目", "地図から位置を追加":"从地图添加地点", "この位置を追加":"添加此位置", "地点を選択してください。":"请选择地点。", "再構成":"重新生成", "戻る":"返回", "色を選択":"选择颜色", "複製":"复制项目", "項目export":"导出项目", "ID項目":"ID 项目", "お気に入り登録":"收藏", "利用場所の登録":"登记使用地点", "Tag追加":"添加 Tag", "削除":"删除", "現在地向け":"附近", "ID追加":"添加 ID", "登録済みコードです。再読み取りすると置き換わります。":"已登记代码。重新扫描会替换现有内容。", "位置情報は未登録です。":"尚未登记使用地点。", "取得中…":"正在获取…", "検索中…":"正在搜索…", "カメラを停止":"停止相机", "カメラで読み取る":"用相机扫描", "認識しました":"识别成功", "画像を解析しています…":"正在分析图片…", "地点名を保存":"保存地点名称", "この地点を削除":"删除此地点", "地図の検索":"地图搜索", "タブの色":"标签页颜色", "お気に入りから外す":"取消收藏", "お気に入りに追加":"添加到收藏", "ドラッグして並び替え":"拖动排序"
+      "保存":"保存", "名称・色・並び順を設定します。「:」「：」の前までをタブに表示（区切りなしは先頭1文字）。Tagを削除してもID項目は残ります。":"可设置名称、颜色和顺序。标签页显示“:”或“：”前的文字；没有分隔符时显示首字符。删除 Tag 不会删除 ID 项目。", "お気に入り":"收藏", "現在地":"附近", "検索":"搜索", "タグ無し":"无标签", "＋ Tag追加":"＋ 添加 Tag", "ID項目を追加":"添加 ID 项目", "ID項目を編集":"编辑 ID 项目", "キャンセル":"取消", "表示名":"显示名称", "コードを読み取る":"扫描代码", "画像から読み取る":"从图片扫描", "カメラで読み取る":"用相机扫描", "公式アプリを登録":"登记官方应用", "認識":"识别结果", "QRコード／主要バーコードを自動判定します。":"自动识别二维码及常见条形码格式。", "手入力・詳細設定":"手动输入 / 高级设置", "詳細設定を隠す":"收起高级设置", "動作":"操作类型", "バーコード形式":"条形码格式", "コード内容":"代码内容", "Appleショートカットの初回設定":"首次设置 Apple 快捷指令", "作成するショートカット名":"要创建的快捷指令名称", "名前をコピー":"复制名称", "作成を開始":"开始设置", "起動テスト":"测试启动", "初回のみ、iOSからアプリ起動の許可を求められる場合があります。継続して使う場合は「常に許可」を選ぶと、次回以降スムーズに起動できます。":"首次使用时，iOS 可能会询问是否允许启动应用。若要长期使用，选择“始终允许”可让以后启动更顺畅。", "メモ":"备注", "有効期間":"有效期", "毎日":"每天", "特定の日付":"指定日期", "📍タブの候補になるのは、「毎日」または今日の日付に一致するIDだけです。":"📍标签页只显示设为“每天”或日期与今天一致的 ID。", "Tag（複数選択可）":"Tag（可多选）", "位置情報":"使用地点", "現在地を追加":"添加当前位置", "地図":"地图", "ボタン色":"按钮颜色", "このID項目を削除":"删除此 ID 项目", "地図から位置を追加":"从地图添加地点", "この位置を追加":"添加此位置", "地点を選択してください。":"请选择地点。", "再構成":"重新生成", "戻る":"返回", "色を選択":"选择颜色", "編集":"编辑", "複製":"复制项目", "項目export":"导出项目", "ID項目":"ID 项目", "お気に入り登録":"收藏", "利用場所の登録":"登记使用地点", "Tag追加":"添加 Tag", "削除":"删除", "現在地向け":"附近", "ID追加":"添加 ID", "登録済みコードです。再読み取りすると置き換わります。":"已登记代码。重新扫描会替换现有内容。", "位置情報は未登録です。":"尚未登记使用地点。", "取得中…":"正在获取…", "検索中…":"正在搜索…", "カメラを停止":"停止相机", "カメラで読み取る":"用相机扫描", "認識しました":"识别成功", "画像を解析しています…":"正在分析图片…", "地点名を保存":"保存地点名称", "この地点を削除":"删除此地点", "地図の検索":"地图搜索", "タブの色":"标签页颜色", "お気に入りから外す":"取消收藏", "お気に入りに追加":"添加到收藏", "ドラッグして並び替え":"拖动排序"
     };
     const ZH_HELP = {
       "表示やタブ、データの保存・読込など、ここコード全体の設定を行います。":"设置 CoCo-Code 的显示、标签页以及数据备份/恢复等。",
@@ -647,7 +647,7 @@
       "表示するTagタブの追加・名前・色・並び順を設定します。":"添加 Tag 标签页，并设置名称、颜色和顺序。",
       "端末の表示設定に合わせて、ライト／ダーク表示を自動で切り替えます。":"跟随设备设置自动切换浅色/深色外观。", "ここコードを常に明るい配色で表示します。":"始终使用浅色外观。", "ここコードを常に暗い配色で表示します。":"始终使用深色外观。",
       "登録したID項目やTag、設定などをバックアップファイルとして保存します。":"将 ID 项目、Tag 和设置保存为备份文件。", "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"读取备份文件并恢复 CoCo-Code 数据。当前数据将被替换。", "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"删除已登记的 ID 项目、Tag 和显示设置，恢复到首次启动状态。", "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"添加新的 Tag。一个 ID 项目可以添加多个 Tag。",
-      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"点击可打开已登记的应用、网页、二维码、条形码或备注。\n\n双击可选择“设置”“复制项目”“导出项目”或“删除”。上下拖动右侧 ≡ 可调整顺序。", "タップすると、この項目のお気に入り登録／解除を切り替えます。":"点击可收藏或取消收藏此项目。", "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"将当前位置登记为此项目的使用地点。到达附近时，可在 📍 标签页快速找到。", "登録してあるメモを画面に表示します。":"显示已保存的备注。", "この項目の種類を表示します。":"显示此项目的类型。", "登録してあるバーコードを画面に表示します。":"显示已保存的条形码。", "登録してあるQRコードを画面に表示します。":"显示已保存的二维码。", "登録したWebページをブラウザで開きます。":"在浏览器中打开已登记的网页。", "ショートカットを使って、対応するアプリを起動します。":"通过 Apple 快捷指令启动对应应用。", "URLスキームを使って、対応するアプリを直接起動します。":"通过 URL Scheme 直接启动对应应用。"
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「編集」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"点击可打开已登记的应用、网页、二维码、条形码或备注。\n\n双击可选择“编辑”“复制项目”“导出项目”或“删除”。上下拖动右侧 ≡ 可调整顺序。", "タップすると、この項目のお気に入り登録／解除を切り替えます。":"点击可收藏或取消收藏此项目。", "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"将当前位置登记为此项目的使用地点。到达附近时，可在 📍 标签页快速找到。", "登録してあるメモを画面に表示します。":"显示已保存的备注。", "この項目の種類を表示します。":"显示此项目的类型。", "登録してあるバーコードを画面に表示します。":"显示已保存的条形码。", "登録してあるQRコードを画面に表示します。":"显示已保存的二维码。", "登録したWebページをブラウザで開きます。":"在浏览器中打开已登记的网页。", "ショートカットを使って、対応するアプリを起動します。":"通过 Apple 快捷指令启动对应应用。", "URLスキームを使って、対応するアプリを直接起動します。":"通过 URL Scheme 直接启动对应应用。"
     };
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
@@ -732,7 +732,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.58";
+      if(headerVersion) headerVersion.textContent="v2.59";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -1161,7 +1161,7 @@
     }
 
     let suppressItemClickUntil=0;
-    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="settings">設定</button><button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="delete">削除</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
+    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="settings">編集</button><button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="delete">削除</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
     let contextItemId=null;
     function closeContextMenu(){contextMenu.classList.remove("show");contextItemId=null;}
     function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=230;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
@@ -1434,7 +1434,7 @@
 
     let itemTapTimer=null;
     let lastItemTap={id:null,time:0};
-    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
+    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「編集」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
       el.addEventListener("click",e=>{
         if(Date.now()<suppressItemClickUntil)return;
         const now=Date.now();
