@@ -239,7 +239,7 @@
       content:""; position:absolute; top:100%; left:0;
       width:1px; height:2px; pointer-events:none;
     }
-    /* v2.59 startup diagnostic: visible before app JavaScript initialization completes. */
+    /* v2.60 startup diagnostic: visible before app JavaScript initialization completes. */
     #startupProbe { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); font-weight:700; }
     #startupProbe.hidden { display:none; }
   </style>
@@ -249,7 +249,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.59</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.60</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -278,7 +278,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.59 — item menu wording and add/edit title clarification; startup diagnostic retained.
+        v2.60 — item menu wording and add/edit title clarification; startup diagnostic retained.
       </div>
     </div>
   </div>
@@ -340,7 +340,7 @@
 
   <div class="modal" id="editModal" aria-hidden="true">
     <div class="sheet">
-      <div class="panel-header"><h2 id="formTitle">ID項目を追加</h2><div class="panel-actions"><button class="btn" id="cancelBtn">キャンセル</button><button class="btn primary" id="saveBtn">保存</button></div></div><div class="panel-body">
+      <div class="panel-header"><h2 id="formTitle" data-i18n-skip="true">ID項目を追加</h2><div class="panel-actions"><button class="btn" id="cancelBtn">キャンセル</button><button class="btn primary" id="saveBtn">保存</button></div></div><div class="panel-body">
 
       <div class="field">
         <label for="name">表示名</label>
@@ -732,7 +732,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.59";
+      if(headerVersion) headerVersion.textContent="v2.60";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
