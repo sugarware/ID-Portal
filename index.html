@@ -239,13 +239,17 @@
       content:""; position:absolute; top:100%; left:0;
       width:1px; height:2px; pointer-events:none;
     }
+    /* v2.58 startup diagnostic: visible before app JavaScript initialization completes. */
+    #startupProbe { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); font-weight:700; }
+    #startupProbe.hidden { display:none; }
   </style>
 </head>
 <body>
+  <div id="startupProbe" aria-live="polite">ここコード　起動中…</div>
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.57</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.58</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -274,7 +278,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.57 — navigation cache-first startup test; v2.56 behavior otherwise retained.
+        v2.58 — startup diagnostic + item-menu delete; navigation cache-first retained.
       </div>
     </div>
   </div>
@@ -314,6 +318,7 @@
         <input id="importFileInput" type="file" accept="application/json,.json" class="hidden">
         <div class="notice">読み込みは全データを置き換えます。先に保存してください。</div>
       </div>
+      <div class="notice" style="text-align:center;margin-top:16px;">©︎2026 Sugarware</div>
     </div></div>
   </div>
 
@@ -448,7 +453,6 @@
       </div>
 
       <div class="actions" id="editPrimaryActions">
-        <button class="btn danger hidden" id="deleteBtn">このID項目を削除</button>
         
       </div>
 
@@ -618,7 +622,7 @@
       "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"Restore Cococode from a backup file. Current data will be replaced.",
       "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"Delete registered ID items, Tags, and display settings and return Cococode to its initial state.",
       "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"Add a new Tag. One ID item can have multiple Tags.",
-      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Settings, Duplicate, or Item Export. Drag ≡ on the right to reorder.",
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"Tap to open the registered app, Web page, QR code, barcode, or memo.\n\nDouble-tap to choose Settings, Duplicate, Item Export, or Delete. Drag ≡ on the right to reorder.",
       "タップすると、この項目のお気に入り登録／解除を切り替えます。":"Tap to add or remove this item from Favorites.",
       "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"Register your current position as a place where this item is used. It will be easier to find from the 📍 tab nearby.",
       "登録してあるメモを画面に表示します。":"Displays the saved memo on screen.",
@@ -643,7 +647,7 @@
       "表示するTagタブの追加・名前・色・並び順を設定します。":"添加 Tag 标签页，并设置名称、颜色和顺序。",
       "端末の表示設定に合わせて、ライト／ダーク表示を自動で切り替えます。":"跟随设备设置自动切换浅色/深色外观。", "ここコードを常に明るい配色で表示します。":"始终使用浅色外观。", "ここコードを常に暗い配色で表示します。":"始终使用深色外观。",
       "登録したID項目やTag、設定などをバックアップファイルとして保存します。":"将 ID 项目、Tag 和设置保存为备份文件。", "保存してあるバックアップファイルを読み込み、ここコードのデータを復元します。現在のデータは置き換えられます。":"读取备份文件并恢复 CoCo-Code 数据。当前数据将被替换。", "登録したID項目やTag、表示設定を削除し、ここコードを初めて起動したときの状態に戻します。":"删除已登记的 ID 项目、Tag 和显示设置，恢复到首次启动状态。", "新しいTagを追加します。1つのID項目には複数のTagを付けられます。":"添加新的 Tag。一个 ID 项目可以添加多个 Tag。",
-      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"点击可打开已登记的应用、网页、二维码、条形码或备注。\n\n双击可选择“设置”“复制项目”或“导出项目”。上下拖动右侧 ≡ 可调整顺序。", "タップすると、この項目のお気に入り登録／解除を切り替えます。":"点击可收藏或取消收藏此项目。", "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"将当前位置登记为此项目的使用地点。到达附近时，可在 📍 标签页快速找到。", "登録してあるメモを画面に表示します。":"显示已保存的备注。", "この項目の種類を表示します。":"显示此项目的类型。", "登録してあるバーコードを画面に表示します。":"显示已保存的条形码。", "登録してあるQRコードを画面に表示します。":"显示已保存的二维码。", "登録したWebページをブラウザで開きます。":"在浏览器中打开已登记的网页。", "ショートカットを使って、対応するアプリを起動します。":"通过 Apple 快捷指令启动对应应用。", "URLスキームを使って、対応するアプリを直接起動します。":"通过 URL Scheme 直接启动对应应用。"
+      "タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。":"点击可打开已登记的应用、网页、二维码、条形码或备注。\n\n双击可选择“设置”“复制项目”“导出项目”或“删除”。上下拖动右侧 ≡ 可调整顺序。", "タップすると、この項目のお気に入り登録／解除を切り替えます。":"点击可收藏或取消收藏此项目。", "現在地を、この項目を使う場所として登録します。登録した場所の近くでは📍タブから見つけやすくなります。":"将当前位置登记为此项目的使用地点。到达附近时，可在 📍 标签页快速找到。", "登録してあるメモを画面に表示します。":"显示已保存的备注。", "この項目の種類を表示します。":"显示此项目的类型。", "登録してあるバーコードを画面に表示します。":"显示已保存的条形码。", "登録してあるQRコードを画面に表示します。":"显示已保存的二维码。", "登録したWebページをブラウザで開きます。":"在浏览器中打开已登记的网页。", "ショートカットを使って、対応するアプリを起動します。":"通过 Apple 快捷指令启动对应应用。", "URLスキームを使って、対応するアプリを直接起動します。":"通过 URL Scheme 直接启动对应应用。"
     };
     const ZH_PLACEHOLDER = {"ID項目名を検索":"搜索 ID 项目", "例：○○クリニック":"例如：○○诊所", "検索にも使うメモを入力":"输入备注（也可用于搜索）", "文字列または番号":"文本或编号", "店名・施設名・住所を検索":"搜索店名、设施名或地址"};
 
@@ -728,7 +732,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.57";
+      if(headerVersion) headerVersion.textContent="v2.58";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -796,7 +800,6 @@
     const tabSettingsLocationColor = document.getElementById("tabSettingsLocationColor");
     const cancelBtn = document.getElementById("cancelBtn");
     const saveBtn = document.getElementById("saveBtn");
-    const deleteBtn = document.getElementById("deleteBtn");
     const editPrimaryActions = document.getElementById("editPrimaryActions");
     const formTitle = document.getElementById("formTitle");
     const nameInput = document.getElementById("name");
@@ -1158,10 +1161,10 @@
     }
 
     let suppressItemClickUntil=0;
-    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="settings">設定</button><button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
+    const contextMenu=document.createElement("div"); contextMenu.className="context-menu"; contextMenu.innerHTML='<button type="button" data-action="settings">設定</button><button type="button" data-action="duplicate">複製</button><button type="button" data-action="item-export">項目export</button><button type="button" data-action="delete">削除</button><button type="button" data-action="cancel">キャンセル</button>'; document.body.appendChild(contextMenu);
     let contextItemId=null;
     function closeContextMenu(){contextMenu.classList.remove("show");contextItemId=null;}
-    function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=180;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
+    function showContextMenu(item,x,y){contextItemId=item.id;contextMenu.classList.add("show");const w=150,h=230;contextMenu.style.left=`${Math.max(8,Math.min(x-w/2,innerWidth-w-8))}px`;contextMenu.style.top=`${Math.max(8,Math.min(y+8,innerHeight-h-8))}px`;suppressItemClickUntil=Date.now()+700;}
     function duplicateItem(id){const src=items.find(x=>x.id===id);if(!src)return;const base=src.name.replace(/-\d+$/,"");let max=0;for(const x of items){const m=x.name.match(new RegExp(`^${base.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}-(\\d+)$`));if(m)max=Math.max(max,Number(m[1]));}const n=max+1;const copy=structuredClone(src);copy.id=crypto.randomUUID();copy.name=`${base}-${n}`;const pos=items.findIndex(x=>x.id===id);items.splice(pos+1,0,copy);saveItems();render();}
 
     // v2.34: compact, lossless item-export format.
@@ -1405,7 +1408,7 @@
       return true;
     }
 
-    contextMenu.addEventListener("click",e=>{const a=e.target.closest("button")?.dataset.action;if(!a)return;const id=contextItemId;closeContextMenu();if(a==="duplicate")duplicateItem(id);else if(a==="item-export")exportItemQr(id);else if(a==="settings")openEdit(id);});
+    contextMenu.addEventListener("click",e=>{const a=e.target.closest("button")?.dataset.action;if(!a)return;const id=contextItemId;closeContextMenu();if(a==="duplicate")duplicateItem(id);else if(a==="item-export")exportItemQr(id);else if(a==="settings")openEdit(id);else if(a==="delete")deleteItem(id);});
     document.addEventListener("pointerdown",e=>{if(contextMenu.classList.contains("show")&&!e.target.closest(".context-menu"))closeContextMenu();});
 
     const helpOverlay=document.createElement("div");
@@ -1431,7 +1434,7 @@
 
     let itemTapTimer=null;
     let lastItemTap={id:null,time:0};
-    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
+    function wireItemAction(el,item,helpTitleText="ID項目",helpBodyText="タップすると登録したアプリ、Webページ、QRコード、バーコード、メモなどを開きます。\n\nダブルタップすると「設定」「複製」「項目export」「削除」を選べます。右側の≡を上下にドラッグすると表示順を変更できます。"){
       el.addEventListener("click",e=>{
         if(Date.now()<suppressItemClickUntil)return;
         const now=Date.now();
@@ -1751,7 +1754,6 @@
       updateColorSelection();
       editLocations = item?.locations ? structuredClone(item.locations) : [];
       renderLocationList();
-      deleteBtn.classList.toggle("hidden", !item);
       editPrimaryActions.style.gridTemplateColumns = "1fr";
       editPrimaryActions.classList.toggle("hidden", !item);
       manualFields.classList.toggle("hidden", !item);
@@ -2713,14 +2715,14 @@
       closeEdit();
     }
 
-    function deleteCurrent() {
-      if (!editingId) return;
-      const item = items.find(x => x.id === editingId);
+    function deleteItem(id) {
+      if (!id) return;
+      const item = items.find(x => x.id === id);
+      if (!item) return;
       if (!confirm(`ID項目「${item.name}」を削除しますか？`)) return;
-      items = items.filter(x => x.id !== editingId);
+      items = items.filter(x => x.id !== id);
       saveItems();
       render();
-      closeEdit();
     }
 
     async function activate(item) {
@@ -2931,7 +2933,6 @@
     wireHelpLongPress(addCurrentLocationBtn,"現在地を追加","現在地を、このID項目を利用する場所として追加します。");
     wireHelpLongPress(addMapLocationBtn,"地図","地図から、このID項目を利用する場所を選んで追加します。");
     wireHelpLongPress(itemColorButton,"ボタン色","このID項目を一覧に表示するときのボタン色を変更します。");
-    wireHelpLongPress(deleteBtn,"このID項目を削除","このID項目をここコードから削除します。");
     wireHelpLongPress(mapSearchBtn,"地図の検索","地名や施設名などを検索して、登録する位置を探します。");
     wireHelpLongPress(confirmMapBtn,"この位置を追加","地図で選択している位置を、このID項目の利用場所として追加します。");
     wireHelpLongPress(reconstructBtn,"再構成","読み取った内容からQRコードを新しく生成して表示します。元のQRパターンとは異なる場合があります。");
@@ -3032,7 +3033,6 @@
     dataModal.addEventListener("click", e => { if (e.target === dataModal) closeDataModal(); });
     cancelBtn.addEventListener("click", closeEdit);
     saveBtn.addEventListener("click", saveCurrent);
-    deleteBtn.addEventListener("click", deleteCurrent);
     typeInput.addEventListener("change", updateFormFields);
     nameInput.addEventListener("input", () => {
       if (typeInput.value === "shortcut" && (!editingId || valueInput.value === "" || valueInput.value.endsWith("を開く"))) {
@@ -3176,6 +3176,7 @@
     render();
   
     translateDom(document);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>document.getElementById("startupProbe")?.classList.add("hidden")));
 </script>
 
 </body>
