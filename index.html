@@ -239,7 +239,7 @@
       content:""; position:absolute; top:100%; left:0;
       width:1px; height:2px; pointer-events:none;
     }
-    /* v2.60 startup diagnostic: visible before app JavaScript initialization completes. */
+    /* v2.61 startup diagnostic: visible before app JavaScript initialization completes. */
     #startupProbe { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--text); font-weight:700; }
     #startupProbe.hidden { display:none; }
   </style>
@@ -249,7 +249,7 @@
   <div class="app">
     <header>
       <div>
-        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.60</span></div>
+        <div class="title-row"><h1>ここコード</h1><span class="header-version">v2.61</span></div>
         <div class="sub">ここで使うコードを、今すぐ表示！</div>
       </div>
       <div class="toolbar">
@@ -278,7 +278,7 @@
       <main id="listRight" class="list" aria-label="ID一覧 右側"></main>
 
       <div class="footnote">
-        v2.60 — item menu wording and add/edit title clarification; startup diagnostic retained.
+        v2.61 — item menu wording and add/edit title clarification; startup diagnostic retained.
       </div>
     </div>
   </div>
@@ -732,7 +732,7 @@
       const appTitle=document.querySelector("header h1");
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       const headerVersion=document.querySelector(".header-version");
-      if(headerVersion) headerVersion.textContent="v2.60";
+      if(headerVersion) headerVersion.textContent="v2.61";
       document.title=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
       render?.();
       if(appTitle) appTitle.textContent=lang==="ja"?"ここコード":lang==="zh"?"这里码":"CoCo-Code";
@@ -1381,12 +1381,52 @@
         return raw;
       }catch{return null;}
     }
+    function chooseItemImportMode(raw,type,locCount){
+      return new Promise(resolve=>{
+        const overlay=document.createElement("div");
+        overlay.className="help-overlay show";
+        overlay.setAttribute("aria-hidden","false");
+        const panel=document.createElement("div");
+        panel.className="help-panel";
+        panel.setAttribute("role","dialog"); panel.setAttribute("aria-modal","true");
+        panel.style.maxWidth="560px";
+        const title=document.createElement("h2"); title.textContent="項目データを読み取りました";
+        const info=document.createElement("p");
+        info.style.whiteSpace="pre-line";
+        info.textContent=`名称：${raw.name}\n種類：${typeLabel({type})}\n位置情報：${locCount}件\n\n取り込み方法を選んでください。`;
+        const actions=document.createElement("div");
+        actions.style.display="grid"; actions.style.gap="10px"; actions.style.marginTop="18px";
+        const make=(label,value,primary=false)=>{ const b=document.createElement("button"); b.type="button"; b.className=primary?"btn primary":"btn"; b.textContent=label; b.addEventListener("click",()=>finish(value)); return b; };
+        const finish=value=>{ overlay.remove(); resolve(value); };
+        actions.append(make("位置情報だけ追加","locations",true),make("項目データを置き換え","replace"),make("キャンセル","cancel"));
+        panel.append(title,info,actions); overlay.append(panel); document.body.append(overlay);
+        overlay.addEventListener("pointerdown",e=>{if(e.target===overlay)finish("cancel");});
+      });
+    }
+
     async function importScannedItem(text){
       const raw=await parseItemExport(text); if(!raw)return false;
       const locCount=Array.isArray(raw.locations)?raw.locations.length:0;
       const type=raw.type||"qr";
-      const ok=confirm(`ここコードの項目データを読み取りました。\n\n名称：${raw.name}\n種類：${typeLabel({type})}\n位置情報：${locCount}件\n\nこの項目を取り込みますか？`);
-      if(!ok)return true;
+      if(editingId){
+        const choice=await chooseItemImportMode(raw,type,locCount);
+        if(choice==="cancel")return true;
+        if(choice==="locations"){
+          const incoming=Array.isArray(raw.locations) ? raw.locations.map((p,i)=>({lat:Number(p.lat),lng:Number(p.lng),label:String(p.label||`地点${i+1}`)})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lng)&&Math.abs(p.lat)<=90&&Math.abs(p.lng)<=180) : [];
+          let added=0, duplicates=0;
+          for(const loc of incoming){
+            const duplicate=editLocations.some(existing=>distanceMeters(existing.lat,existing.lng,loc.lat,loc.lng)<=10);
+            if(duplicate){ duplicates++; continue; }
+            editLocations.push(structuredClone(loc)); added++;
+          }
+          renderLocationList();
+          setScanStatus(`位置情報を${added}件追加しました。${duplicates?`（重複${duplicates}件は追加していません）`:""}内容を確認し、保存してください。`);
+          return true;
+        }
+      }else{
+        const ok=confirm(`ここコードの項目データを読み取りました。\n\n名称：${raw.name}\n種類：${typeLabel({type})}\n位置情報：${locCount}件\n\nこの項目を取り込みますか？`);
+        if(!ok)return true;
+      }
       nameInput.value=String(raw.name||"");
       memoInput.value=String(raw.memo||"");
       validityTypeInput.value=raw.validityType==="date" ? "date" : "daily";
